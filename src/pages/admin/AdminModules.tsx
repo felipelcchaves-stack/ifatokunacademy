@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, 
@@ -8,7 +8,9 @@ import {
   BookOpen, 
   Edit, 
   Trash2,
-  GripVertical
+  GripVertical,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,47 +38,237 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { proficiencyModules, thematicModules, Module } from '@/data/mockData';
+import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+
+interface Module {
+  id: string;
+  title: string;
+  description: string | null;
+  type: 'proficiency' | 'thematic';
+  level: string | null;
+  theme: string | null;
+  image_url: string | null;
+  color: string | null;
+  display_order: number;
+  is_published: boolean;
+  created_at: string;
+  lessons_count?: number;
+}
+
+const colorOptions = [
+  { value: 'from-amber-500 to-orange-600', label: 'Dourado' },
+  { value: 'from-emerald-500 to-teal-600', label: 'Esmeralda' },
+  { value: 'from-violet-500 to-purple-600', label: 'Violeta' },
+  { value: 'from-rose-500 to-pink-600', label: 'Rosa' },
+  { value: 'from-blue-500 to-indigo-600', label: 'Azul' },
+  { value: 'from-red-500 to-orange-600', label: 'Vermelho' },
+];
 
 const AdminModules: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [modules, setModules] = useState<Module[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingModule, setEditingModule] = useState<Module | null>(null);
   const [newModule, setNewModule] = useState({
     title: '',
     description: '',
     type: 'proficiency' as 'proficiency' | 'thematic',
-    level: 'Akapo' as 'Akapo' | 'Awo' | 'Oluwo',
+    level: 'akapo',
     theme: '',
+    color: 'from-amber-500 to-orange-600',
+    is_published: false,
   });
 
-  const allModules = [...proficiencyModules, ...thematicModules];
-  const filteredModules = allModules.filter(module =>
+  useEffect(() => {
+    fetchModules();
+  }, []);
+
+  const fetchModules = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch modules with lessons count
+      const { data, error } = await supabase
+        .from('modules')
+        .select(`
+          *,
+          lessons:lessons(count)
+        `)
+        .order('display_order', { ascending: true });
+
+      if (error) throw error;
+
+      const modulesWithCount = (data || []).map((m: any) => ({
+        ...m,
+        lessons_count: m.lessons?.[0]?.count || 0,
+      }));
+
+      setModules(modulesWithCount);
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao carregar módulos',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateModule = async () => {
+    try {
+      const maxOrder = modules.reduce((max, m) => Math.max(max, m.display_order), -1);
+      
+      const { data, error } = await supabase
+        .from('modules')
+        .insert({
+          title: newModule.title,
+          description: newModule.description || null,
+          type: newModule.type,
+          level: newModule.type === 'proficiency' ? newModule.level : null,
+          theme: newModule.type === 'thematic' ? newModule.theme : null,
+          color: newModule.color,
+          display_order: maxOrder + 1,
+          is_published: newModule.is_published,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const newModuleData = data as Module;
+      setModules([...modules, { ...newModuleData, lessons_count: 0 }]);
+      setIsCreateDialogOpen(false);
+      setNewModule({
+        title: '',
+        description: '',
+        type: 'proficiency',
+        level: 'akapo',
+        theme: '',
+        color: 'from-amber-500 to-orange-600',
+        is_published: false,
+      });
+      
+      toast({
+        title: 'Módulo criado!',
+        description: `O módulo "${newModule.title}" foi criado com sucesso.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao criar módulo',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleUpdateModule = async () => {
+    if (!editingModule) return;
+
+    try {
+      const { error } = await supabase
+        .from('modules')
+        .update({
+          title: editingModule.title,
+          description: editingModule.description,
+          type: editingModule.type,
+          level: editingModule.type === 'proficiency' ? editingModule.level : null,
+          theme: editingModule.type === 'thematic' ? editingModule.theme : null,
+          color: editingModule.color,
+          is_published: editingModule.is_published,
+        })
+        .eq('id', editingModule.id);
+
+      if (error) throw error;
+
+      setModules(modules.map(m => m.id === editingModule.id ? editingModule : m));
+      setIsEditDialogOpen(false);
+      setEditingModule(null);
+      
+      toast({
+        title: 'Módulo atualizado!',
+        description: 'As alterações foram salvas com sucesso.',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao atualizar módulo',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleDeleteModule = async (module: Module) => {
+    try {
+      const { error } = await supabase
+        .from('modules')
+        .delete()
+        .eq('id', module.id);
+
+      if (error) throw error;
+
+      setModules(modules.filter(m => m.id !== module.id));
+      
+      toast({
+        title: 'Módulo excluído',
+        description: `O módulo "${module.title}" foi excluído.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao excluir módulo',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const togglePublish = async (module: Module) => {
+    try {
+      const { error } = await supabase
+        .from('modules')
+        .update({ is_published: !module.is_published })
+        .eq('id', module.id);
+
+      if (error) throw error;
+
+      setModules(modules.map(m => 
+        m.id === module.id ? { ...m, is_published: !m.is_published } : m
+      ));
+      
+      toast({
+        title: module.is_published ? 'Módulo despublicado' : 'Módulo publicado',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao alterar status',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const filteredModules = modules.filter(module =>
     module.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    module.description.toLowerCase().includes(searchQuery.toLowerCase())
+    module.description?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleCreateModule = () => {
-    toast({
-      title: 'Módulo criado!',
-      description: `O módulo "${newModule.title}" foi criado com sucesso.`,
-    });
-    setIsCreateDialogOpen(false);
-    setNewModule({ title: '', description: '', type: 'proficiency', level: 'Akapo', theme: '' });
-  };
-
-  const handleDeleteModule = (module: Module) => {
-    toast({
-      title: 'Módulo excluído',
-      description: `O módulo "${module.title}" foi excluído.`,
-    });
-  };
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-muted/30 flex items-center justify-center">
+        <div className="animate-pulse text-muted-foreground">Carregando...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-muted/30" data-allow-context-menu data-allow-copy>
-      {/* Sidebar (same as AdminDashboard) */}
+      {/* Sidebar */}
       <aside className="fixed left-0 top-0 bottom-0 w-64 bg-sidebar border-r border-sidebar-border z-50">
         <div className="flex flex-col h-full">
           <div className="p-6 border-b border-sidebar-border">
@@ -163,15 +355,15 @@ const AdminModules: React.FC = () => {
                       <Label>Nível</Label>
                       <Select
                         value={newModule.level}
-                        onValueChange={(value) => setNewModule({ ...newModule, level: value as 'Akapo' | 'Awo' | 'Oluwo' })}
+                        onValueChange={(value) => setNewModule({ ...newModule, level: value })}
                       >
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Akapo">Akapo</SelectItem>
-                          <SelectItem value="Awo">Awo</SelectItem>
-                          <SelectItem value="Oluwo">Oluwo</SelectItem>
+                          <SelectItem value="akapo">Akapo</SelectItem>
+                          <SelectItem value="awo">Awo</SelectItem>
+                          <SelectItem value="oluwo">Oluwo</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -187,12 +379,44 @@ const AdminModules: React.FC = () => {
                     </div>
                   )}
                 </div>
+                <div className="space-y-2">
+                  <Label>Cor do Módulo</Label>
+                  <Select
+                    value={newModule.color}
+                    onValueChange={(value) => setNewModule({ ...newModule, color: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {colorOptions.map((color) => (
+                        <SelectItem key={color.value} value={color.value}>
+                          <div className="flex items-center gap-2">
+                            <div className={`w-4 h-4 rounded bg-gradient-to-br ${color.value}`} />
+                            {color.label}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={newModule.is_published}
+                    onCheckedChange={(checked) => setNewModule({ ...newModule, is_published: checked })}
+                  />
+                  <Label>Publicar imediatamente</Label>
+                </div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
                   Cancelar
                 </Button>
-                <Button className="gradient-gold text-secondary" onClick={handleCreateModule}>
+                <Button 
+                  className="gradient-gold text-secondary" 
+                  onClick={handleCreateModule}
+                  disabled={!newModule.title}
+                >
                   Criar Módulo
                 </Button>
               </DialogFooter>
@@ -212,71 +436,237 @@ const AdminModules: React.FC = () => {
         </div>
 
         {/* Modules Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredModules.map((module) => (
-            <div 
-              key={module.id}
-              className="bg-card rounded-xl border border-border shadow-soft overflow-hidden group"
-            >
-              {/* Header */}
-              <div className={`h-24 bg-gradient-to-br ${module.color} relative pattern-adinkra`}>
-                <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-                <div className="absolute bottom-3 left-4 right-4 flex items-end justify-between">
-                  <span className="px-2 py-1 bg-white/20 backdrop-blur-sm rounded text-xs font-medium text-white">
-                    {module.type === 'proficiency' ? `Nível ${module.level}` : module.theme}
-                  </span>
-                  <GripVertical className="w-5 h-5 text-white/60 cursor-grab" />
+        {filteredModules.length === 0 ? (
+          <div className="text-center py-12 bg-card rounded-xl border border-border">
+            <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="font-serif text-lg font-semibold text-foreground mb-2">
+              Nenhum módulo encontrado
+            </h3>
+            <p className="text-muted-foreground mb-4">
+              {searchQuery ? 'Tente uma busca diferente' : 'Comece criando seu primeiro módulo'}
+            </p>
+            {!searchQuery && (
+              <Button 
+                className="gradient-gold text-secondary"
+                onClick={() => setIsCreateDialogOpen(true)}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Criar Módulo
+              </Button>
+            )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredModules.map((module) => (
+              <div 
+                key={module.id}
+                className="bg-card rounded-xl border border-border shadow-soft overflow-hidden group"
+              >
+                {/* Header */}
+                <div className={`h-24 bg-gradient-to-br ${module.color || 'from-amber-500 to-orange-600'} relative pattern-adinkra`}>
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+                  <div className="absolute bottom-3 left-4 right-4 flex items-end justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-1 bg-white/20 backdrop-blur-sm rounded text-xs font-medium text-white">
+                        {module.type === 'proficiency' 
+                          ? `Nível ${module.level?.charAt(0).toUpperCase()}${module.level?.slice(1)}` 
+                          : module.theme}
+                      </span>
+                      {module.is_published ? (
+                        <span className="px-2 py-1 bg-green-500/80 backdrop-blur-sm rounded text-xs font-medium text-white">
+                          Publicado
+                        </span>
+                      ) : (
+                        <span className="px-2 py-1 bg-gray-500/80 backdrop-blur-sm rounded text-xs font-medium text-white">
+                          Rascunho
+                        </span>
+                      )}
+                    </div>
+                    <GripVertical className="w-5 h-5 text-white/60 cursor-grab" />
+                  </div>
+                </div>
+
+                {/* Content */}
+                <div className="p-4">
+                  <div className="flex items-start justify-between mb-2">
+                    <h3 className="font-serif text-lg font-semibold text-foreground">
+                      {module.title}
+                    </h3>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <MoreVertical className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => {
+                          setEditingModule(module);
+                          setIsEditDialogOpen(true);
+                        }}>
+                          <Edit className="w-4 h-4 mr-2" />
+                          Editar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => togglePublish(module)}>
+                          {module.is_published ? (
+                            <>
+                              <EyeOff className="w-4 h-4 mr-2" />
+                              Despublicar
+                            </>
+                          ) : (
+                            <>
+                              <Eye className="w-4 h-4 mr-2" />
+                              Publicar
+                            </>
+                          )}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          className="text-destructive"
+                          onClick={() => handleDeleteModule(module)}
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Excluir
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                  <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
+                    {module.description || 'Sem descrição'}
+                  </p>
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-1 text-muted-foreground">
+                      <BookOpen className="w-4 h-4" />
+                      <span>{module.lessons_count || 0} lições</span>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => navigate(`/admin/modules/${module.id}/lessons`)}
+                    >
+                      Gerenciar Lições
+                    </Button>
+                  </div>
                 </div>
               </div>
+            ))}
+          </div>
+        )}
+      </main>
 
-              {/* Content */}
-              <div className="p-4">
-                <div className="flex items-start justify-between mb-2">
-                  <h3 className="font-serif text-lg font-semibold text-foreground">
-                    {module.title}
-                  </h3>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreVertical className="w-4 h-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem>
-                        <Edit className="w-4 h-4 mr-2" />
-                        Editar
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        className="text-destructive"
-                        onClick={() => handleDeleteModule(module)}
-                      >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Excluir
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-                <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
-                  {module.description}
-                </p>
-                <div className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-1 text-muted-foreground">
-                    <BookOpen className="w-4 h-4" />
-                    <span>{module.lessons.length} lições</span>
-                  </div>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => navigate(`/admin/modules/${module.id}/lessons`)}
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="font-serif">Editar Módulo</DialogTitle>
+            <DialogDescription>
+              Atualize as informações do módulo
+            </DialogDescription>
+          </DialogHeader>
+          {editingModule && (
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-title">Título do Módulo</Label>
+                <Input
+                  id="edit-title"
+                  value={editingModule.title}
+                  onChange={(e) => setEditingModule({ ...editingModule, title: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-description">Descrição</Label>
+                <Textarea
+                  id="edit-description"
+                  value={editingModule.description || ''}
+                  onChange={(e) => setEditingModule({ ...editingModule, description: e.target.value })}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Tipo</Label>
+                  <Select
+                    value={editingModule.type}
+                    onValueChange={(value) => setEditingModule({ ...editingModule, type: value as 'proficiency' | 'thematic' })}
                   >
-                    Gerenciar Lições
-                  </Button>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="proficiency">Proficiência</SelectItem>
+                      <SelectItem value="thematic">Temático</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
+                {editingModule.type === 'proficiency' ? (
+                  <div className="space-y-2">
+                    <Label>Nível</Label>
+                    <Select
+                      value={editingModule.level || 'akapo'}
+                      onValueChange={(value) => setEditingModule({ ...editingModule, level: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="akapo">Akapo</SelectItem>
+                        <SelectItem value="awo">Awo</SelectItem>
+                        <SelectItem value="oluwo">Oluwo</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-theme">Tema</Label>
+                    <Input
+                      id="edit-theme"
+                      value={editingModule.theme || ''}
+                      onChange={(e) => setEditingModule({ ...editingModule, theme: e.target.value })}
+                    />
+                  </div>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label>Cor do Módulo</Label>
+                <Select
+                  value={editingModule.color || 'from-amber-500 to-orange-600'}
+                  onValueChange={(value) => setEditingModule({ ...editingModule, color: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {colorOptions.map((color) => (
+                      <SelectItem key={color.value} value={color.value}>
+                        <div className="flex items-center gap-2">
+                          <div className={`w-4 h-4 rounded bg-gradient-to-br ${color.value}`} />
+                          {color.label}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={editingModule.is_published}
+                  onCheckedChange={(checked) => setEditingModule({ ...editingModule, is_published: checked })}
+                />
+                <Label>{editingModule.is_published ? 'Publicado' : 'Rascunho'}</Label>
               </div>
             </div>
-          ))}
-        </div>
-      </main>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              className="gradient-gold text-secondary" 
+              onClick={handleUpdateModule}
+              disabled={!editingModule?.title}
+            >
+              Salvar Alterações
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
