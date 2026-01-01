@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Save, Eye, EyeOff, Mic, Plus, Trash2, GripVertical } from 'lucide-react';
+import { ArrowLeft, Save, Eye, EyeOff, Mic, Plus, Trash2, GripVertical, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
+import MediaUploader from './MediaUploader';
 
 interface Exercise {
   id: string;
@@ -86,9 +87,17 @@ const ExerciseEditor: React.FC<ExerciseEditorProps> = ({ exercise, onSave, onCan
 
       <div className="space-y-2">
         <Label>Áudio (opcional)</Label>
-        <div className="flex gap-3">
+        <MediaUploader
+          exerciseId={exercise.id}
+          lessonId={exercise.lesson_id}
+          onUploadComplete={(url) => updateContent('audioUrl', url)}
+          acceptedTypes="audio/*"
+          label="Enviar áudio"
+          currentUrl={editedExercise.content.audioUrl}
+        />
+        <div className="flex gap-3 mt-2">
           <Input
-            placeholder="URL do áudio ou gere com IA"
+            placeholder="Ou cole a URL do áudio"
             value={editedExercise.content.audioUrl || ''}
             onChange={(e) => updateContent('audioUrl', e.target.value)}
             className="flex-1"
@@ -110,20 +119,24 @@ const ExerciseEditor: React.FC<ExerciseEditorProps> = ({ exercise, onSave, onCan
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="reading-image">Imagem Ilustrativa (opcional)</Label>
+        <Label>Imagem Ilustrativa (opcional)</Label>
+        <MediaUploader
+          exerciseId={exercise.id}
+          lessonId={exercise.lesson_id}
+          onUploadComplete={(url) => updateContent('imageUrl', url)}
+          acceptedTypes="image/*"
+          label="Enviar imagem"
+          currentUrl={editedExercise.content.imageUrl}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label>Ou cole a URL da imagem</Label>
         <Input
-          id="reading-image"
-          placeholder="URL da imagem"
+          placeholder="https://exemplo.com/imagem.jpg"
           value={editedExercise.content.imageUrl || ''}
           onChange={(e) => updateContent('imageUrl', e.target.value)}
         />
-        {editedExercise.content.imageUrl && (
-          <img 
-            src={editedExercise.content.imageUrl} 
-            alt="Preview" 
-            className="mt-2 max-h-48 rounded-lg object-cover"
-          />
-        )}
       </div>
     </div>
   );
@@ -336,7 +349,20 @@ const ExerciseEditor: React.FC<ExerciseEditorProps> = ({ exercise, onSave, onCan
   const renderVideoEditor = () => (
     <div className="space-y-6">
       <div className="space-y-2">
-        <Label htmlFor="video-url">URL do Vídeo</Label>
+        <Label>Upload de Vídeo</Label>
+        <MediaUploader
+          exerciseId={exercise.id}
+          lessonId={exercise.lesson_id}
+          onUploadComplete={(url) => updateContent('videoUrl', url)}
+          acceptedTypes="video/*"
+          maxSizeMB={100}
+          label="Enviar vídeo (até 100MB)"
+          currentUrl={editedExercise.content.videoUrl}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="video-url">Ou cole a URL do Vídeo</Label>
         <Input
           id="video-url"
           placeholder="https://www.youtube.com/watch?v=... ou URL do vídeo"
@@ -360,8 +386,14 @@ const ExerciseEditor: React.FC<ExerciseEditorProps> = ({ exercise, onSave, onCan
       </div>
 
       {editedExercise.content.videoUrl && (
-        <div className="aspect-video bg-muted rounded-xl flex items-center justify-center">
-          <p className="text-muted-foreground">Preview do vídeo aparecerá aqui</p>
+        <div className="aspect-video bg-muted rounded-xl flex items-center justify-center overflow-hidden">
+          {editedExercise.content.videoUrl.includes('youtube') || editedExercise.content.videoUrl.includes('vimeo') ? (
+            <p className="text-muted-foreground">Preview disponível para o aluno</p>
+          ) : (
+            <video controls className="w-full h-full object-contain">
+              <source src={editedExercise.content.videoUrl} type="video/mp4" />
+            </video>
+          )}
         </div>
       )}
     </div>
