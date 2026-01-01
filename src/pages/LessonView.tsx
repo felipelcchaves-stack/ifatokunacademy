@@ -11,13 +11,15 @@ import ReadingExercise from '@/components/exercises/ReadingExercise';
 import VideoExercise from '@/components/exercises/VideoExercise';
 import FillColumnsExercise from '@/components/exercises/FillColumnsExercise';
 import MemorizationExercise from '@/components/exercises/MemorizationExercise';
+import QuizExercise from '@/components/exercises/QuizExercise';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Exercise {
   id: string;
   lesson_id: string;
-  type: 'reading' | 'drag-drop' | 'fill-columns' | 'flashcard' | 'video' | 'memorization';
+  type: 'reading' | 'drag-drop' | 'fill-columns' | 'flashcard' | 'video' | 'memorization' | 'quiz';
   title: string;
   content: Record<string, any>;
   display_order: number;
@@ -35,6 +37,7 @@ const LessonView: React.FC = () => {
   const { moduleId, lessonId } = useParams<{ moduleId: string; lessonId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   
   const [lesson, setLesson] = useState<Lesson | null>(null);
   const [exercises, setExercises] = useState<Exercise[]>([]);
@@ -52,7 +55,6 @@ const LessonView: React.FC = () => {
     try {
       setLoading(true);
       
-      // Fetch lesson
       const { data: lessonData, error: lessonError } = await supabase
         .from('lessons')
         .select('*')
@@ -62,7 +64,6 @@ const LessonView: React.FC = () => {
       if (lessonError) throw lessonError;
       setLesson(lessonData);
 
-      // Fetch published exercises
       const { data: exercisesData, error: exercisesError } = await supabase
         .from('exercises')
         .select('*')
@@ -72,6 +73,19 @@ const LessonView: React.FC = () => {
 
       if (exercisesError) throw exercisesError;
       setExercises((exercisesData || []) as Exercise[]);
+
+      // Load already completed exercises
+      if (user) {
+        const { data: progress } = await supabase
+          .from('user_progress')
+          .select('exercise_id')
+          .eq('user_id', user.id)
+          .eq('lesson_id', lessonId);
+
+        if (progress) {
+          setCompletedExercises(new Set(progress.map(p => p.exercise_id)));
+        }
+      }
     } catch (error: any) {
       toast({
         title: 'Erro ao carregar lição',
@@ -112,8 +126,18 @@ const LessonView: React.FC = () => {
   const currentExercise = exercises[currentExerciseIndex];
   const progress = exercises.length > 0 ? (completedExercises.size / exercises.length) * 100 : 0;
 
-  const handleExerciseComplete = () => {
-    if (currentExercise) {
+  const handleExerciseComplete = async (score?: number) => {
+    if (currentExercise && user) {
+      // Save progress to database
+      await supabase.from('user_progress').upsert({
+        user_id: user.id,
+        exercise_id: currentExercise.id,
+        lesson_id: lessonId,
+        module_id: moduleId,
+        score: score || null,
+        completed_at: new Date().toISOString(),
+      }, { onConflict: 'user_id,exercise_id' });
+
       setCompletedExercises(prev => new Set([...prev, currentExercise.id]));
       toast({
         title: 'Muito bem!',
@@ -195,7 +219,15 @@ const LessonView: React.FC = () => {
         return (
           <MemorizationExercise 
             items={items}
-            onComplete={handleExerciseComplete}
+            onComplete={() => handleExerciseComplete()}
+          />
+        );
+      case 'quiz':
+        return (
+          <QuizExercise
+            questions={content.questions || []}
+            passingScore={content.passingScore || 90}
+            onComplete={(passed, score) => handleExerciseComplete(score)}
           />
         );
       default:

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, Clock, Award, TrendingUp, Play, Loader2 } from 'lucide-react';
+import { BookOpen, Clock, Award, TrendingUp, Play, Loader2, Lock } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import ModuleCard from '@/components/modules/ModuleCard';
@@ -26,23 +26,33 @@ interface Module {
   progress?: number;
 }
 
+interface ModuleCompletion {
+  module_id: string;
+  quiz_score: number;
+}
+
+const LEVEL_ORDER = ['akapo', 'awo', 'oluwo'];
+
 const Dashboard: React.FC = () => {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
   const [modules, setModules] = useState<Module[]>([]);
+  const [completions, setCompletions] = useState<ModuleCompletion[]>([]);
+  const [userProgress, setUserProgress] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
 
   const displayName = profile?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || 'Estudante';
 
   useEffect(() => {
-    fetchModules();
-  }, []);
+    fetchData();
+  }, [user]);
 
-  const fetchModules = async () => {
+  const fetchData = async () => {
     try {
       setLoading(true);
       
-      const { data, error } = await supabase
+      // Fetch modules
+      const { data: modulesData, error: modulesError } = await supabase
         .from('modules')
         .select(`
           *,
@@ -51,32 +61,130 @@ const Dashboard: React.FC = () => {
         .eq('is_published', true)
         .order('display_order', { ascending: true });
 
-      if (error) throw error;
+      if (modulesError) throw modulesError;
 
-      const modulesWithCount = (data || []).map((m: any) => ({
+      const modulesWithCount = (modulesData || []).map((m: any) => ({
         ...m,
         type: m.type as 'proficiency' | 'thematic',
         totalLessons: m.lessons?.[0]?.count || 0,
-        progress: 0, // TODO: Calculate actual progress from user data
+        progress: 0,
       }));
 
       setModules(modulesWithCount);
+
+      // Fetch completions and progress if user is logged in
+      if (user) {
+        const { data: completionsData } = await supabase
+          .from('module_completions')
+          .select('module_id, quiz_score')
+          .eq('user_id', user.id);
+
+        setCompletions(completionsData || []);
+
+        // Fetch user progress per module
+        const progressByModule: Record<string, number> = {};
+        
+        for (const mod of modulesWithCount) {
+          // Get lessons for this module
+          const { data: lessons } = await supabase
+            .from('lessons')
+            .select('id')
+            .eq('module_id', mod.id)
+            .eq('is_published', true);
+
+          const lessonIds = lessons?.map(l => l.id) || [];
+          if (lessonIds.length === 0) continue;
+
+          // Get total exercises
+          const { data: exercises } = await supabase
+            .from('exercises')
+            .select('id')
+            .in('lesson_id', lessonIds)
+            .eq('is_published', true);
+
+          // Get completed exercises
+          const { data: completed } = await supabase
+            .from('user_progress')
+            .select('exercise_id')
+            .eq('user_id', user.id)
+            .eq('module_id', mod.id);
+
+          const totalExercises = exercises?.length || 0;
+          const completedExercises = completed?.length || 0;
+          
+          progressByModule[mod.id] = totalExercises > 0 
+            ? Math.round((completedExercises / totalExercises) * 100)
+            : 0;
+        }
+
+        setUserProgress(progressByModule);
+      }
     } catch (error) {
-      console.error('Error fetching modules:', error);
+      console.error('Error fetching data:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const proficiencyModules = modules.filter(m => m.type === 'proficiency');
-  const thematicModules = modules.filter(m => m.type === 'thematic');
-  const lastActiveModule = modules[0];
+  // Calculate locked modules for proficiency track
+  const getLockedModules = () => {
+    const locked = new Set<string>();
+    const requirements: Record<string, string> = {};
+
+    const profModules = modules.filter(m => m.type === 'proficiency');
+    
+    profModules.forEach(mod => {
+      const levelIndex = LEVEL_ORDER.indexOf(mod.level?.toLowerCase() || '');
+      
+      if (levelIndex > 0) {
+        // Check if previous level is completed
+        const previousLevel = LEVEL_ORDER[levelIndex - 1];
+        const previousModules = profModules.filter(
+          m => m.level?.toLowerCase() === previousLevel
+        );
+
+        const allPreviousCompleted = previousModules.every(pm => 
+          completions.some(c => c.module_id === pm.id && c.quiz_score >= 90)
+        );
+
+        if (!allPreviousCompleted) {
+          locked.add(mod.id);
+          const levelName = previousLevel.charAt(0).toUpperCase() + previousLevel.slice(1);
+          requirements[mod.id] = `Complete o nível ${levelName} com 90% no quiz para desbloquear`;
+        }
+      }
+    });
+
+    return { locked, requirements };
+  };
+
+  const { locked: lockedModules, requirements: unlockRequirements } = getLockedModules();
+
+  // Apply progress to modules
+  const modulesWithProgress = modules.map(m => ({
+    ...m,
+    progress: userProgress[m.id] || 0,
+  }));
+
+  const proficiencyModules = modulesWithProgress.filter(m => m.type === 'proficiency');
+  const thematicModules = modulesWithProgress.filter(m => m.type === 'thematic');
+  
+  // Get first unlocked module with progress for "Continue Learning"
+  const activeModule = modulesWithProgress.find(m => 
+    !lockedModules.has(m.id) && m.progress > 0 && m.progress < 100
+  ) || modulesWithProgress.find(m => !lockedModules.has(m.id));
+
+  const totalProgress = modulesWithProgress.length > 0
+    ? Math.round(modulesWithProgress.reduce((acc, m) => acc + (m.progress || 0), 0) / modulesWithProgress.length)
+    : 0;
+
+  const completedExercises = Object.values(userProgress).reduce((acc, p) => acc + p, 0);
 
   const stats = [
     { icon: BookOpen, label: 'Módulos Disponíveis', value: modules.length },
     { icon: Clock, label: 'Horas de Estudo', value: '0h' },
-    { icon: Award, label: 'Exercícios Concluídos', value: 0 },
-    { icon: TrendingUp, label: 'Progresso Geral', value: '0%' },
+    { icon: Award, label: 'Módulos Completos', value: completions.length },
+    { icon: TrendingUp, label: 'Progresso Geral', value: `${totalProgress}%` },
   ];
 
   if (loading) {
@@ -131,39 +239,43 @@ const Dashboard: React.FC = () => {
             </div>
 
             {/* Continue Learning */}
-            {lastActiveModule && (
+            {activeModule && (
               <div className="mb-12">
                 <h2 className="font-serif text-2xl font-bold text-foreground mb-6">
                   Continuar Aprendendo
                 </h2>
                 <div className="bg-card rounded-2xl p-6 md:p-8 shadow-soft border border-border">
                   <div className="flex flex-col md:flex-row gap-6 items-start md:items-center">
-                    <div className={`w-16 h-16 rounded-xl bg-gradient-to-br ${lastActiveModule.color || 'from-amber-500 to-orange-600'} flex items-center justify-center flex-shrink-0`}>
-                      <BookOpen className="w-8 h-8 text-white" />
+                    <div className={`w-16 h-16 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden ${!activeModule.image_url && `bg-gradient-to-br ${activeModule.color || 'from-amber-500 to-orange-600'}`}`}>
+                      {activeModule.image_url ? (
+                        <img src={activeModule.image_url} alt={activeModule.title} className="w-full h-full object-cover" />
+                      ) : (
+                        <BookOpen className="w-8 h-8 text-white" />
+                      )}
                     </div>
                     <div className="flex-1">
                       <span className="text-xs font-medium text-primary uppercase tracking-wider">
-                        {lastActiveModule.type === 'proficiency' 
-                          ? `Nível ${lastActiveModule.level?.charAt(0).toUpperCase()}${lastActiveModule.level?.slice(1)}` 
-                          : lastActiveModule.theme}
+                        {activeModule.type === 'proficiency' 
+                          ? `Nível ${activeModule.level?.charAt(0).toUpperCase()}${activeModule.level?.slice(1)}` 
+                          : activeModule.theme}
                       </span>
                       <h3 className="font-serif text-xl font-semibold text-foreground mt-1">
-                        {lastActiveModule.title}
+                        {activeModule.title}
                       </h3>
                       <p className="text-muted-foreground text-sm mt-1 mb-4">
-                        {lastActiveModule.description}
+                        {activeModule.description}
                       </p>
                       <div className="flex items-center gap-4">
                         <div className="flex-1 max-w-xs">
                           <div className="flex justify-between text-sm mb-1">
                             <span className="text-muted-foreground">Progresso</span>
-                            <span className="font-medium text-primary">{lastActiveModule.progress || 0}%</span>
+                            <span className="font-medium text-primary">{activeModule.progress || 0}%</span>
                           </div>
-                          <Progress value={lastActiveModule.progress || 0} className="h-2" />
+                          <Progress value={activeModule.progress || 0} className="h-2" />
                         </div>
                         <Button 
                           className="gradient-gold text-secondary font-semibold shadow-gold"
-                          onClick={() => navigate(`/module/${lastActiveModule.id}`)}
+                          onClick={() => navigate(`/module/${activeModule.id}`)}
                         >
                           <Play className="w-4 h-4 mr-2" />
                           Continuar
@@ -194,6 +306,8 @@ const Dashboard: React.FC = () => {
                   }))}
                   title="Trilhas de Proficiência"
                   subtitle="Evolua do nível Akapo até Oluwo"
+                  lockedModules={lockedModules}
+                  unlockRequirements={unlockRequirements}
                 />
               </div>
             )}
