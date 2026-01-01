@@ -14,7 +14,197 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      exercise_media: {
+        Row: {
+          created_at: string
+          exercise_id: string | null
+          filename: string | null
+          id: string
+          lesson_id: string | null
+          metadata: Json | null
+          module_id: string | null
+          type: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          exercise_id?: string | null
+          filename?: string | null
+          id?: string
+          lesson_id?: string | null
+          metadata?: Json | null
+          module_id?: string | null
+          type: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          exercise_id?: string | null
+          filename?: string | null
+          id?: string
+          lesson_id?: string | null
+          metadata?: Json | null
+          module_id?: string | null
+          type?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exercise_media_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exercise_media_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exercise_media_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exercises: {
+        Row: {
+          content: Json
+          created_at: string
+          display_order: number
+          id: string
+          is_published: boolean
+          lesson_id: string
+          title: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          content?: Json
+          created_at?: string
+          display_order?: number
+          id?: string
+          is_published?: boolean
+          lesson_id: string
+          title: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          content?: Json
+          created_at?: string
+          display_order?: number
+          id?: string
+          is_published?: boolean
+          lesson_id?: string
+          title?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exercises_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lessons: {
+        Row: {
+          created_at: string
+          description: string | null
+          display_order: number
+          duration_minutes: number | null
+          id: string
+          is_published: boolean
+          module_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          duration_minutes?: number | null
+          id?: string
+          is_published?: boolean
+          module_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          duration_minutes?: number | null
+          id?: string
+          is_published?: boolean
+          module_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lessons_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      modules: {
+        Row: {
+          color: string | null
+          created_at: string
+          description: string | null
+          display_order: number
+          id: string
+          image_url: string | null
+          is_published: boolean
+          level: string | null
+          theme: string | null
+          title: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          id?: string
+          image_url?: string | null
+          is_published?: boolean
+          level?: string | null
+          theme?: string | null
+          title: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          id?: string
+          image_url?: string | null
+          is_published?: boolean
+          level?: string | null
+          theme?: string | null
+          title?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
