@@ -13,11 +13,13 @@ import { useAuth } from '@/contexts/AuthContext';
 
 const Header: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { user, isAuthenticated, isAdmin, logout } = useAuth();
+  const { user, profile, isAuthenticated, isAdmin, signOut } = useAuth();
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    logout();
+  const displayName = profile?.full_name || user?.email?.split('@')[0] || 'Usuário';
+
+  const handleLogout = async () => {
+    await signOut();
     navigate('/');
   };
 
@@ -69,7 +71,7 @@ const Header: React.FC = () => {
                     <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
                       <User className="w-4 h-4 text-primary" />
                     </div>
-                    <span className="text-sm font-medium">{user?.name}</span>
+                    <span className="text-sm font-medium">{displayName}</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">

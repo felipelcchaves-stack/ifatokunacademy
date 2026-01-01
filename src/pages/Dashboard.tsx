@@ -27,10 +27,12 @@ interface Module {
 }
 
 const Dashboard: React.FC = () => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const navigate = useNavigate();
   const [modules, setModules] = useState<Module[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const displayName = profile?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || 'Estudante';
 
   useEffect(() => {
     fetchModules();
@@ -103,7 +105,7 @@ const Dashboard: React.FC = () => {
             {/* Welcome Section */}
             <div className="mb-8">
               <h1 className="font-serif text-3xl md:text-4xl font-bold text-foreground mb-2">
-                Olá, {user?.name?.split(' ')[0] || 'Estudante'}! 👋
+                Olá, {displayName}! 👋
               </h1>
               <p className="text-muted-foreground">
                 Continue sua jornada de aprendizado. Você está indo muito bem!

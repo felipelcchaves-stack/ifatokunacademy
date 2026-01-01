@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import ContentProtection from "@/components/ContentProtection";
+import ProtectedRoute from "@/components/ProtectedRoute";
 
 // Pages
 import Index from "./pages/Index";
@@ -23,42 +24,94 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
-        <ContentProtection>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
+    <BrowserRouter>
+      <AuthProvider>
+        <TooltipProvider>
+          <ContentProtection>
+            <Toaster />
+            <Sonner />
             <Routes>
               {/* Public Routes */}
               <Route path="/" element={<Index />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               
-              {/* Student Routes */}
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/module/:moduleId" element={<ModuleView />} />
-              <Route path="/module/:moduleId/lesson/:lessonId" element={<LessonView />} />
-              <Route path="/modules" element={<Dashboard />} />
+              {/* Student Routes - Protected */}
+              <Route path="/dashboard" element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/module/:moduleId" element={
+                <ProtectedRoute>
+                  <ModuleView />
+                </ProtectedRoute>
+              } />
+              <Route path="/module/:moduleId/lesson/:lessonId" element={
+                <ProtectedRoute>
+                  <LessonView />
+                </ProtectedRoute>
+              } />
+              <Route path="/modules" element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              } />
               
-              {/* Admin Routes */}
-              <Route path="/admin" element={<AdminDashboard />} />
-              <Route path="/admin/modules" element={<AdminModules />} />
-              <Route path="/admin/modules/:moduleId/lessons" element={<AdminLessons />} />
-              <Route path="/admin/modules/:moduleId/lessons/:lessonId/exercises" element={<AdminExercises />} />
-              <Route path="/admin/lessons" element={<AdminDashboard />} />
-              <Route path="/admin/users" element={<AdminDashboard />} />
-              <Route path="/admin/payments" element={<AdminDashboard />} />
-              <Route path="/admin/reports" element={<AdminDashboard />} />
-              <Route path="/admin/settings" element={<AdminDashboard />} />
+              {/* Admin Routes - Protected & Admin Only */}
+              <Route path="/admin" element={
+                <ProtectedRoute requireAdmin>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/modules" element={
+                <ProtectedRoute requireAdmin>
+                  <AdminModules />
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/modules/:moduleId/lessons" element={
+                <ProtectedRoute requireAdmin>
+                  <AdminLessons />
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/modules/:moduleId/lessons/:lessonId/exercises" element={
+                <ProtectedRoute requireAdmin>
+                  <AdminExercises />
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/lessons" element={
+                <ProtectedRoute requireAdmin>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/users" element={
+                <ProtectedRoute requireAdmin>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/payments" element={
+                <ProtectedRoute requireAdmin>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/reports" element={
+                <ProtectedRoute requireAdmin>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/settings" element={
+                <ProtectedRoute requireAdmin>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              } />
               
               {/* Catch-all */}
               <Route path="*" element={<NotFound />} />
             </Routes>
-          </BrowserRouter>
-        </ContentProtection>
-      </TooltipProvider>
-    </AuthProvider>
+          </ContentProtection>
+        </TooltipProvider>
+      </AuthProvider>
+    </BrowserRouter>
   </QueryClientProvider>
 );
 

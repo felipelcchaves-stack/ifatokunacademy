@@ -1,11 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Mail, Lock, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { z } from 'zod';
+
+const registerSchema = z.object({
+  name: z.string().min(2, 'Nome deve ter no mínimo 2 caracteres').max(100, 'Nome muito longo'),
+  email: z.string().email('E-mail inválido').max(255, 'E-mail muito longo'),
+  password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres'),
+});
 
 const Register: React.FC = () => {
   const [name, setName] = useState('');
@@ -14,11 +22,21 @@ const Register: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<{ name?: string; email?: string; password?: string }>({});
+  
+  const { signUp, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrors({});
     
     if (!acceptTerms) {
       toast({
@@ -29,17 +47,54 @@ const Register: React.FC = () => {
       return;
     }
 
+    // Validate input
+    const result = registerSchema.safeParse({ name, email, password });
+    if (!result.success) {
+      const fieldErrors: { name?: string; email?: string; password?: string } = {};
+      result.error.errors.forEach((err) => {
+        if (err.path[0] === 'name') fieldErrors.name = err.message;
+        if (err.path[0] === 'email') fieldErrors.email = err.message;
+        if (err.path[0] === 'password') fieldErrors.password = err.message;
+      });
+      setErrors(fieldErrors);
+      return;
+    }
+
     setLoading(true);
 
-    // Simulate registration
-    setTimeout(() => {
+    try {
+      const { error } = await signUp(email, password, name);
+      
+      if (error) {
+        let message = 'Ocorreu um erro ao criar sua conta.';
+        
+        if (error.message.includes('User already registered')) {
+          message = 'Este e-mail já está cadastrado. Tente fazer login.';
+        } else if (error.message.includes('Password')) {
+          message = 'A senha não atende aos requisitos de segurança.';
+        }
+        
+        toast({
+          variant: 'destructive',
+          title: 'Erro no cadastro',
+          description: message,
+        });
+      } else {
+        toast({
+          title: 'Conta criada!',
+          description: 'Sua conta foi criada com sucesso.',
+        });
+        navigate('/dashboard');
+      }
+    } catch (error) {
       toast({
-        title: 'Conta criada!',
-        description: 'Sua conta foi criada com sucesso. Faça login para continuar.',
+        variant: 'destructive',
+        title: 'Erro',
+        description: 'Ocorreu um erro ao criar sua conta.',
       });
-      navigate('/login');
+    } finally {
       setLoading(false);
-    }, 1500);
+    }
   };
 
   return (
@@ -87,12 +142,15 @@ const Register: React.FC = () => {
                   placeholder="Seu nome"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="pl-10"
+                  className={`pl-10 ${errors.name ? 'border-destructive' : ''}`}
                   required
                   data-allow-context-menu
                   data-allow-copy
                 />
               </div>
+              {errors.name && (
+                <p className="text-sm text-destructive">{errors.name}</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -105,12 +163,15 @@ const Register: React.FC = () => {
                   placeholder="seu@email.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10"
+                  className={`pl-10 ${errors.email ? 'border-destructive' : ''}`}
                   required
                   data-allow-context-menu
                   data-allow-copy
                 />
               </div>
+              {errors.email && (
+                <p className="text-sm text-destructive">{errors.email}</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -120,12 +181,11 @@ const Register: React.FC = () => {
                 <Input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="Mínimo 8 caracteres"
+                  placeholder="Mínimo 6 caracteres"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 pr-10"
+                  className={`pl-10 pr-10 ${errors.password ? 'border-destructive' : ''}`}
                   required
-                  minLength={8}
                   data-allow-context-menu
                 />
                 <button
@@ -136,6 +196,9 @@ const Register: React.FC = () => {
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
+              {errors.password && (
+                <p className="text-sm text-destructive">{errors.password}</p>
+              )}
             </div>
 
             <div className="flex items-start gap-2">

@@ -1,38 +1,77 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { z } from 'zod';
+
+const loginSchema = z.object({
+  email: z.string().email('E-mail inválido'),
+  password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres'),
+});
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  
+  const { signIn, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
+
+  const from = (location.state as any)?.from?.pathname || '/dashboard';
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate(from, { replace: true });
+    }
+  }, [isAuthenticated, navigate, from]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrors({});
+
+    // Validate input
+    const result = loginSchema.safeParse({ email, password });
+    if (!result.success) {
+      const fieldErrors: { email?: string; password?: string } = {};
+      result.error.errors.forEach((err) => {
+        if (err.path[0] === 'email') fieldErrors.email = err.message;
+        if (err.path[0] === 'password') fieldErrors.password = err.message;
+      });
+      setErrors(fieldErrors);
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const success = await login(email, password);
-      if (success) {
-        toast({
-          title: 'Bem-vindo de volta!',
-          description: 'Login realizado com sucesso.',
-        });
-        navigate('/dashboard');
-      } else {
+      const { error } = await signIn(email, password);
+      
+      if (error) {
+        let message = 'Ocorreu um erro ao fazer login.';
+        
+        if (error.message.includes('Invalid login credentials')) {
+          message = 'E-mail ou senha incorretos.';
+        } else if (error.message.includes('Email not confirmed')) {
+          message = 'Por favor, confirme seu e-mail antes de fazer login.';
+        }
+        
         toast({
           variant: 'destructive',
           title: 'Erro no login',
-          description: 'E-mail ou senha incorretos.',
+          description: message,
+        });
+      } else {
+        toast({
+          title: 'Bem-vindo de volta!',
+          description: 'Login realizado com sucesso.',
         });
       }
     } catch (error) {
@@ -79,12 +118,15 @@ const Login: React.FC = () => {
                   placeholder="seu@email.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10"
+                  className={`pl-10 ${errors.email ? 'border-destructive' : ''}`}
                   required
                   data-allow-context-menu
                   data-allow-copy
                 />
               </div>
+              {errors.email && (
+                <p className="text-sm text-destructive">{errors.email}</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -102,7 +144,7 @@ const Login: React.FC = () => {
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 pr-10"
+                  className={`pl-10 pr-10 ${errors.password ? 'border-destructive' : ''}`}
                   required
                   data-allow-context-menu
                 />
@@ -114,6 +156,9 @@ const Login: React.FC = () => {
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
+              {errors.password && (
+                <p className="text-sm text-destructive">{errors.password}</p>
+              )}
             </div>
 
             <Button 
@@ -131,18 +176,6 @@ const Login: React.FC = () => {
               Criar conta
             </Link>
           </p>
-
-          {/* Demo Credentials */}
-          <div className="mt-8 p-4 bg-muted/50 rounded-lg border border-border">
-            <p className="text-sm font-medium text-foreground mb-2">Credenciais de Demonstração:</p>
-            <p className="text-xs text-muted-foreground">
-              <strong>Estudante:</strong> joao@exemplo.com
-            </p>
-            <p className="text-xs text-muted-foreground">
-              <strong>Admin:</strong> ifatokun@offeorunmila.com
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">(qualquer senha)</p>
-          </div>
         </div>
       </div>
 
