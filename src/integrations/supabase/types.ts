@@ -178,6 +178,51 @@ export type Database = {
           },
         ]
       }
+      module_completions: {
+        Row: {
+          completed_at: string
+          created_at: string
+          id: string
+          is_certified: boolean
+          module_id: string
+          quiz_score: number
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string
+          created_at?: string
+          id?: string
+          is_certified?: boolean
+          module_id: string
+          quiz_score: number
+          user_id: string
+        }
+        Update: {
+          completed_at?: string
+          created_at?: string
+          id?: string
+          is_certified?: boolean
+          module_id?: string
+          quiz_score?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "module_completions_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "module_completions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       modules: {
         Row: {
           color: string | null
@@ -252,6 +297,71 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      user_progress: {
+        Row: {
+          attempts: number
+          completed_at: string
+          created_at: string
+          exercise_id: string | null
+          id: string
+          lesson_id: string | null
+          module_id: string | null
+          score: number | null
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          completed_at?: string
+          created_at?: string
+          exercise_id?: string | null
+          id?: string
+          lesson_id?: string | null
+          module_id?: string | null
+          score?: number | null
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          completed_at?: string
+          created_at?: string
+          exercise_id?: string | null
+          id?: string
+          lesson_id?: string | null
+          module_id?: string | null
+          score?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_progress_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_progress_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_progress_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_progress_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

@@ -8,9 +8,17 @@ interface ModuleSliderProps {
   modules: Module[];
   title: string;
   subtitle?: string;
+  lockedModules?: Set<string>;
+  unlockRequirements?: Record<string, string>;
 }
 
-const ModuleSlider: React.FC<ModuleSliderProps> = ({ modules, title, subtitle }) => {
+const ModuleSlider: React.FC<ModuleSliderProps> = ({ 
+  modules, 
+  title, 
+  subtitle,
+  lockedModules = new Set(),
+  unlockRequirements = {},
+}) => {
   const sliderRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
@@ -80,7 +88,11 @@ const ModuleSlider: React.FC<ModuleSliderProps> = ({ modules, title, subtitle })
             key={module.id} 
             className="module-slide w-[280px] md:w-[320px] flex-shrink-0"
           >
-            <ModuleCard module={module} />
+            <ModuleCard 
+              module={module} 
+              isLocked={lockedModules.has(module.id)}
+              unlockRequirement={unlockRequirements[module.id]}
+            />
           </div>
         ))}
       </div>

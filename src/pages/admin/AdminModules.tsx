@@ -10,7 +10,8 @@ import {
   Trash2,
   GripVertical,
   Eye,
-  EyeOff
+  EyeOff,
+  Image
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,6 +42,7 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import MediaUploader from '@/components/admin/MediaUploader';
 
 interface Module {
   id: string;
@@ -82,6 +84,7 @@ const AdminModules: React.FC = () => {
     level: 'akapo',
     theme: '',
     color: 'from-amber-500 to-orange-600',
+    image_url: '',
     is_published: false,
   });
 
@@ -134,6 +137,7 @@ const AdminModules: React.FC = () => {
           level: newModule.type === 'proficiency' ? newModule.level : null,
           theme: newModule.type === 'thematic' ? newModule.theme : null,
           color: newModule.color,
+          image_url: newModule.image_url || null,
           display_order: maxOrder + 1,
           is_published: newModule.is_published,
         })
@@ -152,6 +156,7 @@ const AdminModules: React.FC = () => {
         level: 'akapo',
         theme: '',
         color: 'from-amber-500 to-orange-600',
+        image_url: '',
         is_published: false,
       });
       
@@ -181,6 +186,7 @@ const AdminModules: React.FC = () => {
           level: editingModule.type === 'proficiency' ? editingModule.level : null,
           theme: editingModule.type === 'thematic' ? editingModule.theme : null,
           color: editingModule.color,
+          image_url: editingModule.image_url,
           is_published: editingModule.is_published,
         })
         .eq('id', editingModule.id);
@@ -399,6 +405,16 @@ const AdminModules: React.FC = () => {
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Imagem de Capa</Label>
+                  <MediaUploader
+                    onUploadComplete={(url) => setNewModule({ ...newModule, image_url: url })}
+                    acceptedTypes="image/*"
+                    maxSizeMB={10}
+                    label="Enviar Imagem"
+                    currentUrl={newModule.image_url}
+                  />
                 </div>
                 <div className="flex items-center gap-2">
                   <Switch
@@ -643,6 +659,17 @@ const AdminModules: React.FC = () => {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Imagem de Capa</Label>
+                <MediaUploader
+                  moduleId={editingModule.id}
+                  onUploadComplete={(url) => setEditingModule({ ...editingModule, image_url: url })}
+                  acceptedTypes="image/*"
+                  maxSizeMB={10}
+                  label="Enviar Imagem"
+                  currentUrl={editingModule.image_url || undefined}
+                />
               </div>
               <div className="flex items-center gap-2">
                 <Switch
