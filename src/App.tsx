@@ -15,6 +15,8 @@ import ModuleView from "./pages/ModuleView";
 import LessonView from "./pages/LessonView";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminModules from "./pages/admin/AdminModules";
+import AdminLessons from "./pages/admin/AdminLessons";
+import AdminExercises from "./pages/admin/AdminExercises";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -42,6 +44,8 @@ const App = () => (
               {/* Admin Routes */}
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/admin/modules" element={<AdminModules />} />
+              <Route path="/admin/modules/:moduleId/lessons" element={<AdminLessons />} />
+              <Route path="/admin/modules/:moduleId/lessons/:lessonId/exercises" element={<AdminExercises />} />
               <Route path="/admin/lessons" element={<AdminDashboard />} />
               <Route path="/admin/users" element={<AdminDashboard />} />
               <Route path="/admin/payments" element={<AdminDashboard />} />
