@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, Clock, Award, TrendingUp, Play } from 'lucide-react';
+import { BookOpen, Clock, Award, TrendingUp, Play, Loader2 } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import ModuleCard from '@/components/modules/ModuleCard';
@@ -9,29 +9,89 @@ import ContentProtection from '@/components/ContentProtection';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import { proficiencyModules, thematicModules, getModuleById } from '@/data/mockData';
+import { supabase } from '@/integrations/supabase/client';
+
+interface Module {
+  id: string;
+  title: string;
+  description: string | null;
+  type: 'proficiency' | 'thematic';
+  level: string | null;
+  theme: string | null;
+  image_url: string | null;
+  color: string | null;
+  display_order: number;
+  is_published: boolean;
+  totalLessons?: number;
+  progress?: number;
+}
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [modules, setModules] = useState<Module[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Get enrolled modules
-  const enrolledModules = user?.enrolledModules.map(id => getModuleById(id)).filter(Boolean) || [];
-  
-  // Calculate overall progress
-  const overallProgress = enrolledModules.length > 0
-    ? Math.round(enrolledModules.reduce((acc, m) => acc + (m?.progress || 0), 0) / enrolledModules.length)
-    : 0;
+  useEffect(() => {
+    fetchModules();
+  }, []);
 
-  // Get last active module
-  const lastActiveModule = enrolledModules[0];
+  const fetchModules = async () => {
+    try {
+      setLoading(true);
+      
+      const { data, error } = await supabase
+        .from('modules')
+        .select(`
+          *,
+          lessons:lessons(count)
+        `)
+        .eq('is_published', true)
+        .order('display_order', { ascending: true });
+
+      if (error) throw error;
+
+      const modulesWithCount = (data || []).map((m: any) => ({
+        ...m,
+        type: m.type as 'proficiency' | 'thematic',
+        totalLessons: m.lessons?.[0]?.count || 0,
+        progress: 0, // TODO: Calculate actual progress from user data
+      }));
+
+      setModules(modulesWithCount);
+    } catch (error) {
+      console.error('Error fetching modules:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const proficiencyModules = modules.filter(m => m.type === 'proficiency');
+  const thematicModules = modules.filter(m => m.type === 'thematic');
+  const lastActiveModule = modules[0];
 
   const stats = [
-    { icon: BookOpen, label: 'Módulos Ativos', value: enrolledModules.length },
-    { icon: Clock, label: 'Horas de Estudo', value: '12h' },
-    { icon: Award, label: 'Exercícios Concluídos', value: 24 },
-    { icon: TrendingUp, label: 'Progresso Geral', value: `${overallProgress}%` },
+    { icon: BookOpen, label: 'Módulos Disponíveis', value: modules.length },
+    { icon: Clock, label: 'Horas de Estudo', value: '0h' },
+    { icon: Award, label: 'Exercícios Concluídos', value: 0 },
+    { icon: TrendingUp, label: 'Progresso Geral', value: '0%' },
   ];
+
+  if (loading) {
+    return (
+      <ContentProtection>
+        <div className="min-h-screen bg-background">
+          <Header />
+          <main className="pt-24 pb-16 flex items-center justify-center">
+            <div className="flex items-center gap-3 text-muted-foreground">
+              <Loader2 className="w-6 h-6 animate-spin" />
+              <span>Carregando...</span>
+            </div>
+          </main>
+        </div>
+      </ContentProtection>
+    );
+  }
 
   return (
     <ContentProtection>
@@ -43,7 +103,7 @@ const Dashboard: React.FC = () => {
             {/* Welcome Section */}
             <div className="mb-8">
               <h1 className="font-serif text-3xl md:text-4xl font-bold text-foreground mb-2">
-                Olá, {user?.name?.split(' ')[0]}! 👋
+                Olá, {user?.name?.split(' ')[0] || 'Estudante'}! 👋
               </h1>
               <p className="text-muted-foreground">
                 Continue sua jornada de aprendizado. Você está indo muito bem!
@@ -76,12 +136,14 @@ const Dashboard: React.FC = () => {
                 </h2>
                 <div className="bg-card rounded-2xl p-6 md:p-8 shadow-soft border border-border">
                   <div className="flex flex-col md:flex-row gap-6 items-start md:items-center">
-                    <div className={`w-16 h-16 rounded-xl bg-gradient-to-br ${lastActiveModule.color} flex items-center justify-center flex-shrink-0`}>
+                    <div className={`w-16 h-16 rounded-xl bg-gradient-to-br ${lastActiveModule.color || 'from-amber-500 to-orange-600'} flex items-center justify-center flex-shrink-0`}>
                       <BookOpen className="w-8 h-8 text-white" />
                     </div>
                     <div className="flex-1">
                       <span className="text-xs font-medium text-primary uppercase tracking-wider">
-                        {lastActiveModule.type === 'proficiency' ? `Nível ${lastActiveModule.level}` : lastActiveModule.theme}
+                        {lastActiveModule.type === 'proficiency' 
+                          ? `Nível ${lastActiveModule.level?.charAt(0).toUpperCase()}${lastActiveModule.level?.slice(1)}` 
+                          : lastActiveModule.theme}
                       </span>
                       <h3 className="font-serif text-xl font-semibold text-foreground mt-1">
                         {lastActiveModule.title}
@@ -93,9 +155,9 @@ const Dashboard: React.FC = () => {
                         <div className="flex-1 max-w-xs">
                           <div className="flex justify-between text-sm mb-1">
                             <span className="text-muted-foreground">Progresso</span>
-                            <span className="font-medium text-primary">{lastActiveModule.progress}%</span>
+                            <span className="font-medium text-primary">{lastActiveModule.progress || 0}%</span>
                           </div>
-                          <Progress value={lastActiveModule.progress} className="h-2" />
+                          <Progress value={lastActiveModule.progress || 0} className="h-2" />
                         </div>
                         <Button 
                           className="gradient-gold text-secondary font-semibold shadow-gold"
@@ -111,36 +173,64 @@ const Dashboard: React.FC = () => {
               </div>
             )}
 
-            {/* My Modules */}
-            {enrolledModules.length > 0 && (
+            {/* Proficiency Modules */}
+            {proficiencyModules.length > 0 && (
               <div className="mb-12">
-                <h2 className="font-serif text-2xl font-bold text-foreground mb-6">
-                  Meus Módulos
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {enrolledModules.map((module) => module && (
-                    <ModuleCard key={module.id} module={module} variant="compact" />
-                  ))}
-                </div>
+                <ModuleSlider 
+                  modules={proficiencyModules.map(m => ({
+                    id: m.id,
+                    title: m.title,
+                    description: m.description || '',
+                    type: m.type,
+                    level: (m.level?.charAt(0).toUpperCase() + m.level?.slice(1)) as 'Akapo' | 'Awo' | 'Oluwo',
+                    theme: m.theme || '',
+                    image: m.image_url || '',
+                    color: m.color || 'from-amber-500 to-orange-600',
+                    totalLessons: m.totalLessons || 0,
+                    progress: m.progress || 0,
+                    lessons: [],
+                  }))}
+                  title="Trilhas de Proficiência"
+                  subtitle="Evolua do nível Akapo até Oluwo"
+                />
               </div>
             )}
 
-            {/* Explore More */}
-            <div className="mb-12">
-              <ModuleSlider 
-                modules={proficiencyModules.filter(m => !user?.enrolledModules.includes(m.id))}
-                title="Explorar Trilhas de Proficiência"
-                subtitle="Descubra novos módulos para expandir seu conhecimento"
-              />
-            </div>
+            {/* Thematic Modules */}
+            {thematicModules.length > 0 && (
+              <div>
+                <ModuleSlider 
+                  modules={thematicModules.map(m => ({
+                    id: m.id,
+                    title: m.title,
+                    description: m.description || '',
+                    type: m.type,
+                    level: 'Akapo' as const,
+                    theme: m.theme || '',
+                    image: m.image_url || '',
+                    color: m.color || 'from-emerald-500 to-teal-600',
+                    totalLessons: m.totalLessons || 0,
+                    progress: m.progress || 0,
+                    lessons: [],
+                  }))}
+                  title="Módulos Temáticos"
+                  subtitle="Aprofunde-se em áreas específicas"
+                />
+              </div>
+            )}
 
-            <div>
-              <ModuleSlider 
-                modules={thematicModules.filter(m => !user?.enrolledModules.includes(m.id))}
-                title="Módulos Temáticos"
-                subtitle="Aprofunde-se em áreas específicas"
-              />
-            </div>
+            {/* Empty State */}
+            {modules.length === 0 && (
+              <div className="bg-card rounded-xl p-12 text-center border border-border">
+                <BookOpen className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="font-serif text-xl font-semibold text-foreground mb-2">
+                  Nenhum módulo disponível
+                </h3>
+                <p className="text-muted-foreground">
+                  Os módulos estão sendo preparados. Volte em breve!
+                </p>
+              </div>
+            )}
           </div>
         </main>
 

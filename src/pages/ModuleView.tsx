@@ -1,32 +1,131 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, BookOpen, Clock, CheckCircle, Lock, Play } from 'lucide-react';
+import { ArrowLeft, BookOpen, Clock, CheckCircle, Lock, Play, Loader2 } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import ContentProtection from '@/components/ContentProtection';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { getModuleById, Lesson } from '@/data/mockData';
+import { supabase } from '@/integrations/supabase/client';
+
+interface Module {
+  id: string;
+  title: string;
+  description: string | null;
+  type: 'proficiency' | 'thematic';
+  level: string | null;
+  theme: string | null;
+  color: string | null;
+}
+
+interface Lesson {
+  id: string;
+  title: string;
+  description: string | null;
+  duration_minutes: number | null;
+  display_order: number;
+  is_published: boolean;
+  exercises_count?: number;
+  completed?: boolean;
+}
 
 const ModuleView: React.FC = () => {
   const { moduleId } = useParams<{ moduleId: string }>();
   const navigate = useNavigate();
-  const module = getModuleById(moduleId || '');
+  const [module, setModule] = useState<Module | null>(null);
+  const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (moduleId) {
+      fetchModuleAndLessons();
+    }
+  }, [moduleId]);
+
+  const fetchModuleAndLessons = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch module
+      const { data: moduleData, error: moduleError } = await supabase
+        .from('modules')
+        .select('*')
+        .eq('id', moduleId)
+        .maybeSingle();
+
+      if (moduleError) throw moduleError;
+      
+      if (moduleData) {
+        setModule({
+          ...moduleData,
+          type: moduleData.type as 'proficiency' | 'thematic',
+        });
+      }
+
+      // Fetch published lessons with exercise count
+      const { data: lessonsData, error: lessonsError } = await supabase
+        .from('lessons')
+        .select(`
+          *,
+          exercises:exercises(count)
+        `)
+        .eq('module_id', moduleId)
+        .eq('is_published', true)
+        .order('display_order', { ascending: true });
+
+      if (lessonsError) throw lessonsError;
+
+      const lessonsWithCount = (lessonsData || []).map((l: any) => ({
+        ...l,
+        exercises_count: l.exercises?.[0]?.count || 0,
+        completed: false, // TODO: Get from user progress
+      }));
+
+      setLessons(lessonsWithCount);
+    } catch (error) {
+      console.error('Error fetching module:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <ContentProtection>
+        <div className="min-h-screen bg-background">
+          <Header />
+          <main className="pt-24 pb-16 flex items-center justify-center">
+            <div className="flex items-center gap-3 text-muted-foreground">
+              <Loader2 className="w-6 h-6 animate-spin" />
+              <span>Carregando módulo...</span>
+            </div>
+          </main>
+        </div>
+      </ContentProtection>
+    );
+  }
 
   if (!module) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="font-serif text-2xl font-bold text-foreground mb-4">
-            Módulo não encontrado
-          </h1>
-          <Button onClick={() => navigate('/dashboard')}>
-            Voltar ao Dashboard
-          </Button>
+      <ContentProtection>
+        <div className="min-h-screen bg-background">
+          <Header />
+          <main className="pt-24 pb-16 flex items-center justify-center">
+            <div className="text-center">
+              <h1 className="font-serif text-2xl font-bold text-foreground mb-4">
+                Módulo não encontrado
+              </h1>
+              <Button onClick={() => navigate('/dashboard')}>
+                Voltar ao Dashboard
+              </Button>
+            </div>
+          </main>
         </div>
-      </div>
+      </ContentProtection>
     );
   }
+
+  const progress = 0; // TODO: Calculate from user progress
 
   return (
     <ContentProtection>
@@ -35,7 +134,7 @@ const ModuleView: React.FC = () => {
         
         <main className="pt-24 pb-16">
           {/* Hero */}
-          <div className={`bg-gradient-to-br ${module.color} pattern-adinkra relative`}>
+          <div className={`bg-gradient-to-br ${module.color || 'from-amber-500 to-orange-600'} pattern-adinkra relative`}>
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
             <div className="container mx-auto px-4 py-16 relative z-10">
               <Button
@@ -49,7 +148,9 @@ const ModuleView: React.FC = () => {
 
               <div className="max-w-3xl">
                 <span className="inline-block px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-sm font-medium text-white mb-4">
-                  {module.type === 'proficiency' ? `Nível ${module.level}` : module.theme}
+                  {module.type === 'proficiency' 
+                    ? `Nível ${module.level?.charAt(0).toUpperCase()}${module.level?.slice(1)}` 
+                    : module.theme}
                 </span>
                 <h1 className="font-serif text-4xl md:text-5xl font-bold text-white mb-4">
                   {module.title}
@@ -61,21 +162,21 @@ const ModuleView: React.FC = () => {
                 <div className="flex flex-wrap items-center gap-6 text-white/80">
                   <div className="flex items-center gap-2">
                     <BookOpen className="w-5 h-5" />
-                    <span>{module.totalLessons} lições</span>
+                    <span>{lessons.length} lições</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Clock className="w-5 h-5" />
-                    <span>~{module.totalLessons * 30} minutos</span>
+                    <span>~{lessons.reduce((acc, l) => acc + (l.duration_minutes || 30), 0)} minutos</span>
                   </div>
                 </div>
 
-                {module.progress > 0 && (
+                {progress > 0 && (
                   <div className="mt-6 max-w-sm">
                     <div className="flex justify-between text-sm text-white/80 mb-2">
                       <span>Seu progresso</span>
-                      <span>{module.progress}%</span>
+                      <span>{progress}%</span>
                     </div>
-                    <Progress value={module.progress} className="h-2 bg-white/20" />
+                    <Progress value={progress} className="h-2 bg-white/20" />
                   </div>
                 )}
               </div>
@@ -89,14 +190,14 @@ const ModuleView: React.FC = () => {
             </h2>
 
             <div className="space-y-4">
-              {module.lessons.length > 0 ? (
-                module.lessons.map((lesson, index) => (
+              {lessons.length > 0 ? (
+                lessons.map((lesson, index) => (
                   <LessonCard 
                     key={lesson.id} 
                     lesson={lesson} 
                     index={index}
                     moduleId={module.id}
-                    isLocked={index > 0 && !module.lessons[index - 1].completed}
+                    isLocked={false} // TODO: Implement sequential unlocking based on progress
                   />
                 ))
               ) : (
@@ -130,6 +231,16 @@ interface LessonCardProps {
 const LessonCard: React.FC<LessonCardProps> = ({ lesson, index, moduleId, isLocked }) => {
   const navigate = useNavigate();
 
+  const formatDuration = (minutes: number | null) => {
+    if (!minutes) return '30 min';
+    if (minutes >= 60) {
+      const hours = Math.floor(minutes / 60);
+      const mins = minutes % 60;
+      return mins > 0 ? `${hours}h ${mins}min` : `${hours}h`;
+    }
+    return `${minutes} min`;
+  };
+
   return (
     <div 
       className={`
@@ -154,13 +265,15 @@ const LessonCard: React.FC<LessonCardProps> = ({ lesson, index, moduleId, isLock
 
         <div className="flex-1 min-w-0">
           <h3 className="font-semibold text-foreground mb-1">{lesson.title}</h3>
-          <p className="text-sm text-muted-foreground line-clamp-1">{lesson.description}</p>
+          <p className="text-sm text-muted-foreground line-clamp-1">
+            {lesson.description || 'Sem descrição'}
+          </p>
         </div>
 
         <div className="flex items-center gap-4">
           <div className="hidden sm:flex items-center gap-1 text-sm text-muted-foreground">
             <Clock className="w-4 h-4" />
-            <span>{lesson.duration}</span>
+            <span>{formatDuration(lesson.duration_minutes)}</span>
           </div>
           
           {!isLocked && !lesson.completed && (
@@ -178,10 +291,10 @@ const LessonCard: React.FC<LessonCardProps> = ({ lesson, index, moduleId, isLock
         </div>
       </div>
 
-      {lesson.exercises.length > 0 && (
+      {lesson.exercises_count && lesson.exercises_count > 0 && (
         <div className="mt-4 pt-4 border-t border-border">
           <p className="text-sm text-muted-foreground">
-            {lesson.exercises.length} exercício{lesson.exercises.length > 1 ? 's' : ''}
+            {lesson.exercises_count} exercício{lesson.exercises_count > 1 ? 's' : ''}
           </p>
         </div>
       )}
