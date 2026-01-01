@@ -19,9 +19,11 @@ import { proficiencyModules, thematicModules, mockUsers } from '@/data/mockData'
 const AdminDashboard: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout, isAdmin } = useAuth();
+  const { user, profile, signOut, isAdmin } = useAuth();
 
-  // Redirect if not admin
+  const displayName = profile?.full_name || user?.email?.split('@')[0] || 'Admin';
+
+  // Redirect if not admin - handled by ProtectedRoute now
   React.useEffect(() => {
     if (!isAdmin) {
       navigate('/dashboard');
@@ -45,8 +47,8 @@ const AdminDashboard: React.FC = () => {
     { label: 'Taxa de Conclusão', value: '68%', change: '+5% vs. mês anterior' },
   ];
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await signOut();
     navigate('/');
   };
 
@@ -103,11 +105,11 @@ const AdminDashboard: React.FC = () => {
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-full bg-sidebar-primary/20 flex items-center justify-center">
                 <span className="text-sm font-medium text-sidebar-primary">
-                  {user?.name?.charAt(0)}
+                  {displayName?.charAt(0).toUpperCase()}
                 </span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-sidebar-foreground truncate">{user?.name}</p>
+                <p className="text-sm font-medium text-sidebar-foreground truncate">{displayName}</p>
                 <p className="text-xs text-sidebar-foreground/60 truncate">{user?.email}</p>
               </div>
             </div>
@@ -132,7 +134,7 @@ const AdminDashboard: React.FC = () => {
               Painel de Controle
             </h1>
             <p className="text-muted-foreground mt-1">
-              Bem-vindo de volta, {user?.name?.split(' ')[0]}
+              Bem-vindo de volta, {displayName?.split(' ')[0]}
             </p>
           </div>
           <div className="flex gap-3">
