@@ -32,7 +32,7 @@ const visitorLinks = [
 // Links para alunos (logados)
 const studentLinks = [
   { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
-  { label: 'Revisar', to: '/spaced-review', icon: Brain },
+  { label: 'Revisar', to: '/review', icon: Brain },
   { label: 'Desafios', to: '/challenge', icon: Trophy },
   { label: 'Estatísticas', to: '/review/stats', icon: BarChart3 },
 ];
