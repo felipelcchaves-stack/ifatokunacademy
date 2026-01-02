@@ -249,6 +249,36 @@ export type Database = {
           },
         ]
       }
+      generated_audio_cache: {
+        Row: {
+          audio_url: string
+          created_at: string
+          file_size_bytes: number | null
+          id: string
+          text_hash: string
+          text_preview: string
+          voice_id: string
+        }
+        Insert: {
+          audio_url: string
+          created_at?: string
+          file_size_bytes?: number | null
+          id?: string
+          text_hash: string
+          text_preview: string
+          voice_id?: string
+        }
+        Update: {
+          audio_url?: string
+          created_at?: string
+          file_size_bytes?: number | null
+          id?: string
+          text_hash?: string
+          text_preview?: string
+          voice_id?: string
+        }
+        Relationships: []
+      }
       lessons: {
         Row: {
           created_at: string
