@@ -69,9 +69,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   useEffect(() => {
+    let currentUserId: string | null = null;
+
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        // Skip TOKEN_REFRESHED events if user hasn't changed - prevents unnecessary re-renders
+        if (event === 'TOKEN_REFRESHED' && session?.user?.id === currentUserId) {
+          return;
+        }
+
+        currentUserId = session?.user?.id ?? null;
         setSession(session);
         setUser(session?.user ?? null);
 
