@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Wand2, Loader2, Check, AlertCircle } from 'lucide-react';
+import { Wand2, Loader2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -28,7 +28,6 @@ const BannerGenerator: React.FC<BannerGeneratorProps> = ({
     setGeneratedUrl(null);
 
     try {
-      // Get current session to send Authorization header explicitly
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session?.access_token) {
@@ -91,6 +90,36 @@ const BannerGenerator: React.FC<BannerGeneratorProps> = ({
     }
   };
 
+  const hasExistingImage = currentImageUrl || generatedUrl;
+  const displayUrl = generatedUrl || currentImageUrl;
+
+  const getButtonContent = () => {
+    if (isGenerating) {
+      return (
+        <>
+          <Loader2 className="w-4 h-4 animate-spin" />
+          Gerando...
+        </>
+      );
+    }
+    
+    if (hasExistingImage) {
+      return (
+        <>
+          <RefreshCw className="w-4 h-4" />
+          Regenerar Banner
+        </>
+      );
+    }
+    
+    return (
+      <>
+        <Wand2 className="w-4 h-4" />
+        Gerar Banner com IA
+      </>
+    );
+  };
+
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
@@ -102,42 +131,35 @@ const BannerGenerator: React.FC<BannerGeneratorProps> = ({
           disabled={isGenerating}
           className="gap-2"
         >
-          {isGenerating ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Gerando...
-            </>
-          ) : generatedUrl ? (
-            <>
-              <Check className="w-4 h-4 text-green-500" />
-              Banner Gerado
-            </>
-          ) : (
-            <>
-              <Wand2 className="w-4 h-4" />
-              Gerar Banner com IA
-            </>
-          )}
+          {getButtonContent()}
         </Button>
       </div>
 
-      {(currentImageUrl || generatedUrl) && (
+      {displayUrl && (
         <div className="relative rounded-lg overflow-hidden border border-border">
           <img
-            src={generatedUrl || currentImageUrl || ''}
+            src={displayUrl}
             alt="Banner do módulo"
             className="w-full h-32 object-cover"
           />
-          {generatedUrl && (
-            <div className="absolute top-2 right-2 bg-green-500 text-white text-xs px-2 py-1 rounded">
-              Novo
-            </div>
-          )}
+          <div className="absolute top-2 right-2">
+            {generatedUrl ? (
+              <span className="bg-green-500 text-white text-xs px-2 py-1 rounded">
+                Novo
+              </span>
+            ) : (
+              <span className="bg-muted text-muted-foreground text-xs px-2 py-1 rounded">
+                Atual
+              </span>
+            )}
+          </div>
         </div>
       )}
 
       <p className="text-xs text-muted-foreground">
-        A IA irá gerar uma imagem baseada no título e descrição do módulo.
+        {hasExistingImage 
+          ? 'Clique em "Regenerar Banner" para criar uma nova imagem. Você pode regenerar quantas vezes quiser.'
+          : 'A IA irá gerar uma imagem baseada no título e descrição do módulo.'}
       </p>
     </div>
   );
