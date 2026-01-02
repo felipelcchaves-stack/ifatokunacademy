@@ -48,6 +48,32 @@ const ReadingExercise: React.FC<ReadingExerciseProps> = ({
     moduleId
   });
 
+  // Handle recording saved - auto-switch to personal and auto-play
+  const handleRecordingSaved = useCallback(async () => {
+    await refetchRecordings();
+    
+    // Small delay to ensure recordings are updated
+    setTimeout(() => {
+      // The refetch will update recordings, and the useEffect below will set selectedRecordingUrl
+      setAudioSource('personal');
+      
+      toast.success('Gravação salva! Reproduzindo sua leitura...', {
+        duration: 3000
+      });
+      
+      // Auto-play after switching to personal
+      setTimeout(() => {
+        if (audioRef.current) {
+          audioRef.current.play().then(() => {
+            setIsPlaying(true);
+          }).catch(err => {
+            console.log('Auto-play blocked:', err);
+          });
+        }
+      }, 300);
+    }, 500);
+  }, [refetchRecordings]);
+
   // Determine effective audio URL based on source
   const effectiveAudioUrl = useMemo(() => {
     if (audioSource === 'personal' && selectedRecordingUrl) {
@@ -122,12 +148,13 @@ const ReadingExercise: React.FC<ReadingExerciseProps> = ({
     }
   }, [audioUrl]);
 
-  // Set first recording as selected when recordings load
+  // Set first (most recent) recording as selected when recordings load
   useEffect(() => {
-    if (recordings && recordings.length > 0 && !selectedRecordingUrl) {
+    if (recordings && recordings.length > 0) {
+      // Always use the most recent recording (first in the list since ordered by created_at desc)
       setSelectedRecordingUrl(recordings[0].audio_url);
     }
-  }, [recordings, selectedRecordingUrl]);
+  }, [recordings]);
 
   const handleTimeUpdate = () => {
     if (audioRef.current) {
@@ -376,7 +403,7 @@ const ReadingExercise: React.FC<ReadingExerciseProps> = ({
         exerciseId={exerciseId}
         lessonId={lessonId}
         moduleId={moduleId}
-        onSaved={() => refetchRecordings()}
+        onSaved={handleRecordingSaved}
         className="mt-4"
       />
     </div>
