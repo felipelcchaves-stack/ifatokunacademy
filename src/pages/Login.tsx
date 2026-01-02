@@ -6,7 +6,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import { z } from 'zod';
+import MFAVerification from '@/components/auth/MFAVerification';
 
 const loginSchema = z.object({
   email: z.string().email('E-mail inválido'),
@@ -19,6 +21,7 @@ const Login: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const [showMFA, setShowMFA] = useState(false);
   
   const { signIn, isAuthenticated } = useAuth();
   const navigate = useNavigate();
@@ -28,10 +31,43 @@ const Login: React.FC = () => {
   const from = (location.state as any)?.from?.pathname || '/dashboard';
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && !showMFA) {
+      // Check if MFA is required
+      checkMFAStatus();
+    }
+  }, [isAuthenticated]);
+
+  const checkMFAStatus = async () => {
+    try {
+      const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (error) throw error;
+      
+      if (data.currentLevel === 'aal1' && data.nextLevel === 'aal2') {
+        // User has MFA enabled but hasn't verified yet
+        setShowMFA(true);
+      } else {
+        // No MFA required, proceed to dashboard
+        navigate(from, { replace: true });
+      }
+    } catch (error) {
+      console.error('Error checking MFA status:', error);
       navigate(from, { replace: true });
     }
-  }, [isAuthenticated, navigate, from]);
+  };
+
+  const handleMFAVerified = () => {
+    setShowMFA(false);
+    toast({
+      title: 'Bem-vindo de volta!',
+      description: 'Login realizado com sucesso.',
+    });
+    navigate(from, { replace: true });
+  };
+
+  const handleMFACancel = async () => {
+    await supabase.auth.signOut();
+    setShowMFA(false);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,12 +104,8 @@ const Login: React.FC = () => {
           title: 'Erro no login',
           description: message,
         });
-      } else {
-        toast({
-          title: 'Bem-vindo de volta!',
-          description: 'Login realizado com sucesso.',
-        });
       }
+      // Note: Success handling moved to useEffect/checkMFAStatus
     } catch (error) {
       toast({
         variant: 'destructive',
@@ -84,6 +116,43 @@ const Login: React.FC = () => {
       setLoading(false);
     }
   };
+
+  // Show MFA verification screen
+  if (showMFA) {
+    return (
+      <div className="min-h-screen flex">
+        <div className="flex-1 flex items-center justify-center p-8">
+          <div className="w-full max-w-md">
+            <Link to="/" className="flex items-center gap-3 mb-8">
+              <div className="w-10 h-10 rounded-full gradient-gold flex items-center justify-center shadow-gold">
+                <span className="font-serif text-lg font-bold text-secondary">O</span>
+              </div>
+              <div>
+                <h1 className="font-serif text-lg font-semibold text-foreground">Offe Orunmila</h1>
+                <p className="text-xs text-muted-foreground -mt-1">Learning</p>
+              </div>
+            </Link>
+
+            <MFAVerification 
+              onVerified={handleMFAVerified}
+              onCancel={handleMFACancel}
+            />
+          </div>
+        </div>
+
+        <div className="hidden lg:flex flex-1 gradient-hero pattern-adinkra items-center justify-center p-12">
+          <div className="max-w-lg text-center text-white">
+            <h2 className="font-serif text-4xl font-bold mb-6">
+              "A segurança é a fortaleza do sábio."
+            </h2>
+            <p className="text-white/70 text-lg">
+              — Provérbio Yorubá
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex">

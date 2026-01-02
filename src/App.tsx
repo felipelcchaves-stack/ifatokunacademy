@@ -33,6 +33,7 @@ import AdminInvites from "./pages/admin/AdminInvites";
 import AdminReports from "./pages/admin/AdminReports";
 import UserSettings from "./pages/UserSettings";
 import ModuleRetentionReview from "./pages/ModuleRetentionReview";
+import MFAVerify from "./pages/MFAVerify";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -52,6 +53,7 @@ const App = () => (
               <Route path="/register" element={<Navigate to="/login" replace />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/mfa-verify" element={<MFAVerify />} />
               
               {/* Student Routes - Protected */}
               <Route path="/dashboard" element={
