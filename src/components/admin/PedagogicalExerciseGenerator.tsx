@@ -29,10 +29,12 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 interface PedagogicalExerciseGeneratorProps {
   lessonId: string;
   lessonTitle: string;
-  existingExercises: Array<{ id: string; title: string; type: string }>;
+  existingExercises?: Array<{ id: string; title: string; type: string }>;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onExercisesGenerated: () => void;
+  defaultContextText?: string;
+  defaultFullText?: string;
 }
 
 interface GeneratedExercise {
@@ -45,14 +47,16 @@ interface GeneratedExercise {
 const PedagogicalExerciseGenerator: React.FC<PedagogicalExerciseGeneratorProps> = ({
   lessonId,
   lessonTitle,
-  existingExercises,
+  existingExercises = [],
   open,
   onOpenChange,
   onExercisesGenerated,
+  defaultContextText = '',
+  defaultFullText = '',
 }) => {
   const { toast } = useToast();
-  const [contextoText, setContextoText] = useState('');
-  const [versoText, setVersoText] = useState('');
+  const [contextoText, setContextoText] = useState(defaultContextText);
+  const [versoText, setVersoText] = useState(defaultFullText);
   const [clearExisting, setClearExisting] = useState(false);
   const [autoPublish, setAutoPublish] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -60,6 +64,16 @@ const PedagogicalExerciseGenerator: React.FC<PedagogicalExerciseGeneratorProps> 
   const [generatedExercises, setGeneratedExercises] = useState<GeneratedExercise[]>([]);
 
   const hasExistingExercises = existingExercises.length > 0;
+
+  // Initialize with default texts when provided
+  React.useEffect(() => {
+    if (open && defaultContextText) {
+      setContextoText(defaultContextText);
+    }
+    if (open && defaultFullText) {
+      setVersoText(defaultFullText);
+    }
+  }, [open, defaultContextText, defaultFullText]);
 
   // Split text into lines, filtering empty ones
   const splitIntoLines = (text: string): string[] => {
