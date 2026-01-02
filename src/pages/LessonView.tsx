@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, CheckCircle, BookOpen, Loader2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle, BookOpen, Loader2, Sparkles } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import ContentProtection from '@/components/ContentProtection';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useAchievementTriggers } from '@/hooks/useAchievementTriggers';
 import { useAchievements } from '@/hooks/useAchievements';
 import { showAchievementUnlockToast } from '@/components/achievements/AchievementUnlockToast';
+import { Badge } from '@/components/ui/badge';
 
 interface Exercise {
   id: string;
@@ -36,6 +37,14 @@ interface Lesson {
   module_id: string;
 }
 
+// Helper to determine phase from exercise title
+const getExercisePhase = (title: string): 1 | 2 => {
+  if (title.toLowerCase().includes('fase 2') || title.toLowerCase().includes('completo')) {
+    return 2;
+  }
+  return 1;
+};
+
 const LessonView: React.FC = () => {
   const { moduleId, lessonId } = useParams<{ moduleId: string; lessonId: string }>();
   const navigate = useNavigate();
@@ -50,6 +59,7 @@ const LessonView: React.FC = () => {
   const [sessionStarted, setSessionStarted] = useState(false);
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
   const [completedExercises, setCompletedExercises] = useState<Set<string>>(new Set());
+  const [showPhaseTransition, setShowPhaseTransition] = useState(false);
 
   useEffect(() => {
     if (lessonId) {
@@ -102,6 +112,27 @@ const LessonView: React.FC = () => {
       setLoading(false);
     }
   };
+
+  // Calculate phase information
+  const phaseInfo = useMemo(() => {
+    if (exercises.length === 0) return null;
+    
+    const phase1Exercises = exercises.filter(ex => getExercisePhase(ex.title) === 1);
+    const phase2Exercises = exercises.filter(ex => getExercisePhase(ex.title) === 2);
+    
+    const hasPhases = phase1Exercises.length > 0 && phase2Exercises.length > 0;
+    const phase1EndIndex = phase1Exercises.length - 1;
+    
+    return {
+      hasPhases,
+      phase1Count: phase1Exercises.length,
+      phase2Count: phase2Exercises.length,
+      phase1EndIndex,
+      currentPhase: currentExerciseIndex <= phase1EndIndex ? 1 : 2,
+      phase1Completed: phase1Exercises.every(ex => completedExercises.has(ex.id)),
+      phase2Completed: phase2Exercises.every(ex => completedExercises.has(ex.id)),
+    };
+  }, [exercises, currentExerciseIndex, completedExercises]);
 
   if (loading) {
     return (
@@ -179,6 +210,15 @@ const LessonView: React.FC = () => {
 
   const handleNext = () => {
     if (currentExerciseIndex < exercises.length - 1) {
+      // Check if transitioning to Phase 2
+      if (phaseInfo?.hasPhases && 
+          currentExerciseIndex === phaseInfo.phase1EndIndex && 
+          !showPhaseTransition) {
+        setShowPhaseTransition(true);
+        return;
+      }
+      
+      setShowPhaseTransition(false);
       setCurrentExerciseIndex(currentExerciseIndex + 1);
     } else {
       // Lesson complete
@@ -192,6 +232,7 @@ const LessonView: React.FC = () => {
 
   const handlePrevious = () => {
     if (currentExerciseIndex > 0) {
+      setShowPhaseTransition(false);
       setCurrentExerciseIndex(currentExerciseIndex - 1);
     }
   };
@@ -272,6 +313,74 @@ const LessonView: React.FC = () => {
     }
   };
 
+  // Phase transition screen
+  if (showPhaseTransition && phaseInfo?.hasPhases) {
+    return (
+      <ContentProtection>
+        <div className="min-h-screen bg-background">
+          <Header />
+          <main className="pt-24 pb-16">
+            <div className="container mx-auto px-4 max-w-2xl">
+              <div className="bg-gradient-to-br from-primary/10 to-accent/10 rounded-2xl p-8 md:p-12 text-center border border-primary/20">
+                <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-primary to-accent rounded-full flex items-center justify-center">
+                  <Sparkles className="w-10 h-10 text-primary-foreground" />
+                </div>
+                
+                <h2 className="font-serif text-2xl md:text-3xl font-bold text-foreground mb-4">
+                  Fase 1 Concluída! 🎉
+                </h2>
+                
+                <p className="text-lg text-muted-foreground mb-6">
+                  Você dominou o <strong>contexto e resumo</strong> do verso. 
+                  Agora é hora de mergulhar no <strong>texto completo</strong>!
+                </p>
+                
+                <div className="bg-card/50 rounded-xl p-6 mb-8 border border-border">
+                  <h3 className="font-medium text-foreground mb-3">Na Fase 2 você irá:</h3>
+                  <ul className="text-sm text-muted-foreground space-y-2 text-left">
+                    <li className="flex items-start gap-2">
+                      <CheckCircle className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                      <span>Ler o verso completo com todos os detalhes</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <CheckCircle className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                      <span>Memorizar cada linha do texto original</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <CheckCircle className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                      <span>Praticar com exercícios mais detalhados</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <CheckCircle className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                      <span>Consolidar o conhecimento completo do Odù</span>
+                    </li>
+                  </ul>
+                </div>
+                
+                <div className="flex gap-4 justify-center">
+                  <Button variant="outline" onClick={handlePrevious}>
+                    <ArrowLeft className="w-4 h-4 mr-2" />
+                    Revisar Fase 1
+                  </Button>
+                  <Button 
+                    className="gradient-gold text-secondary shadow-gold"
+                    onClick={() => {
+                      setShowPhaseTransition(false);
+                      setCurrentExerciseIndex(currentExerciseIndex + 1);
+                    }}
+                  >
+                    Iniciar Fase 2
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </main>
+        </div>
+      </ContentProtection>
+    );
+  }
+
   return (
     <ContentProtection>
       <div className="min-h-screen bg-background">
@@ -290,8 +399,19 @@ const LessonView: React.FC = () => {
               </Button>
 
               {exercises.length > 0 && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <span>Exercício {currentExerciseIndex + 1} de {exercises.length}</span>
+                <div className="flex items-center gap-3">
+                  {/* Phase indicator */}
+                  {phaseInfo?.hasPhases && (
+                    <Badge 
+                      variant={phaseInfo.currentPhase === 1 ? "secondary" : "default"}
+                      className={phaseInfo.currentPhase === 2 ? "bg-primary text-primary-foreground" : ""}
+                    >
+                      Fase {phaseInfo.currentPhase}: {phaseInfo.currentPhase === 1 ? 'Contexto' : 'Completo'}
+                    </Badge>
+                  )}
+                  <span className="text-sm text-muted-foreground">
+                    Exercício {currentExerciseIndex + 1} de {exercises.length}
+                  </span>
                 </div>
               )}
             </div>
@@ -303,6 +423,46 @@ const LessonView: React.FC = () => {
                 <span className="text-muted-foreground">{Math.round(progress)}% concluído</span>
               </div>
               <Progress value={progress} className="h-2" />
+              
+              {/* Phase progress indicators */}
+              {phaseInfo?.hasPhases && (
+                <div className="flex gap-2 mt-3">
+                  <div className="flex-1">
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-muted-foreground">Fase 1: Contexto</span>
+                      <span className={phaseInfo.phase1Completed ? "text-primary" : "text-muted-foreground"}>
+                        {phaseInfo.phase1Completed ? "✓ Concluída" : `${phaseInfo.phase1Count} exercícios`}
+                      </span>
+                    </div>
+                    <div className="h-1 bg-muted rounded-full overflow-hidden">
+                      <div 
+                        className={`h-full transition-all ${phaseInfo.currentPhase >= 1 ? 'bg-primary/60' : 'bg-muted'}`}
+                        style={{ 
+                          width: phaseInfo.phase1Completed ? '100%' : 
+                            phaseInfo.currentPhase === 1 ? `${((currentExerciseIndex + 1) / phaseInfo.phase1Count) * 100}%` : '100%'
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-muted-foreground">Fase 2: Completo</span>
+                      <span className={phaseInfo.phase2Completed ? "text-primary" : "text-muted-foreground"}>
+                        {phaseInfo.phase2Completed ? "✓ Concluída" : `${phaseInfo.phase2Count} exercícios`}
+                      </span>
+                    </div>
+                    <div className="h-1 bg-muted rounded-full overflow-hidden">
+                      <div 
+                        className={`h-full transition-all ${phaseInfo.currentPhase === 2 ? 'bg-primary' : 'bg-muted'}`}
+                        style={{ 
+                          width: phaseInfo.phase2Completed ? '100%' : 
+                            phaseInfo.currentPhase === 2 ? `${((currentExerciseIndex - phaseInfo.phase1Count + 1) / phaseInfo.phase2Count) * 100}%` : '0%'
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Exercise Content */}
@@ -342,20 +502,29 @@ const LessonView: React.FC = () => {
                   Anterior
                 </Button>
 
-                <div className="flex gap-2">
-                  {exercises.map((ex, index) => (
-                    <button
-                      key={ex.id}
-                      onClick={() => setCurrentExerciseIndex(index)}
-                      className={`w-3 h-3 rounded-full transition-colors ${
-                        index === currentExerciseIndex 
-                          ? 'bg-primary' 
-                          : completedExercises.has(ex.id)
-                            ? 'bg-green-500'
-                            : 'bg-muted'
-                      }`}
-                    />
-                  ))}
+                <div className="flex gap-1.5 flex-wrap justify-center max-w-md">
+                  {exercises.map((ex, index) => {
+                    const phase = getExercisePhase(ex.title);
+                    const isPhase2 = phase === 2;
+                    
+                    return (
+                      <button
+                        key={ex.id}
+                        onClick={() => {
+                          setShowPhaseTransition(false);
+                          setCurrentExerciseIndex(index);
+                        }}
+                        className={`w-2.5 h-2.5 rounded-full transition-all ${
+                          index === currentExerciseIndex 
+                            ? 'bg-primary scale-125' 
+                            : completedExercises.has(ex.id)
+                              ? 'bg-green-500'
+                              : isPhase2 ? 'bg-accent/40' : 'bg-muted-foreground/30'
+                        }`}
+                        title={`${ex.title}`}
+                      />
+                    );
+                  })}
                 </div>
 
                 <Button
