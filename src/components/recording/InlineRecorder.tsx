@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Mic, Square, Play, Pause, Save, Trash2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
@@ -29,6 +29,7 @@ const InlineRecorder: React.FC<InlineRecorderProps> = ({
   const { user } = useAuth();
   const { toast } = useToast();
   
+  const [isPreparing, setIsPreparing] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
@@ -36,12 +37,29 @@ const InlineRecorder: React.FC<InlineRecorderProps> = ({
   const [isPlaying, setIsPlaying] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
+  const [audioLevel, setAudioLevel] = useState(0);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioFormatRef = useRef<AudioFormat | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  // Cleanup audio context and animation frame
+  useEffect(() => {
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+      }
+    };
+  }, []);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -49,9 +67,58 @@ const InlineRecorder: React.FC<InlineRecorderProps> = ({
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const startRecording = async () => {
+  // VU Meter - analyze audio level
+  const startAudioAnalysis = useCallback((stream: MediaStream) => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioContextRef.current = new AudioContext();
+      analyserRef.current = audioContextRef.current.createAnalyser();
+      const source = audioContextRef.current.createMediaStreamSource(stream);
+      source.connect(analyserRef.current);
+      analyserRef.current.fftSize = 256;
+      
+      const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
+      
+      const updateLevel = () => {
+        if (!analyserRef.current || !isRecording) return;
+        
+        analyserRef.current.getByteFrequencyData(dataArray);
+        const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
+        const normalized = Math.min(100, (average / 128) * 100);
+        setAudioLevel(normalized);
+        
+        animationFrameRef.current = requestAnimationFrame(updateLevel);
+      };
+      
+      updateLevel();
+    } catch (error) {
+      console.warn('Audio analysis not supported:', error);
+    }
+  }, [isRecording]);
+
+  const stopAudioAnalysis = useCallback(() => {
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+    if (audioContextRef.current) {
+      audioContextRef.current.close();
+      audioContextRef.current = null;
+    }
+    setAudioLevel(0);
+  }, []);
+
+  const startRecording = async () => {
+    setIsPreparing(true);
+    
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      });
+      streamRef.current = stream;
       
       // Detect best format for this browser (Safari = mp4, Chrome = webm)
       const format = getBestRecordingFormat();
@@ -75,17 +142,23 @@ const InlineRecorder: React.FC<InlineRecorderProps> = ({
         const url = URL.createObjectURL(blob);
         setAudioUrl(url);
         stream.getTracks().forEach(track => track.stop());
+        stopAudioAnalysis();
       };
 
       mediaRecorder.start();
+      setIsPreparing(false);
       setIsRecording(true);
       setRecordingTime(0);
+      
+      // Start audio level analysis
+      startAudioAnalysis(stream);
       
       timerRef.current = setInterval(() => {
         setRecordingTime(prev => prev + 1);
       }, 1000);
     } catch (error) {
       console.error('Error starting recording:', error);
+      setIsPreparing(false);
       toast({
         title: "Erro ao iniciar gravação",
         description: "Verifique as permissões do microfone.",
@@ -102,6 +175,7 @@ const InlineRecorder: React.FC<InlineRecorderProps> = ({
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
+      stopAudioAnalysis();
     }
   };
 
@@ -202,8 +276,20 @@ const InlineRecorder: React.FC<InlineRecorderProps> = ({
     }
   };
 
+  // Determine border color based on state
+  const getBorderClass = () => {
+    if (isRecording && !isPaused) return 'border-red-500/50 bg-red-500/5';
+    if (isPaused) return 'border-yellow-500/50 bg-yellow-500/5';
+    if (audioUrl) return 'border-green-500/50 bg-green-500/5';
+    return 'border-border bg-accent/30';
+  };
+
   return (
-    <div className={cn("bg-accent/30 rounded-xl p-4 border border-border", className)}>
+    <div className={cn(
+      "rounded-xl p-4 border-2 transition-all duration-300",
+      getBorderClass(),
+      className
+    )}>
       {audioUrl && (
         <audio
           ref={audioRef}
@@ -214,58 +300,103 @@ const InlineRecorder: React.FC<InlineRecorderProps> = ({
       )}
 
       <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Mic className={cn(
-            "w-4 h-4",
-            isRecording && !isPaused ? "text-red-500 animate-pulse" : "text-muted-foreground"
-          )} />
-          <span className="text-sm font-medium">
-            {isRecording ? 'Gravando...' : audioUrl ? 'Gravação pronta' : 'Grave sua leitura'}
-          </span>
-          {(isRecording || audioUrl) && (
-            <span className="text-sm text-muted-foreground font-mono">
-              {formatTime(recordingTime)}
+        <div className="flex items-center gap-3">
+          {/* Recording indicator with VU meter */}
+          <div className="relative flex items-center justify-center">
+            {isRecording && !isPaused ? (
+              <div className="relative">
+                {/* Pulsing red dot */}
+                <div className="w-4 h-4 rounded-full bg-red-500 animate-pulse" />
+                {/* VU meter bars */}
+                <div className="absolute -right-6 top-1/2 -translate-y-1/2 flex items-end gap-0.5 h-4">
+                  {[0, 1, 2, 3].map((i) => (
+                    <div
+                      key={i}
+                      className="w-1 bg-red-500 rounded-full transition-all duration-75"
+                      style={{
+                        height: `${Math.max(4, audioLevel * (0.5 + i * 0.15))}%`,
+                        opacity: audioLevel > i * 20 ? 1 : 0.3
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            ) : isPaused ? (
+              <div className="w-4 h-4 rounded-full bg-yellow-500" />
+            ) : isPreparing ? (
+              <Loader2 className="w-4 h-4 text-primary animate-spin" />
+            ) : (
+              <Mic className={cn(
+                "w-4 h-4",
+                audioUrl ? "text-green-500" : "text-muted-foreground"
+              )} />
+            )}
+          </div>
+          
+          <div className="flex flex-col">
+            <span className="text-sm font-medium">
+              {isPreparing ? 'Conectando microfone...' :
+               isRecording ? (isPaused ? 'Pausado' : 'Gravando...') : 
+               audioUrl ? 'Gravação pronta' : 'Grave sua leitura'}
             </span>
-          )}
+            {(isRecording || audioUrl) && (
+              <span className={cn(
+                "text-lg font-mono font-bold",
+                isRecording && !isPaused ? "text-red-500" : "text-muted-foreground"
+              )}>
+                {formatTime(recordingTime)}
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center gap-2">
-          {!isRecording && !audioUrl && (
+          {!isRecording && !audioUrl && !isPreparing && (
             <Button
-              size="sm"
+              size="default"
               variant="default"
               onClick={startRecording}
-              className="gap-1.5"
+              className="gap-2 bg-red-500 hover:bg-red-600 text-white"
             >
-              <Mic className="w-3.5 h-3.5" />
+              <Mic className="w-4 h-4" />
               Gravar
+            </Button>
+          )}
+
+          {isPreparing && (
+            <Button size="default" variant="outline" disabled className="gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Preparando...
             </Button>
           )}
 
           {isRecording && (
             <>
               {isPaused ? (
-                <Button size="sm" variant="outline" onClick={resumeRecording}>
+                <Button size="sm" variant="outline" onClick={resumeRecording} className="gap-1.5">
+                  <Play className="w-3.5 h-3.5" />
                   Continuar
                 </Button>
               ) : (
-                <Button size="sm" variant="outline" onClick={pauseRecording}>
+                <Button size="sm" variant="outline" onClick={pauseRecording} className="gap-1.5">
+                  <Pause className="w-3.5 h-3.5" />
                   Pausar
                 </Button>
               )}
-              <Button size="sm" variant="destructive" onClick={stopRecording}>
+              <Button size="sm" variant="destructive" onClick={stopRecording} className="gap-1.5">
                 <Square className="w-3.5 h-3.5" />
+                Parar
               </Button>
             </>
           )}
 
           {audioUrl && !isRecording && (
             <>
-              <Button size="sm" variant="outline" onClick={togglePlayback}>
+              <Button size="sm" variant="outline" onClick={togglePlayback} className="gap-1.5">
                 {isPlaying ? (
-                  <Pause className="w-3.5 h-3.5" />
+                  <><Pause className="w-3.5 h-3.5" /> Pausar</>
                 ) : (
-                  <Play className="w-3.5 h-3.5" />
+                  <><Play className="w-3.5 h-3.5" /> Ouvir</>
                 )}
               </Button>
               <Button size="sm" variant="ghost" onClick={resetRecording}>
@@ -276,7 +407,7 @@ const InlineRecorder: React.FC<InlineRecorderProps> = ({
                 variant="default"
                 onClick={handleSave}
                 disabled={isUploading}
-                className="gap-1.5"
+                className="gap-1.5 bg-green-600 hover:bg-green-700"
               >
                 {isUploading ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
