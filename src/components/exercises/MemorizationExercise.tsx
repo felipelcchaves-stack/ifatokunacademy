@@ -273,6 +273,12 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
     }
   }, [currentItem, studyMode]);
 
+  // Check if text is short (should type full text instead of remainder)
+  const isShortText = useCallback((text: string): boolean => {
+    const words = text.split(/\s+/);
+    return words.length <= START_WORD_COUNT;
+  }, []);
+
   // Get expected text based on mode
   const getExpectedText = useCallback(() => {
     if (!currentItem) return '';
@@ -291,9 +297,13 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
         }
         return '';
       default:
+        // Para textos curtos, espera o texto completo; para longos, espera o restante
+        if (isShortText(currentItem.text)) {
+          return currentItem.text;
+        }
         return getTextRemainder(currentItem.text, START_WORD_COUNT);
     }
-  }, [currentItem, studyMode, progressiveLevel, getProgressiveText, scaffoldLevel, scaffoldLevels, chunks, currentChunkIndex, chainSequence, chainStep]);
+  }, [currentItem, studyMode, progressiveLevel, getProgressiveText, scaffoldLevel, scaffoldLevels, chunks, currentChunkIndex, chainSequence, chainStep, isShortText]);
 
   // Get visible text/prompt based on mode
   const getVisibleText = useCallback(() => {
@@ -321,9 +331,13 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
         const chainContext = chunks.slice(0, chainSequence[chainStep]?.chunksToMemorize[0]?.id || 0);
         return chainContext.map(c => c.text).join(' ');
       default:
+        // Para textos curtos, não mostra pista (usuário digita tudo)
+        if (isShortText(currentItem.text)) {
+          return '';
+        }
         return getTextStart(currentItem.text, START_WORD_COUNT);
     }
-  }, [currentItem, studyMode, progressiveLevel, getProgressiveText, scaffoldLevel, scaffoldLevels, chunks, currentChunkIndex, chainSequence, chainStep]);
+  }, [currentItem, studyMode, progressiveLevel, getProgressiveText, scaffoldLevel, scaffoldLevels, chunks, currentChunkIndex, chainSequence, chainStep, isShortText]);
 
   // Get similarity threshold based on mode and level
   const getSimilarityThreshold = useCallback(() => {
@@ -1166,6 +1180,8 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
                     ? `Memorize o trecho ${currentChunkIndex + 1}:`
                     : studyMode === 'chain'
                     ? chainSequence[chainStep]?.description || 'Complete:'
+                    : currentItem && isShortText(currentItem.text)
+                    ? 'Digite o verso completo:'
                     : 'Complete o verso:'
                   }
                 </p>
@@ -1268,6 +1284,8 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
                   placeholder={
                     studyMode === 'chunk' || studyMode === 'chain'
                       ? "Digite o trecho..."
+                      : studyMode === 'classic' && currentItem && isShortText(currentItem.text)
+                      ? "Digite o verso completo..."
                       : "Digite o restante do verso..."
                   }
                   className="min-h-[100px] text-center font-serif text-lg resize-none"
