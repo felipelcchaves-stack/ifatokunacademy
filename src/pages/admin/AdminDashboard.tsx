@@ -12,7 +12,8 @@ import {
   Plus,
   FileText,
   CheckCircle,
-  Clock
+  Clock,
+  Upload
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
@@ -167,6 +168,7 @@ const AdminDashboard: React.FC = () => {
     { icon: LayoutDashboard, label: 'Visão Geral', path: '/admin' },
     { icon: BookOpen, label: 'Módulos', path: '/admin/modules' },
     { icon: FileText, label: 'Lições', path: '/admin/lessons' },
+    { icon: Upload, label: 'Importar Odu', path: '/admin/import-odu' },
     { icon: Users, label: 'Usuários', path: '/admin/users' },
     { icon: CreditCard, label: 'Pagamentos', path: '/admin/payments' },
     { icon: BarChart3, label: 'Relatórios', path: '/admin/reports' },
