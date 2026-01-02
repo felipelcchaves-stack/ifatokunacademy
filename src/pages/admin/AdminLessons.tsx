@@ -63,6 +63,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
 interface Lesson {
@@ -210,6 +211,30 @@ const AdminLessons: React.FC = () => {
   const { moduleId } = useParams<{ moduleId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { session } = useAuth();
+
+  // Helper function to ensure valid session before write operations
+  const ensureSession = async (): Promise<boolean> => {
+    // First check from context
+    if (session?.access_token) {
+      return true;
+    }
+    
+    // Try to get fresh session
+    const { data: { session: currentSession } } = await supabase.auth.getSession();
+    
+    if (!currentSession) {
+      toast({
+        title: 'Sessão expirada',
+        description: 'Por favor, faça login novamente.',
+        variant: 'destructive',
+      });
+      navigate('/login');
+      return false;
+    }
+    
+    return true;
+  };
   
   const [module, setModule] = useState<Module | null>(null);
   const [lessons, setLessons] = useState<Lesson[]>([]);
@@ -274,6 +299,9 @@ const AdminLessons: React.FC = () => {
   };
 
   const handleCreateLesson = async () => {
+    // Ensure valid session before write operation
+    if (!await ensureSession()) return;
+    
     try {
       const maxOrder = lessons.reduce((max, l) => Math.max(max, l.display_order), -1);
       
@@ -352,6 +380,9 @@ const AdminLessons: React.FC = () => {
   const handleUpdateLesson = async () => {
     if (!editingLesson) return;
     
+    // Ensure valid session before write operation
+    if (!await ensureSession()) return;
+    
     try {
       const { error } = await supabase
         .from('lessons')
@@ -383,6 +414,9 @@ const AdminLessons: React.FC = () => {
   };
 
   const handleDeleteLesson = async (lesson: Lesson) => {
+    // Ensure valid session before write operation
+    if (!await ensureSession()) return;
+    
     try {
       const { error } = await supabase
         .from('lessons')
@@ -407,6 +441,9 @@ const AdminLessons: React.FC = () => {
   };
 
   const togglePublish = async (lesson: Lesson) => {
+    // Ensure valid session before write operation
+    if (!await ensureSession()) return;
+    
     try {
       const { error } = await supabase
         .from('lessons')
@@ -449,6 +486,8 @@ const AdminLessons: React.FC = () => {
     
     if (!over || active.id === over.id) return;
     
+    // Ensure valid session before write operation
+    if (!await ensureSession()) return;
     const oldIndex = lessons.findIndex(l => l.id === active.id);
     const newIndex = lessons.findIndex(l => l.id === over.id);
     
