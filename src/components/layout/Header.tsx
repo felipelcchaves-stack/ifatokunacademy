@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { forwardRef, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Menu, X, LogOut, Settings, Lock, Shield, LayoutDashboard, Brain, Trophy, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -22,13 +22,6 @@ import { useExperience } from '@/hooks/useExperience';
 import { usePlatformSettings } from '@/hooks/usePlatformSettings';
 import { cn } from '@/lib/utils';
 
-// Links para visitantes (não logados)
-const visitorLinks = [
-  { label: 'Módulos', to: '/modules' },
-  { label: 'Sobre', to: '/about' },
-  { label: 'Planos', to: '/pricing' },
-];
-
 // Links para alunos (logados)
 const studentLinks = [
   { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
@@ -37,7 +30,7 @@ const studentLinks = [
   { label: 'Estatísticas', to: '/review/stats', icon: BarChart3 },
 ];
 
-const Header: React.FC = () => {
+const Header = forwardRef<HTMLElement>((_, ref) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, profile, isAuthenticated, isAdmin, signOut } = useAuth();
   const { experience, getProgressToNextLevel, getXPForNextLevel } = useExperience();
@@ -63,17 +56,17 @@ const Header: React.FC = () => {
 
   const handleLogout = async () => {
     await signOut();
-    navigate('/');
+    navigate('/login');
   };
 
   const isActiveLink = (path: string) => location.pathname === path;
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-md border-b border-border">
+    <header ref={ref} className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-md border-b border-border">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16 md:h-20">
           {/* Logo */}
-          <Link to={isAuthenticated ? '/dashboard' : '/'} className="flex items-center gap-3">
+          <Link to={isAuthenticated ? '/dashboard' : '/login'} className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full gradient-gold flex items-center justify-center shadow-gold">
               <span className="font-serif text-lg font-bold text-secondary">{displayPlatformName.charAt(0)}</span>
             </div>
@@ -87,7 +80,7 @@ const Header: React.FC = () => {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-6">
-            {isAuthenticated ? (
+            {isAuthenticated && (
               // Links para aluno logado
               studentLinks.map(link => (
                 <Link 
@@ -101,22 +94,6 @@ const Header: React.FC = () => {
                   )}
                 >
                   <link.icon className="w-4 h-4" />
-                  {link.label}
-                </Link>
-              ))
-            ) : (
-              // Links para visitante
-              visitorLinks.map(link => (
-                <Link 
-                  key={link.to} 
-                  to={link.to} 
-                  className={cn(
-                    "text-sm font-medium transition-colors",
-                    isActiveLink(link.to) 
-                      ? "text-primary" 
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
                   {link.label}
                 </Link>
               ))
@@ -207,17 +184,9 @@ const Header: React.FC = () => {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <>
-                <Button variant="ghost" onClick={() => navigate('/login')}>
-                  Entrar
-                </Button>
-                <Button 
-                  className="gradient-gold text-secondary font-semibold shadow-gold hover:opacity-90 transition-opacity"
-                  onClick={() => navigate('/register')}
-                >
-                  Começar Agora
-                </Button>
-              </>
+              <Button variant="ghost" onClick={() => navigate('/login')}>
+                Entrar
+              </Button>
             )}
           </div>
 
@@ -310,39 +279,14 @@ const Header: React.FC = () => {
                   </div>
                 </>
               ) : (
-                <>
-                  {/* Visitor Navigation Links */}
-                  {visitorLinks.map(link => (
-                    <Link 
-                      key={link.to}
-                      to={link.to} 
-                      className={cn(
-                        "px-2 py-2.5 text-sm font-medium rounded-md transition-colors",
-                        isActiveLink(link.to) 
-                          ? "bg-primary/10 text-primary" 
-                          : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                      )}
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      {link.label}
-                    </Link>
-                  ))}
-                  
-                  <div className="flex flex-col gap-2 pt-4 border-t border-border mt-2">
-                    <Button 
-                      variant="ghost"
-                      onClick={() => { navigate('/login'); setMobileMenuOpen(false); }}
-                    >
-                      Entrar
-                    </Button>
-                    <Button 
-                      className="gradient-gold text-secondary font-semibold"
-                      onClick={() => { navigate('/register'); setMobileMenuOpen(false); }}
-                    >
-                      Começar Agora
-                    </Button>
-                  </div>
-                </>
+                <div className="flex flex-col gap-2 pt-4">
+                  <Button 
+                    variant="ghost"
+                    onClick={() => { navigate('/login'); setMobileMenuOpen(false); }}
+                  >
+                    Entrar
+                  </Button>
+                </div>
               )}
             </nav>
           </div>
@@ -350,6 +294,8 @@ const Header: React.FC = () => {
       </div>
     </header>
   );
-};
+});
+
+Header.displayName = 'Header';
 
 export default Header;

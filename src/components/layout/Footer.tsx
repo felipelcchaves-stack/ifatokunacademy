@@ -1,9 +1,8 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { forwardRef } from 'react';
 import { Mail, Phone, MapPin } from 'lucide-react';
 import { usePlatformSettings } from '@/hooks/usePlatformSettings';
 
-const Footer: React.FC = () => {
+const Footer = forwardRef<HTMLElement>((_, ref) => {
   const { platformName } = usePlatformSettings();
   
   const displayPlatformName = platformName?.split(' ').slice(0, 2).join(' ') || 'Offe Orunmila';
@@ -11,9 +10,9 @@ const Footer: React.FC = () => {
   const fullPlatformName = platformName || 'Offe Orunmila Learning';
 
   return (
-    <footer className="bg-secondary text-secondary-foreground">
+    <footer ref={ref} className="bg-secondary text-secondary-foreground">
       <div className="container mx-auto px-4 py-12 md:py-16">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Brand */}
           <div className="space-y-4">
             <div className="flex items-center gap-3">
@@ -28,55 +27,6 @@ const Footer: React.FC = () => {
             <p className="text-sm text-secondary-foreground/80 leading-relaxed">
               Plataforma de aprendizado dedicada à preservação e transmissão do conhecimento tradicional Yorubá.
             </p>
-          </div>
-
-          {/* Links */}
-          <div className="space-y-4">
-            <h3 className="font-serif text-lg font-semibold">Navegação</h3>
-            <ul className="space-y-2">
-              <li>
-                <Link to="/modules" className="text-sm text-secondary-foreground/80 hover:text-primary transition-colors">
-                  Módulos
-                </Link>
-              </li>
-              <li>
-                <Link to="/about" className="text-sm text-secondary-foreground/80 hover:text-primary transition-colors">
-                  Sobre Nós
-                </Link>
-              </li>
-              <li>
-                <Link to="/pricing" className="text-sm text-secondary-foreground/80 hover:text-primary transition-colors">
-                  Planos
-                </Link>
-              </li>
-              <li>
-                <Link to="/faq" className="text-sm text-secondary-foreground/80 hover:text-primary transition-colors">
-                  Perguntas Frequentes
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          {/* Legal */}
-          <div className="space-y-4">
-            <h3 className="font-serif text-lg font-semibold">Legal</h3>
-            <ul className="space-y-2">
-              <li>
-                <Link to="/terms" className="text-sm text-secondary-foreground/80 hover:text-primary transition-colors">
-                  Termos de Uso
-                </Link>
-              </li>
-              <li>
-                <Link to="/privacy" className="text-sm text-secondary-foreground/80 hover:text-primary transition-colors">
-                  Política de Privacidade
-                </Link>
-              </li>
-              <li>
-                <Link to="/refund" className="text-sm text-secondary-foreground/80 hover:text-primary transition-colors">
-                  Política de Reembolso
-                </Link>
-              </li>
-            </ul>
           </div>
 
           {/* Contact */}
@@ -112,6 +62,8 @@ const Footer: React.FC = () => {
       </div>
     </footer>
   );
-};
+});
+
+Footer.displayName = 'Footer';
 
 export default Footer;
