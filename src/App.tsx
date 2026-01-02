@@ -34,6 +34,7 @@ import AdminReports from "./pages/admin/AdminReports";
 import UserSettings from "./pages/UserSettings";
 import ModuleRetentionReview from "./pages/ModuleRetentionReview";
 import MFAVerify from "./pages/MFAVerify";
+import Achievements from "./pages/Achievements";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -109,6 +110,11 @@ const App = () => (
               <Route path="/settings/study-plan" element={
                 <ProtectedRoute>
                   <UserSettings />
+                </ProtectedRoute>
+              } />
+              <Route path="/achievements" element={
+                <ProtectedRoute>
+                  <Achievements />
                 </ProtectedRoute>
               } />
               

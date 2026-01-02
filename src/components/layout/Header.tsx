@@ -19,6 +19,7 @@ import {
 import { Progress } from '@/components/ui/progress';
 import { useAuth } from '@/contexts/AuthContext';
 import { useExperience } from '@/hooks/useExperience';
+import { usePlatformSettings } from '@/hooks/usePlatformSettings';
 import { cn } from '@/lib/utils';
 
 // Links para visitantes (não logados)
@@ -40,8 +41,12 @@ const Header: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, profile, isAuthenticated, isAdmin, signOut } = useAuth();
   const { experience, getProgressToNextLevel, getXPForNextLevel } = useExperience();
+  const { platformName } = usePlatformSettings();
   const navigate = useNavigate();
   const location = useLocation();
+
+  const displayPlatformName = platformName?.split(' ').slice(0, 2).join(' ') || 'Offe Orunmila';
+  const displayPlatformSuffix = platformName?.split(' ').slice(2).join(' ') || 'Learning';
 
   const displayName = profile?.full_name || user?.email?.split('@')[0] || 'Usuário';
   const levelProgress = getProgressToNextLevel();
@@ -70,13 +75,13 @@ const Header: React.FC = () => {
           {/* Logo */}
           <Link to={isAuthenticated ? '/dashboard' : '/'} className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full gradient-gold flex items-center justify-center shadow-gold">
-              <span className="font-serif text-lg font-bold text-secondary">O</span>
+              <span className="font-serif text-lg font-bold text-secondary">{displayPlatformName.charAt(0)}</span>
             </div>
             <div className="hidden sm:block">
               <h1 className="font-serif text-lg font-semibold text-foreground">
-                Offe Orunmila
+                {displayPlatformName}
               </h1>
-              <p className="text-xs text-muted-foreground -mt-1">Learning</p>
+              <p className="text-xs text-muted-foreground -mt-1">{displayPlatformSuffix}</p>
             </div>
           </Link>
 

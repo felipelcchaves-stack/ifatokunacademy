@@ -6,6 +6,7 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Shield, ShieldCheck, ShieldOff, Copy, Check, QrCode } from 'lucide-react';
 import { toast } from 'sonner';
+import { usePlatformSettings } from '@/hooks/usePlatformSettings';
 
 interface MFASetupProps {
   onSetupComplete: () => void;
@@ -13,6 +14,8 @@ interface MFASetupProps {
 }
 
 const MFASetup: React.FC<MFASetupProps> = ({ onSetupComplete, mfaEnabled }) => {
+  const { platformName } = usePlatformSettings();
+  const issuerName = platformName || 'Offe Orunmila Learning';
   const [loading, setLoading] = useState(false);
   const [enrolling, setEnrolling] = useState(false);
   const [verifying, setVerifying] = useState(false);
@@ -45,7 +48,7 @@ const MFASetup: React.FC<MFASetupProps> = ({ onSetupComplete, mfaEnabled }) => {
     try {
       const { data, error } = await supabase.auth.mfa.enroll({
         factorType: 'totp',
-        issuer: 'Offe Orunmila Learning',
+        issuer: issuerName,
         friendlyName: 'Principal'
       });
 

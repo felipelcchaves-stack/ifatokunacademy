@@ -15,8 +15,11 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePlatformSettings } from '@/hooks/usePlatformSettings';
 
 const AdminLayout: React.FC = () => {
+  const { platformName } = usePlatformSettings();
+  const displayPlatformName = platformName?.split(' ').slice(0, 2).join(' ') || 'Offe Orunmila';
   const location = useLocation();
   const navigate = useNavigate();
   const { user, profile, signOut } = useAuth();
@@ -54,11 +57,11 @@ const AdminLayout: React.FC = () => {
           <div className="p-6 border-b border-sidebar-border">
             <Link to="/" className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full gradient-gold flex items-center justify-center shadow-gold">
-                <span className="font-serif text-lg font-bold text-secondary">O</span>
+                <span className="font-serif text-lg font-bold text-secondary">{displayPlatformName.charAt(0)}</span>
               </div>
               <div>
                 <h1 className="font-serif font-semibold text-sidebar-foreground">Admin</h1>
-                <p className="text-xs text-sidebar-foreground/60">Offe Orunmila</p>
+                <p className="text-xs text-sidebar-foreground/60">{displayPlatformName}</p>
               </div>
             </Link>
           </div>

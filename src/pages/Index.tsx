@@ -6,9 +6,13 @@ import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import ModuleSlider from '@/components/modules/ModuleSlider';
 import { proficiencyModules, thematicModules } from '@/data/mockData';
+import { usePlatformSettings } from '@/hooks/usePlatformSettings';
 
 const Index: React.FC = () => {
   const navigate = useNavigate();
+  const { platformName } = usePlatformSettings();
+  
+  const displayPlatformName = platformName?.split(' ').slice(0, 2).join(' ') || 'Offe Orunmila';
 
   const features = [
     {
@@ -105,7 +109,7 @@ const Index: React.FC = () => {
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="font-serif text-3xl md:text-4xl font-bold text-foreground mb-4">
-              Por que Offe Orunmila?
+              Por que {displayPlatformName}?
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
               Uma plataforma desenvolvida com respeito à tradição e compromisso com a excelência pedagógica.
