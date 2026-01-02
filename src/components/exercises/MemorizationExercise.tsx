@@ -68,6 +68,24 @@ type StudyMode = 'classic' | 'scaffold' | 'chunk' | 'chain' | 'microlearning' | 
 const LONG_TEXT_THRESHOLD = 30; // palavras
 const START_WORD_COUNT = 4;
 
+// Helper to categorize text difficulty by word count
+const categorizeDifficulty = (wordCount: number): {
+  level: 'short' | 'medium' | 'long' | 'very_long';
+  label: string;
+  color: string;
+  bgColor: string;
+} => {
+  if (wordCount <= 20) {
+    return { level: 'short', label: 'Curto', color: 'text-green-700', bgColor: 'bg-green-100' };
+  } else if (wordCount <= 40) {
+    return { level: 'medium', label: 'Médio', color: 'text-yellow-700', bgColor: 'bg-yellow-100' };
+  } else if (wordCount <= 70) {
+    return { level: 'long', label: 'Longo', color: 'text-orange-700', bgColor: 'bg-orange-100' };
+  } else {
+    return { level: 'very_long', label: 'Muito Longo', color: 'text-red-700', bgColor: 'bg-red-100' };
+  }
+};
+
 const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({ 
   items, 
   exerciseId, 
@@ -75,6 +93,15 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
   moduleId, 
   onComplete 
 }) => {
+  // Sort items by word count (shortest first) for progressive learning
+  const sortedItems = useMemo(() => {
+    return [...items].sort((a, b) => {
+      const wordsA = a.text.split(/\s+/).length;
+      const wordsB = b.text.split(/\s+/).length;
+      return wordsA - wordsB;
+    });
+  }, [items]);
+
   // Core state
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showContent, setShowContent] = useState(false);
@@ -117,9 +144,40 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
   const { toast } = useToast();
   const { preferences } = useAccessibilityPreferences();
 
-  const currentItem = items[currentIndex];
-  const progress = (masteredItems.size / items.length) * 100;
-  const isCompleted = masteredItems.size === items.length;
+  const currentItem = sortedItems[currentIndex];
+  const progress = (masteredItems.size / sortedItems.length) * 100;
+  const isCompleted = masteredItems.size === sortedItems.length;
+  
+  // Calculate current item difficulty info
+  const currentDifficultyInfo = useMemo(() => {
+    if (!currentItem) return null;
+    const wordCount = currentItem.text.split(/\s+/).length;
+    return {
+      wordCount,
+      ...categorizeDifficulty(wordCount)
+    };
+  }, [currentItem]);
+
+  // Calculate difficulty distribution for progress display
+  const difficultyDistribution = useMemo(() => {
+    const distribution = {
+      short: { total: 0, mastered: 0 },
+      medium: { total: 0, mastered: 0 },
+      long: { total: 0, mastered: 0 },
+      very_long: { total: 0, mastered: 0 }
+    };
+    
+    sortedItems.forEach((item, index) => {
+      const wordCount = item.text.split(/\s+/).length;
+      const { level } = categorizeDifficulty(wordCount);
+      distribution[level].total++;
+      if (masteredItems.has(index)) {
+        distribution[level].mastered++;
+      }
+    });
+    
+    return distribution;
+  }, [sortedItems, masteredItems]);
   
   // Analyze text difficulty
   const textDifficulty = useMemo(() => {
@@ -235,13 +293,33 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
   }, []);
 
   const handleNext = useCallback(() => {
-    if (currentIndex < items.length - 1) {
-      setCurrentIndex(currentIndex + 1);
-    } else {
-      setCurrentIndex(0);
+    const nextIndex = currentIndex < sortedItems.length - 1 ? currentIndex + 1 : 0;
+    
+    // Check if we're transitioning to a new difficulty level
+    if (nextIndex !== 0 && nextIndex < sortedItems.length) {
+      const currentWordCount = sortedItems[currentIndex]?.text.split(/\s+/).length || 0;
+      const nextWordCount = sortedItems[nextIndex]?.text.split(/\s+/).length || 0;
+      const currentDiff = categorizeDifficulty(currentWordCount).level;
+      const nextDiff = categorizeDifficulty(nextWordCount).level;
+      
+      if (currentDiff !== nextDiff) {
+        const difficultyLabels = {
+          short: 'textos curtos',
+          medium: 'textos médios',
+          long: 'textos longos',
+          very_long: 'textos muito longos'
+        };
+        toast({
+          title: "🎉 Novo nível de dificuldade!",
+          description: `Parabéns! Agora você está nos ${difficultyLabels[nextDiff]}.`,
+          duration: 4000,
+        });
+      }
     }
+    
+    setCurrentIndex(nextIndex);
     resetItemState();
-  }, [currentIndex, items.length, resetItemState]);
+  }, [currentIndex, sortedItems, resetItemState, toast]);
 
   const handlePrev = () => {
     if (currentIndex > 0) {
@@ -823,6 +901,16 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
             )}
           </div>
           <div className="flex items-center gap-2">
+            {/* Difficulty Badge */}
+            {currentDifficultyInfo && (
+              <span className={cn(
+                "text-xs px-2 py-0.5 rounded-full font-medium",
+                currentDifficultyInfo.bgColor,
+                currentDifficultyInfo.color
+              )}>
+                {currentDifficultyInfo.label} • {currentDifficultyInfo.wordCount} palavras
+              </span>
+            )}
             {isLongText && (
               <Button
                 variant="ghost"
@@ -834,7 +922,7 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
               </Button>
             )}
             <span className="text-sm text-muted-foreground">
-              {currentIndex + 1} de {items.length}
+              {currentIndex + 1} de {sortedItems.length}
             </span>
           </div>
         </div>
@@ -844,7 +932,51 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
         <div className="flex justify-between text-xs text-muted-foreground mt-1">
           <span>{masteredItems.size} dominados</span>
           {modeProgress && <span>{modeProgress.label}</span>}
-          <span>{items.length - masteredItems.size} restantes</span>
+          <span>{sortedItems.length - masteredItems.size} restantes</span>
+        </div>
+
+        {/* Difficulty Distribution Mini-bar */}
+        <div className="flex gap-1 mt-2">
+          {difficultyDistribution.short.total > 0 && (
+            <div className="flex items-center gap-1">
+              <div className="h-1.5 bg-green-200 rounded-full overflow-hidden" style={{ width: `${difficultyDistribution.short.total * 8}px` }}>
+                <div 
+                  className="h-full bg-green-500 rounded-full transition-all duration-300" 
+                  style={{ width: `${(difficultyDistribution.short.mastered / difficultyDistribution.short.total) * 100}%` }}
+                />
+              </div>
+            </div>
+          )}
+          {difficultyDistribution.medium.total > 0 && (
+            <div className="flex items-center gap-1">
+              <div className="h-1.5 bg-yellow-200 rounded-full overflow-hidden" style={{ width: `${difficultyDistribution.medium.total * 8}px` }}>
+                <div 
+                  className="h-full bg-yellow-500 rounded-full transition-all duration-300" 
+                  style={{ width: `${(difficultyDistribution.medium.mastered / difficultyDistribution.medium.total) * 100}%` }}
+                />
+              </div>
+            </div>
+          )}
+          {difficultyDistribution.long.total > 0 && (
+            <div className="flex items-center gap-1">
+              <div className="h-1.5 bg-orange-200 rounded-full overflow-hidden" style={{ width: `${difficultyDistribution.long.total * 8}px` }}>
+                <div 
+                  className="h-full bg-orange-500 rounded-full transition-all duration-300" 
+                  style={{ width: `${(difficultyDistribution.long.mastered / difficultyDistribution.long.total) * 100}%` }}
+                />
+              </div>
+            </div>
+          )}
+          {difficultyDistribution.very_long.total > 0 && (
+            <div className="flex items-center gap-1">
+              <div className="h-1.5 bg-red-200 rounded-full overflow-hidden" style={{ width: `${difficultyDistribution.very_long.total * 8}px` }}>
+                <div 
+                  className="h-full bg-red-500 rounded-full transition-all duration-300" 
+                  style={{ width: `${(difficultyDistribution.very_long.mastered / difficultyDistribution.very_long.total) * 100}%` }}
+                />
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
