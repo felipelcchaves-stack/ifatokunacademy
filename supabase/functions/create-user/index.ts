@@ -58,6 +58,41 @@ Deno.serve(async (req) => {
       )
     }
 
+    // Validação de senha forte (server-side)
+    const passwordErrors: string[] = [];
+    if (password.length < 8) {
+      passwordErrors.push('Senha deve ter no mínimo 8 caracteres');
+    }
+    if (!/[A-Z]/.test(password)) {
+      passwordErrors.push('Senha deve conter pelo menos uma letra maiúscula');
+    }
+    if (!/[a-z]/.test(password)) {
+      passwordErrors.push('Senha deve conter pelo menos uma letra minúscula');
+    }
+    if (!/[0-9]/.test(password)) {
+      passwordErrors.push('Senha deve conter pelo menos um número');
+    }
+    if (!/[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\/'`;~]/.test(password)) {
+      passwordErrors.push('Senha deve conter pelo menos um caractere especial');
+    }
+
+    // Lista de senhas comuns
+    const commonPasswords = [
+      'password', '123456', '12345678', 'qwerty', 'abc123', 'admin', 'admin123',
+      'senha', 'senha123', 'mudar123', '123mudar', 'password123', 'letmein'
+    ];
+    if (commonPasswords.includes(password.toLowerCase())) {
+      passwordErrors.push('Esta senha é muito comum, escolha outra');
+    }
+
+    if (passwordErrors.length > 0) {
+      console.log(`Password validation failed for ${email}: ${passwordErrors.join(', ')}`);
+      return new Response(
+        JSON.stringify({ error: passwordErrors[0] }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     console.log(`Creating user: ${email} with ${moduleIds?.length || 0} module permissions`)
 
     // Criar o usuário
