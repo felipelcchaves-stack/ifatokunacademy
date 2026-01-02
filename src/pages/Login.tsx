@@ -170,11 +170,10 @@ const Login: React.FC = () => {
             </Button>
           </form>
 
-          <p className="text-center text-muted-foreground mt-8">
-            Não tem uma conta?{' '}
-            <Link to="/register" className="text-primary hover:underline font-medium">
-              Criar conta
-            </Link>
+          <p className="text-center text-muted-foreground mt-8 text-sm">
+            O acesso a esta plataforma é exclusivo por convite.
+            <br />
+            Entre em contato com o administrador para obter acesso.
           </p>
         </div>
       </div>
