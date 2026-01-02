@@ -277,3 +277,58 @@ export function generateChainSequence(chunks: TextChunk[]): {
 export function combineChunks(chunks: TextChunk[]): string {
   return chunks.map(c => c.text).join(' ');
 }
+
+/**
+ * Gera um resumo curto do texto (5-10 palavras significativas)
+ * Para memorização progressiva - Nível 1
+ */
+export function generateSummary(text: string): string {
+  const words = text.split(/\s+/).filter(w => w.length > 0);
+  
+  // Para textos muito curtos, retorna as primeiras palavras
+  if (words.length <= 10) {
+    return words.slice(0, Math.min(8, words.length)).join(' ');
+  }
+  
+  // Extrai palavras-chave significativas
+  const keywords = extractKeywords(text, 6);
+  
+  if (keywords.length >= 3) {
+    return keywords.join(' ') + '...';
+  }
+  
+  // Fallback: primeiras 8 palavras
+  return words.slice(0, 8).join(' ') + '...';
+}
+
+/**
+ * Gera versão intermediária do texto (20-40 palavras)
+ * Para memorização progressiva - Nível 2
+ */
+export function generateIntermediateText(text: string): string {
+  const words = text.split(/\s+/).filter(w => w.length > 0);
+  
+  // Para textos curtos, retorna mais palavras
+  if (words.length <= 30) {
+    const count = Math.ceil(words.length * 0.7);
+    return words.slice(0, count).join(' ');
+  }
+  
+  // Para textos médios/longos, combina os primeiros chunks
+  const chunks = splitIntoChunks(text, 7);
+  if (chunks.length >= 2) {
+    const combinedChunks = chunks.slice(0, Math.min(3, Math.ceil(chunks.length / 2)));
+    return combineChunks(combinedChunks);
+  }
+  
+  // Fallback: 40% do texto
+  const count = Math.ceil(words.length * 0.4);
+  return words.slice(0, count).join(' ');
+}
+
+/**
+ * Conta palavras em um texto
+ */
+export function countWords(text: string): number {
+  return text.split(/\s+/).filter(w => w.length > 0).length;
+}
