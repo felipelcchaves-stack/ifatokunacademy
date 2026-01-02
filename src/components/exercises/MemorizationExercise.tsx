@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -10,14 +10,31 @@ import {
   Send,
   XCircle,
   AlertCircle,
-  Calendar
+  Layers,
+  GitBranch,
+  TrendingUp,
+  Settings2,
+  Volume2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
 import { calculateSimilarity, getTextRemainder, getTextStart } from '@/lib/textSimilarity';
+import { 
+  splitIntoChunks, 
+  generateScaffoldLevels, 
+  calculateTextDifficulty,
+  generateChainSequence,
+  combineChunks,
+  TextChunk,
+  ScaffoldLevel
+} from '@/lib/textChunking';
+import ChunkProgress from './ChunkProgress';
+import MemorizationHints from './MemorizationHints';
 import { useSpacedRepetition } from '@/hooks/useSpacedRepetition';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { cn } from '@/lib/utils';
 
 interface MemorizationItem {
   text: string;
@@ -27,23 +44,49 @@ interface MemorizationItem {
 
 interface MemorizationExerciseProps {
   items: MemorizationItem[];
-  exerciseId?: string; // ID do exercício para salvar na repetição espaçada
-  lessonId?: string; // ID da lição para contexto
-  moduleId?: string; // ID do módulo para contexto
+  exerciseId?: string;
+  lessonId?: string;
+  moduleId?: string;
   onComplete?: () => void;
 }
 
-const SIMILARITY_THRESHOLD = 80; // Mínimo de 80% de acurácia para considerar correto
-const START_WORD_COUNT = 4; // Quantidade de palavras iniciais mostradas
+type StudyMode = 'classic' | 'scaffold' | 'chunk' | 'chain';
 
-const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({ items, exerciseId, lessonId, moduleId, onComplete }) => {
+const LONG_TEXT_THRESHOLD = 30; // palavras
+const START_WORD_COUNT = 4;
+
+const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({ 
+  items, 
+  exerciseId, 
+  lessonId, 
+  moduleId, 
+  onComplete 
+}) => {
+  // Core state
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showContent, setShowContent] = useState(false);
   const [showHint, setShowHint] = useState(false);
   const [masteredItems, setMasteredItems] = useState<Set<number>>(new Set());
   const [mode, setMode] = useState<'learn' | 'review'>('learn');
   
-  // Estados para validação por digitação
+  // Study mode state
+  const [studyMode, setStudyMode] = useState<StudyMode>('classic');
+  const [showModeSelector, setShowModeSelector] = useState(true);
+  
+  // Scaffold mode state
+  const [scaffoldLevel, setScaffoldLevel] = useState(0);
+  const [scaffoldLevels, setScaffoldLevels] = useState<ScaffoldLevel[]>([]);
+  
+  // Chunk mode state
+  const [chunks, setChunks] = useState<TextChunk[]>([]);
+  const [currentChunkIndex, setCurrentChunkIndex] = useState(0);
+  const [masteredChunks, setMasteredChunks] = useState<Set<number>>(new Set());
+  
+  // Chain mode state
+  const [chainStep, setChainStep] = useState(0);
+  const [chainSequence, setChainSequence] = useState<ReturnType<typeof generateChainSequence>>([]);
+  
+  // Validation state
   const [userInput, setUserInput] = useState('');
   const [validationResult, setValidationResult] = useState<{
     similarity: number;
@@ -51,18 +94,111 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({ items, exer
     showResult: boolean;
   } | null>(null);
   const [attempts, setAttempts] = useState(0);
+  const [hintPenalty, setHintPenalty] = useState(0);
+  
+  // Audio state
+  const [audioLoading, setAudioLoading] = useState(false);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
 
-  // Hook de repetição espaçada
-  const { addItem, dueCount } = useSpacedRepetition(exerciseId);
+  const { addItem } = useSpacedRepetition(exerciseId);
   const { toast } = useToast();
 
   const currentItem = items[currentIndex];
   const progress = (masteredItems.size / items.length) * 100;
   const isCompleted = masteredItems.size === items.length;
   
-  // Texto esperado (restante após as primeiras palavras)
-  const expectedText = currentItem ? getTextRemainder(currentItem.text, START_WORD_COUNT) : '';
-  const textStart = currentItem ? getTextStart(currentItem.text, START_WORD_COUNT) : '';
+  // Analyze text difficulty
+  const textDifficulty = useMemo(() => {
+    if (!currentItem) return null;
+    return calculateTextDifficulty(currentItem.text);
+  }, [currentItem]);
+
+  const isLongText = textDifficulty && textDifficulty.wordCount >= LONG_TEXT_THRESHOLD;
+
+  // Initialize study mode data when item changes
+  useEffect(() => {
+    if (!currentItem) return;
+
+    const text = currentItem.text;
+    
+    if (studyMode === 'scaffold') {
+      setScaffoldLevels(generateScaffoldLevels(text));
+      setScaffoldLevel(0);
+    } else if (studyMode === 'chunk' || studyMode === 'chain') {
+      const newChunks = splitIntoChunks(text);
+      setChunks(newChunks);
+      setCurrentChunkIndex(0);
+      setMasteredChunks(new Set());
+      
+      if (studyMode === 'chain') {
+        setChainSequence(generateChainSequence(newChunks));
+        setChainStep(0);
+      }
+    }
+  }, [currentItem, studyMode]);
+
+  // Get expected text based on mode
+  const getExpectedText = useCallback(() => {
+    if (!currentItem) return '';
+
+    switch (studyMode) {
+      case 'scaffold':
+        return scaffoldLevels[scaffoldLevel]?.hiddenText || '';
+      case 'chunk':
+        return chunks[currentChunkIndex]?.text || '';
+      case 'chain':
+        const currentChainStep = chainSequence[chainStep];
+        if (currentChainStep) {
+          return combineChunks(currentChainStep.chunksToMemorize);
+        }
+        return '';
+      default:
+        return getTextRemainder(currentItem.text, START_WORD_COUNT);
+    }
+  }, [currentItem, studyMode, scaffoldLevel, scaffoldLevels, chunks, currentChunkIndex, chainSequence, chainStep]);
+
+  // Get visible text/prompt based on mode
+  const getVisibleText = useCallback(() => {
+    if (!currentItem) return '';
+
+    switch (studyMode) {
+      case 'scaffold':
+        return scaffoldLevels[scaffoldLevel]?.visibleText || '';
+      case 'chunk':
+        // Show previous chunks as context
+        const previousChunks = chunks.slice(0, currentChunkIndex);
+        return previousChunks.map(c => c.text).join(' ');
+      case 'chain':
+        const currentChainStep = chainSequence[chainStep];
+        if (currentChainStep?.isReview && currentChainStep.chunksToMemorize.length > 1) {
+          return ''; // Full review, no visible text
+        }
+        // Show previous chunks
+        const chainContext = chunks.slice(0, chainSequence[chainStep]?.chunksToMemorize[0]?.id || 0);
+        return chainContext.map(c => c.text).join(' ');
+      default:
+        return getTextStart(currentItem.text, START_WORD_COUNT);
+    }
+  }, [currentItem, studyMode, scaffoldLevel, scaffoldLevels, chunks, currentChunkIndex, chainSequence, chainStep]);
+
+  // Get similarity threshold based on mode and level
+  const getSimilarityThreshold = useCallback(() => {
+    const basePenalty = hintPenalty;
+    let baseThreshold = 80;
+
+    if (studyMode === 'scaffold') {
+      // Lower threshold for early scaffold levels
+      baseThreshold = 60 + (scaffoldLevel * 5);
+    } else if (studyMode === 'chunk') {
+      baseThreshold = 75;
+    }
+
+    return Math.max(50, baseThreshold - basePenalty);
+  }, [studyMode, scaffoldLevel, hintPenalty]);
+
+  const expectedText = getExpectedText();
+  const visibleText = getVisibleText();
+  const similarityThreshold = getSimilarityThreshold();
 
   useEffect(() => {
     if (isCompleted && mode === 'learn') {
@@ -76,6 +212,12 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({ items, exer
     setUserInput('');
     setValidationResult(null);
     setAttempts(0);
+    setHintPenalty(0);
+    setScaffoldLevel(0);
+    setCurrentChunkIndex(0);
+    setMasteredChunks(new Set());
+    setChainStep(0);
+    setAudioUrl(null);
   }, []);
 
   const handleNext = useCallback(() => {
@@ -94,16 +236,10 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({ items, exer
     }
   };
 
-  // Adiciona item à lista de repetição espaçada
-  // Agora adiciona TODOS os itens (acertos e erros) com ease_factor diferente
   const addToSpacedRepetition = async (itemIndex: number, itemText: string, wasCorrect: boolean) => {
     if (!exerciseId) return;
     
     try {
-      // Diferentes ease_factors baseado na performance:
-      // Acerto na primeira tentativa: 2.5 (normal)
-      // Errou e depois acertou: 2.0 (um pouco mais difícil)
-      // Revelou sem tentar: 1.5 (prioridade alta)
       let easeFactor = 2.5;
       if (!wasCorrect) {
         easeFactor = attempts > 0 ? 2.0 : 1.5;
@@ -131,7 +267,8 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({ items, exer
     if (!userInput.trim()) return;
     
     const similarity = calculateSimilarity(expectedText, userInput);
-    const isCorrect = similarity >= SIMILARITY_THRESHOLD;
+    const adjustedThreshold = similarityThreshold;
+    const isCorrect = similarity >= adjustedThreshold;
     
     setValidationResult({
       similarity,
@@ -142,25 +279,64 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({ items, exer
     setAttempts(prev => prev + 1);
     
     if (isCorrect) {
-      setMasteredItems(prev => new Set([...prev, currentIndex]));
-      setShowContent(true);
-      // NOVO: Adiciona à revisão espaçada mesmo quando acerta (para manutenção)
-      await addToSpacedRepetition(currentIndex, currentItem.text, true);
+      // Handle progression based on mode
+      if (studyMode === 'scaffold') {
+        if (scaffoldLevel < scaffoldLevels.length - 1) {
+          // Move to next scaffold level
+          setTimeout(() => {
+            setScaffoldLevel(prev => prev + 1);
+            setUserInput('');
+            setValidationResult(null);
+          }, 1500);
+        } else {
+          // Completed all scaffold levels
+          setMasteredItems(prev => new Set([...prev, currentIndex]));
+          setShowContent(true);
+          await addToSpacedRepetition(currentIndex, currentItem.text, true);
+        }
+      } else if (studyMode === 'chunk') {
+        setMasteredChunks(prev => new Set([...prev, currentChunkIndex]));
+        
+        if (currentChunkIndex < chunks.length - 1) {
+          setTimeout(() => {
+            setCurrentChunkIndex(prev => prev + 1);
+            setUserInput('');
+            setValidationResult(null);
+          }, 1500);
+        } else {
+          setMasteredItems(prev => new Set([...prev, currentIndex]));
+          setShowContent(true);
+          await addToSpacedRepetition(currentIndex, currentItem.text, true);
+        }
+      } else if (studyMode === 'chain') {
+        if (chainStep < chainSequence.length - 1) {
+          setTimeout(() => {
+            setChainStep(prev => prev + 1);
+            setUserInput('');
+            setValidationResult(null);
+          }, 1500);
+        } else {
+          setMasteredItems(prev => new Set([...prev, currentIndex]));
+          setShowContent(true);
+          await addToSpacedRepetition(currentIndex, currentItem.text, true);
+        }
+      } else {
+        setMasteredItems(prev => new Set([...prev, currentIndex]));
+        setShowContent(true);
+        await addToSpacedRepetition(currentIndex, currentItem.text, true);
+      }
     } else {
-      // Adiciona à repetição espaçada quando erra
       await addToSpacedRepetition(currentIndex, currentItem.text, false);
     }
   };
 
   const handleRevealWithoutValidation = async () => {
-    // Permite revelar sem validar, mas não marca como dominado
     setShowContent(true);
     setValidationResult({
       similarity: 0,
       isCorrect: false,
       showResult: false
     });
-    // Adiciona à revisão espaçada com prioridade alta (ease_factor baixo)
     await addToSpacedRepetition(currentIndex, currentItem.text, false);
   };
 
@@ -192,6 +368,7 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({ items, exer
     resetItemState();
     setMasteredItems(new Set());
     setMode('learn');
+    setShowModeSelector(true);
   };
 
   const handleStartReview = () => {
@@ -200,10 +377,65 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({ items, exer
     resetItemState();
   };
 
+  const handleModeSelect = (newMode: StudyMode) => {
+    setStudyMode(newMode);
+    setShowModeSelector(false);
+    resetItemState();
+  };
+
+  const handleHintUsed = (hintLevel: number) => {
+    const penalties = { 1: 5, 2: 10, 3: 15 };
+    setHintPenalty(prev => prev + (penalties[hintLevel as keyof typeof penalties] || 0));
+  };
+
+  const handlePlayAudio = async () => {
+    if (!currentItem) return;
+
+    setAudioLoading(true);
+    try {
+      let textToSpeak = currentItem.text;
+      
+      if (studyMode === 'chunk' && chunks[currentChunkIndex]) {
+        textToSpeak = chunks[currentChunkIndex].text;
+      } else if (studyMode === 'chain' && chainSequence[chainStep]) {
+        textToSpeak = combineChunks(chainSequence[chainStep].chunksToMemorize);
+      }
+
+      const { data, error } = await supabase.functions.invoke('elevenlabs-tts', {
+        body: { text: textToSpeak, voiceId: 'onwK4e9ZLuTAKqWW03F9' }
+      });
+
+      if (error) throw error;
+
+      if (data?.audioContent) {
+        const url = `data:audio/mpeg;base64,${data.audioContent}`;
+        setAudioUrl(url);
+        const audio = new Audio(url);
+        await audio.play();
+      }
+    } catch (error) {
+      console.error('Error playing audio:', error);
+      toast({
+        title: "Erro ao reproduzir áudio",
+        description: "Não foi possível gerar o áudio.",
+        variant: "destructive"
+      });
+    } finally {
+      setAudioLoading(false);
+    }
+  };
+
+  const handleChunkClick = (index: number) => {
+    if (masteredChunks.has(index) || index === currentChunkIndex) {
+      setCurrentChunkIndex(index);
+      setUserInput('');
+      setValidationResult(null);
+    }
+  };
+
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Não interferir quando está digitando no textarea
       if (e.target instanceof HTMLTextAreaElement) {
         if (e.key === 'Enter' && e.ctrlKey) {
           e.preventDefault();
@@ -237,6 +469,159 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({ items, exer
     );
   }
 
+  // Mode Selector Screen
+  if (showModeSelector && isLongText) {
+    return (
+      <div className="bg-card rounded-xl border border-border shadow-soft overflow-hidden">
+        <div className="p-6 border-b border-border bg-muted/30">
+          <div className="flex items-center gap-2 mb-2">
+            <Brain className="w-5 h-5 text-primary" />
+            <span className="font-medium text-foreground">Texto Longo Detectado</span>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Este texto tem {textDifficulty?.wordCount} palavras. Recomendamos usar um modo de estudo especial.
+          </p>
+        </div>
+
+        <div className="p-6 space-y-4">
+          <h3 className="font-serif text-lg font-semibold text-foreground mb-4">
+            Escolha o modo de estudo:
+          </h3>
+
+          <div className="grid gap-3">
+            {/* Scaffold Mode */}
+            <button
+              onClick={() => handleModeSelect('scaffold')}
+              className={cn(
+                "flex items-start gap-4 p-4 rounded-lg border-2 text-left transition-all hover:border-primary/50 hover:bg-primary/5",
+                textDifficulty?.recommendedMode === 'scaffold' 
+                  ? "border-primary bg-primary/10 ring-2 ring-primary/20" 
+                  : "border-border"
+              )}
+            >
+              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+                <TrendingUp className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold">Modo Escada</span>
+                  {textDifficulty?.recommendedMode === 'scaffold' && (
+                    <span className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded-full">
+                      Recomendado
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Começa mostrando 80% do texto e vai reduzindo até você recitar tudo. Ideal para textos de 20-50 palavras.
+                </p>
+              </div>
+            </button>
+
+            {/* Chunk Mode */}
+            <button
+              onClick={() => handleModeSelect('chunk')}
+              className={cn(
+                "flex items-start gap-4 p-4 rounded-lg border-2 text-left transition-all hover:border-primary/50 hover:bg-primary/5",
+                textDifficulty?.recommendedMode === 'chunk' 
+                  ? "border-primary bg-primary/10 ring-2 ring-primary/20" 
+                  : "border-border"
+              )}
+            >
+              <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                <Layers className="w-5 h-5 text-green-600" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold">Modo Fragmentos</span>
+                  {textDifficulty?.recommendedMode === 'chunk' && (
+                    <span className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded-full">
+                      Recomendado
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Divide o texto em partes menores (5-10 palavras). Memorize uma parte por vez. Ideal para 50-100 palavras.
+                </p>
+              </div>
+            </button>
+
+            {/* Chain Mode */}
+            <button
+              onClick={() => handleModeSelect('chain')}
+              className={cn(
+                "flex items-start gap-4 p-4 rounded-lg border-2 text-left transition-all hover:border-primary/50 hover:bg-primary/5",
+                textDifficulty?.recommendedMode === 'chain' 
+                  ? "border-primary bg-primary/10 ring-2 ring-primary/20" 
+                  : "border-border"
+              )}
+            >
+              <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center shrink-0">
+                <GitBranch className="w-5 h-5 text-purple-600" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold">Modo Encadeamento</span>
+                  {textDifficulty?.recommendedMode === 'chain' && (
+                    <span className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded-full">
+                      Recomendado
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Memoriza partes e depois conecta: 1 → 2 → 1+2 → 3 → 1+2+3... Ideal para textos longos (100+ palavras).
+                </p>
+              </div>
+            </button>
+
+            {/* Classic Mode */}
+            <button
+              onClick={() => handleModeSelect('classic')}
+              className="flex items-start gap-4 p-4 rounded-lg border-2 border-border text-left transition-all hover:border-primary/50 hover:bg-primary/5"
+            >
+              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center shrink-0">
+                <Brain className="w-5 h-5 text-muted-foreground" />
+              </div>
+              <div>
+                <span className="font-semibold">Modo Clássico</span>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Complete o texto a partir das primeiras palavras. Mais desafiador para textos longos.
+                </p>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Get progress info based on mode
+  const getModeProgress = () => {
+    switch (studyMode) {
+      case 'scaffold':
+        return {
+          current: scaffoldLevel + 1,
+          total: scaffoldLevels.length,
+          label: `Nível ${scaffoldLevel + 1} de ${scaffoldLevels.length}`
+        };
+      case 'chunk':
+        return {
+          current: masteredChunks.size,
+          total: chunks.length,
+          label: `Trecho ${currentChunkIndex + 1} de ${chunks.length}`
+        };
+      case 'chain':
+        return {
+          current: chainStep + 1,
+          total: chainSequence.length,
+          label: chainSequence[chainStep]?.description || ''
+        };
+      default:
+        return null;
+    }
+  };
+
+  const modeProgress = getModeProgress();
+
   return (
     <div className="bg-card rounded-xl border border-border shadow-soft overflow-hidden">
       {/* Header */}
@@ -247,29 +632,65 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({ items, exer
             <span className="font-medium text-foreground">
               {mode === 'learn' ? 'Modo Aprendizado' : 'Modo Revisão'}
             </span>
+            {studyMode !== 'classic' && (
+              <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full capitalize">
+                {studyMode === 'scaffold' ? 'Escada' : studyMode === 'chunk' ? 'Fragmentos' : 'Encadeamento'}
+              </span>
+            )}
           </div>
-          <span className="text-sm text-muted-foreground">
-            {currentIndex + 1} de {items.length}
-          </span>
+          <div className="flex items-center gap-2">
+            {isLongText && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowModeSelector(true)}
+                className="h-7 px-2"
+              >
+                <Settings2 className="w-4 h-4" />
+              </Button>
+            )}
+            <span className="text-sm text-muted-foreground">
+              {currentIndex + 1} de {items.length}
+            </span>
+          </div>
         </div>
+        
         <Progress value={progress} className="h-2" />
+        
         <div className="flex justify-between text-xs text-muted-foreground mt-1">
           <span>{masteredItems.size} dominados</span>
+          {modeProgress && <span>{modeProgress.label}</span>}
           <span>{items.length - masteredItems.size} restantes</span>
         </div>
       </div>
 
+      {/* Chunk Progress (for chunk/chain modes) */}
+      {(studyMode === 'chunk' || studyMode === 'chain') && chunks.length > 1 && !showContent && (
+        <div className="p-4 border-b border-border bg-muted/10">
+          <ChunkProgress
+            chunks={chunks}
+            masteredChunks={masteredChunks}
+            currentChunkIndex={studyMode === 'chain' 
+              ? chainSequence[chainStep]?.chunksToMemorize[0]?.id || 0 
+              : currentChunkIndex
+            }
+            onChunkClick={studyMode === 'chunk' ? handleChunkClick : undefined}
+            showChainLinks={studyMode === 'chain'}
+          />
+        </div>
+      )}
+
       {/* Card */}
       <div className="p-8">
         <div 
-          className={`
-            min-h-[300px] rounded-xl border-2 border-dashed border-border p-6
-            flex flex-col items-center justify-center text-center
-            transition-all duration-300
-            ${showContent ? 'bg-primary/5 border-primary/30' : 'bg-muted/30'}
-            ${validationResult?.isCorrect ? 'bg-green-50 border-green-300' : ''}
-            ${validationResult?.showResult && !validationResult?.isCorrect ? 'bg-amber-50 border-amber-300' : ''}
-          `}
+          className={cn(
+            "min-h-[300px] rounded-xl border-2 border-dashed border-border p-6",
+            "flex flex-col items-center justify-center text-center",
+            "transition-all duration-300",
+            showContent ? 'bg-primary/5 border-primary/30' : 'bg-muted/30',
+            validationResult?.isCorrect && 'bg-green-50 border-green-300',
+            validationResult?.showResult && !validationResult?.isCorrect && 'bg-amber-50 border-amber-300'
+          )}
         >
           {currentItem.imageUrl && (
             <img 
@@ -281,18 +702,44 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({ items, exer
 
           {!showContent ? (
             <>
-              {/* Mostra o início do texto como pista */}
+              {/* Visible Text Prompt */}
               <div className="mb-4 w-full">
                 <p className="text-xs uppercase tracking-wider text-muted-foreground mb-2">
-                  Complete o verso:
+                  {studyMode === 'scaffold' 
+                    ? `Complete (${scaffoldLevels[scaffoldLevel]?.visiblePercent || 0}% visível):`
+                    : studyMode === 'chunk'
+                    ? `Memorize o trecho ${currentChunkIndex + 1}:`
+                    : studyMode === 'chain'
+                    ? chainSequence[chainStep]?.description || 'Complete:'
+                    : 'Complete o verso:'
+                  }
                 </p>
-                <p className="font-serif text-2xl text-primary font-medium">
-                  {textStart}
-                </p>
+                {visibleText && (
+                  <p className="font-serif text-lg text-foreground/70 mb-2">
+                    {visibleText}
+                  </p>
+                )}
+                {studyMode === 'scaffold' && scaffoldLevels[scaffoldLevel]?.hint && (
+                  <p className="font-mono text-sm text-primary/60 mt-2">
+                    {scaffoldLevels[scaffoldLevel].hint}
+                  </p>
+                )}
               </div>
 
-              {/* Hint */}
-              {currentItem.hint && (
+              {/* Hints Component */}
+              {!validationResult?.showResult && (
+                <div className="mb-4 w-full max-w-md">
+                  <MemorizationHints
+                    text={expectedText}
+                    onHintUsed={handleHintUsed}
+                    onPlayAudio={handlePlayAudio}
+                    audioLoading={audioLoading}
+                  />
+                </div>
+              )}
+
+              {/* Legacy Hint */}
+              {currentItem.hint && !validationResult?.showResult && (
                 <div className="mb-4">
                   {showHint ? (
                     <div className="px-4 py-2 bg-amber-100 text-amber-800 rounded-lg flex items-center gap-2">
@@ -302,7 +749,7 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({ items, exer
                   ) : (
                     <Button variant="ghost" size="sm" onClick={handleToggleHint}>
                       <Lightbulb className="w-4 h-4 mr-2" />
-                      Ver Dica
+                      Ver Dica do Autor
                     </Button>
                   )}
                 </div>
@@ -318,8 +765,18 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({ items, exer
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Mínimo necessário: {SIMILARITY_THRESHOLD}%
+                    Mínimo necessário: {similarityThreshold}%
+                    {hintPenalty > 0 && ` (ajustado por dicas: -${hintPenalty}%)`}
                   </p>
+                </div>
+              )}
+
+              {validationResult?.isCorrect && (studyMode === 'scaffold' || studyMode === 'chunk' || studyMode === 'chain') && (
+                <div className="mb-4 flex items-center gap-2 text-green-600">
+                  <CheckCircle className="w-5 h-5" />
+                  <span className="font-medium">
+                    Correto! Avançando...
+                  </span>
                 </div>
               )}
 
@@ -328,7 +785,11 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({ items, exer
                 <Textarea
                   value={userInput}
                   onChange={(e) => setUserInput(e.target.value)}
-                  placeholder="Digite o restante do verso..."
+                  placeholder={
+                    studyMode === 'chunk' || studyMode === 'chain'
+                      ? "Digite o trecho..."
+                      : "Digite o restante do verso..."
+                  }
                   className="min-h-[100px] text-center font-serif text-lg resize-none"
                   disabled={validationResult?.showResult}
                 />
@@ -353,7 +814,7 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({ items, exer
                         Revelar
                       </Button>
                     </>
-                  ) : (
+                  ) : !validationResult.isCorrect ? (
                     <Button 
                       onClick={handleTryAgain}
                       variant="outline"
@@ -361,7 +822,7 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({ items, exer
                       <RotateCcw className="w-4 h-4 mr-2" />
                       Tentar Novamente
                     </Button>
-                  )}
+                  ) : null}
                 </div>
 
                 {attempts > 0 && !validationResult?.isCorrect && (
