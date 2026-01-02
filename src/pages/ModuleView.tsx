@@ -7,6 +7,8 @@ import ContentProtection from '@/components/ContentProtection';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { supabase } from '@/integrations/supabase/client';
+import { useModuleProgress } from '@/hooks/useModuleProgress';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Module {
   id: string;
@@ -32,8 +34,11 @@ interface Lesson {
 const ModuleView: React.FC = () => {
   const { moduleId } = useParams<{ moduleId: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { getLessonProgress } = useModuleProgress();
   const [module, setModule] = useState<Module | null>(null);
   const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [lessonProgressMap, setLessonProgressMap] = useState<Record<string, { progress: number; isCompleted: boolean }>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -41,6 +46,28 @@ const ModuleView: React.FC = () => {
       fetchModuleAndLessons();
     }
   }, [moduleId]);
+
+  useEffect(() => {
+    if (user && lessons.length > 0) {
+      fetchLessonProgress();
+    }
+  }, [user, lessons]);
+
+  const fetchLessonProgress = async () => {
+    const progressMap: Record<string, { progress: number; isCompleted: boolean }> = {};
+    
+    for (const lesson of lessons) {
+      const progress = await getLessonProgress(lesson.id);
+      if (progress) {
+        progressMap[lesson.id] = {
+          progress: progress.progress,
+          isCompleted: progress.isCompleted,
+        };
+      }
+    }
+    
+    setLessonProgressMap(progressMap);
+  };
 
   const fetchModuleAndLessons = async () => {
     try {
@@ -78,7 +105,7 @@ const ModuleView: React.FC = () => {
       const lessonsWithCount = (lessonsData || []).map((l: any) => ({
         ...l,
         exercises_count: l.exercises?.[0]?.count || 0,
-        completed: false, // TODO: Get from user progress
+        completed: false,
       }));
 
       setLessons(lessonsWithCount);
@@ -88,6 +115,32 @@ const ModuleView: React.FC = () => {
       setLoading(false);
     }
   };
+
+  // Determine if a lesson is locked based on sequential progress
+  const isLessonLocked = (lessonIndex: number): boolean => {
+    if (!user) return true; // Lock all if not logged in
+    if (lessonIndex === 0) return false; // First lesson is always unlocked
+    
+    // Check if previous lesson is completed
+    const previousLesson = lessons[lessonIndex - 1];
+    const previousProgress = lessonProgressMap[previousLesson.id];
+    
+    return !previousProgress?.isCompleted;
+  };
+
+  // Calculate overall module progress
+  const calculateModuleProgress = (): number => {
+    if (lessons.length === 0) return 0;
+    
+    const totalProgress = lessons.reduce((acc, lesson) => {
+      const progress = lessonProgressMap[lesson.id]?.progress || 0;
+      return acc + progress;
+    }, 0);
+    
+    return Math.round(totalProgress / lessons.length);
+  };
+
+  const progress = calculateModuleProgress();
 
   if (loading) {
     return (
@@ -125,7 +178,7 @@ const ModuleView: React.FC = () => {
     );
   }
 
-  const progress = 0; // TODO: Calculate from user progress
+  // progress is already calculated above with calculateModuleProgress()
 
   return (
     <ContentProtection>
@@ -191,15 +244,22 @@ const ModuleView: React.FC = () => {
 
             <div className="space-y-4">
               {lessons.length > 0 ? (
-                lessons.map((lesson, index) => (
-                  <LessonCard 
-                    key={lesson.id} 
-                    lesson={lesson} 
-                    index={index}
-                    moduleId={module.id}
-                    isLocked={false} // TODO: Implement sequential unlocking based on progress
-                  />
-                ))
+                lessons.map((lesson, index) => {
+                  const lessonProgress = lessonProgressMap[lesson.id];
+                  return (
+                    <LessonCard 
+                      key={lesson.id} 
+                      lesson={{
+                        ...lesson,
+                        completed: lessonProgress?.isCompleted || false,
+                      }} 
+                      index={index}
+                      moduleId={module.id}
+                      isLocked={isLessonLocked(index)}
+                      progress={lessonProgress?.progress || 0}
+                    />
+                  );
+                })
               ) : (
                 <div className="bg-card rounded-xl p-8 text-center border border-border">
                   <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
@@ -226,9 +286,10 @@ interface LessonCardProps {
   index: number;
   moduleId: string;
   isLocked: boolean;
+  progress?: number;
 }
 
-const LessonCard: React.FC<LessonCardProps> = ({ lesson, index, moduleId, isLocked }) => {
+const LessonCard: React.FC<LessonCardProps> = ({ lesson, index, moduleId, isLocked, progress = 0 }) => {
   const navigate = useNavigate();
 
   const formatDuration = (minutes: number | null) => {
@@ -293,9 +354,22 @@ const LessonCard: React.FC<LessonCardProps> = ({ lesson, index, moduleId, isLock
 
       {lesson.exercises_count && lesson.exercises_count > 0 && (
         <div className="mt-4 pt-4 border-t border-border">
-          <p className="text-sm text-muted-foreground">
-            {lesson.exercises_count} exercício{lesson.exercises_count > 1 ? 's' : ''}
-          </p>
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              {lesson.exercises_count} exercício{lesson.exercises_count > 1 ? 's' : ''}
+            </p>
+            {progress > 0 && progress < 100 && (
+              <div className="flex items-center gap-2">
+                <div className="w-24 h-1.5 bg-muted rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-primary rounded-full transition-all"
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
+                <span className="text-xs text-muted-foreground">{progress}%</span>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

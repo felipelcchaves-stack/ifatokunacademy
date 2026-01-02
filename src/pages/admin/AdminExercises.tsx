@@ -16,7 +16,8 @@ import {
   Columns,
   CreditCard,
   Video,
-  Brain
+  Brain,
+  HelpCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -45,11 +46,12 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import ExerciseEditor from '@/components/admin/ExerciseEditor';
+import QuizExerciseEditor from '@/components/admin/QuizExerciseEditor';
 
 interface Exercise {
   id: string;
   lesson_id: string;
-  type: 'reading' | 'drag-drop' | 'fill-columns' | 'flashcard' | 'video' | 'memorization';
+  type: 'reading' | 'drag-drop' | 'fill-columns' | 'flashcard' | 'video' | 'memorization' | 'quiz';
   title: string;
   content: Record<string, any>;
   display_order: number;
@@ -75,6 +77,7 @@ const exerciseTypes = [
   { value: 'fill-columns', label: 'Preencher Colunas', icon: Columns, description: 'Completar tabelas' },
   { value: 'video', label: 'Vídeo Aula', icon: Video, description: 'Conteúdo em vídeo' },
   { value: 'memorization', label: 'Memorização', icon: Brain, description: 'Técnicas de memorização' },
+  { value: 'quiz', label: 'Quiz', icon: HelpCircle, description: 'Questionário com múltipla escolha' },
 ];
 
 const AdminExercises: React.FC = () => {
@@ -203,6 +206,12 @@ const AdminExercises: React.FC = () => {
         return { videoUrl: '', description: '' };
       case 'memorization':
         return { items: [] };
+      case 'quiz':
+        return { 
+          questions: [{ question: '', options: ['', '', '', ''], correctIndex: 0 }],
+          passingScore: 90,
+          timeLimit: null
+        };
       default:
         return {};
     }
@@ -319,6 +328,20 @@ const AdminExercises: React.FC = () => {
   }
 
   if (isEditorOpen && editingExercise) {
+    // Use QuizEditor for quiz type exercises
+    if (editingExercise.type === 'quiz') {
+      return (
+        <QuizExerciseEditor
+          exercise={editingExercise}
+          onSave={(e) => handleSaveExercise(e as Exercise)}
+          onCancel={() => {
+            setIsEditorOpen(false);
+            setEditingExercise(null);
+          }}
+        />
+      );
+    }
+    
     return (
       <ExerciseEditor
         exercise={editingExercise}
