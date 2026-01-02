@@ -56,11 +56,11 @@ export const HeroStudyTrack: React.FC<HeroStudyTrackProps> = ({
       <div className="relative z-10">
         {/* Greeting */}
         <div className="text-center mb-8">
-          <p className="text-muted-foreground text-sm mb-2">Bem-vindo de volta</p>
-          <h1 className="font-serif text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-3">
-            Olá, {displayName}!
+          <p className="text-muted-foreground text-sm font-medium mb-2 tracking-wide uppercase">Bem-vindo de volta</p>
+          <h1 className="heading-display text-4xl md:text-5xl lg:text-6xl text-foreground mb-4">
+            Olá, <span className="text-gradient-forest">{displayName}</span>!
           </h1>
-          <p className="text-muted-foreground max-w-md mx-auto">
+          <p className="text-muted-foreground max-w-md mx-auto text-lg">
             Continue sua jornada de conhecimento. Cada passo te aproxima da sabedoria.
           </p>
         </div>
@@ -88,7 +88,7 @@ export const HeroStudyTrack: React.FC<HeroStudyTrackProps> = ({
         ) : (
           <div className="text-center py-12">
             <BookOpen className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-            <h3 className="font-serif text-xl font-semibold text-foreground mb-2">
+            <h3 className="heading-display text-xl text-foreground mb-2">
               Nenhuma trilha disponível
             </h3>
             <p className="text-muted-foreground">
