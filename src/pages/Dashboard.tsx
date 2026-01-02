@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, Clock, Award, TrendingUp, Play, Loader2, Lock, Brain, Calendar, Flame, Trophy } from 'lucide-react';
+import { BookOpen, Clock, Award, TrendingUp, Play, Loader2, Lock, Brain, Calendar, Flame, Trophy, Zap } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import ModuleSlider from '@/components/modules/ModuleSlider';
@@ -339,6 +339,30 @@ const Dashboard: React.FC = () => {
                   >
                     <Brain className="w-4 h-4 mr-2" />
                     {dueCount > 0 ? 'Revisar' : 'Ver Revisões'}
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Challenge Mode */}
+            <div className="mb-12">
+              <div className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 dark:from-purple-900/30 dark:to-pink-900/30 rounded-2xl p-6 border border-purple-200 dark:border-purple-800">
+                <div className="flex flex-col md:flex-row items-center gap-6">
+                  <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center flex-shrink-0">
+                    <Zap className="w-8 h-8 text-white" />
+                  </div>
+                  <div className="flex-1 text-center md:text-left">
+                    <h3 className="font-serif text-xl font-bold text-foreground">Modo Desafio ⚡</h3>
+                    <p className="text-muted-foreground text-sm mt-1">
+                      Teste sua velocidade! Responda o máximo de itens em 5 minutos e ganhe XP multiplicado.
+                    </p>
+                  </div>
+                  <Button 
+                    className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white font-semibold shadow-lg"
+                    onClick={() => navigate('/challenge')}
+                  >
+                    <Zap className="w-4 h-4 mr-2" />
+                    Iniciar Desafio
                   </Button>
                 </div>
               </div>
