@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, Clock, Award, TrendingUp, Play, Loader2, Lock, Brain, Calendar, Flame } from 'lucide-react';
+import { BookOpen, Clock, Award, TrendingUp, Play, Loader2, Lock, Brain, Calendar, Flame, Trophy } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import ModuleCard from '@/components/modules/ModuleCard';
 import ModuleSlider from '@/components/modules/ModuleSlider';
 import ContentProtection from '@/components/ContentProtection';
 import StreakDisplay from '@/components/streak/StreakDisplay';
+import { AchievementsDisplay } from '@/components/achievements/AchievementsDisplay';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
@@ -338,6 +339,11 @@ const Dashboard: React.FC = () => {
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* Achievements Section */}
+            <div className="mb-12">
+              <AchievementsDisplay />
             </div>
 
             {/* Proficiency Modules */}
