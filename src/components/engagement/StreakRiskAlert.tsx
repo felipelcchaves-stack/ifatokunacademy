@@ -75,7 +75,7 @@ export const StreakRiskAlert: React.FC = () => {
           </div>
           <Button 
             size="sm"
-            onClick={() => navigate('/spaced-review')}
+            onClick={() => navigate('/review')}
             className={cn(
               "shrink-0 gap-1",
               urgency === 'critical' && "bg-red-500 hover:bg-red-600",
