@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Menu, X, User, LogOut, Settings, BookOpen, Calendar } from 'lucide-react';
+import { Menu, X, LogOut, Settings, BookOpen, Lock, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,6 +18,15 @@ const Header: React.FC = () => {
   const navigate = useNavigate();
 
   const displayName = profile?.full_name || user?.email?.split('@')[0] || 'Usuário';
+
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
 
   const handleLogout = async () => {
     await signOut();
@@ -67,34 +77,59 @@ const Header: React.FC = () => {
             {isAuthenticated ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="gap-2">
-                    <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                      <User className="w-4 h-4 text-primary" />
-                    </div>
+                  <Button variant="ghost" className="gap-2 h-auto py-1.5">
+                    <Avatar className="w-8 h-8">
+                      <AvatarImage src={profile?.avatar_url || undefined} />
+                      <AvatarFallback className="text-xs bg-primary/20 text-primary">
+                        {getInitials(displayName)}
+                      </AvatarFallback>
+                    </Avatar>
                     <span className="text-sm font-medium">{displayName}</span>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuItem onClick={() => navigate('/dashboard')}>
+                <DropdownMenuContent align="end" className="w-64">
+                  {/* Cabeçalho com info do usuário */}
+                  <div className="flex items-center gap-3 p-3 border-b border-border">
+                    <Avatar className="w-10 h-10">
+                      <AvatarImage src={profile?.avatar_url || undefined} />
+                      <AvatarFallback className="text-sm bg-primary/20 text-primary">
+                        {getInitials(displayName)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">{displayName}</p>
+                      <p className="text-xs text-muted-foreground truncate">{profile?.email || user?.email}</p>
+                    </div>
+                  </div>
+                  
+                  <DropdownMenuItem onClick={() => navigate('/dashboard')} className="py-2.5">
                     <BookOpen className="w-4 h-4 mr-2" />
                     Meu Aprendizado
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate('/settings?tab=study-plan')}>
-                    <Calendar className="w-4 h-4 mr-2" />
-                    Plano de Estudos
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate('/settings')}>
-                    <User className="w-4 h-4 mr-2" />
+                  
+                  <DropdownMenuSeparator />
+                  
+                  <DropdownMenuItem onClick={() => navigate('/settings')} className="py-2.5">
+                    <Settings className="w-4 h-4 mr-2" />
                     Configurações
                   </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/settings?tab=security')} className="py-2.5">
+                    <Lock className="w-4 h-4 mr-2" />
+                    Alterar Senha
+                  </DropdownMenuItem>
+                  
                   {isAdmin && (
-                    <DropdownMenuItem onClick={() => navigate('/admin')}>
-                      <Settings className="w-4 h-4 mr-2" />
-                      Painel Admin
-                    </DropdownMenuItem>
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => navigate('/admin')} className="py-2.5">
+                        <Shield className="w-4 h-4 mr-2" />
+                        Painel Admin
+                      </DropdownMenuItem>
+                    </>
                   )}
+                  
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout} className="text-destructive">
+                  <DropdownMenuItem onClick={handleLogout} className="py-2.5 text-destructive focus:text-destructive">
                     <LogOut className="w-4 h-4 mr-2" />
                     Sair
                   </DropdownMenuItem>
@@ -156,6 +191,20 @@ const Header: React.FC = () => {
               <div className="flex flex-col gap-2 pt-4 border-t border-border">
                 {isAuthenticated ? (
                   <>
+                    {/* Mobile User Info */}
+                    <div className="flex items-center gap-3 px-2 py-3 mb-2">
+                      <Avatar className="w-10 h-10">
+                        <AvatarImage src={profile?.avatar_url || undefined} />
+                        <AvatarFallback className="text-sm bg-primary/20 text-primary">
+                          {getInitials(displayName)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{displayName}</p>
+                        <p className="text-xs text-muted-foreground truncate">{profile?.email || user?.email}</p>
+                      </div>
+                    </div>
+                    
                     <Button 
                       variant="ghost" 
                       className="justify-start"
@@ -167,18 +216,18 @@ const Header: React.FC = () => {
                     <Button 
                       variant="ghost" 
                       className="justify-start"
-                      onClick={() => { navigate('/settings?tab=study-plan'); setMobileMenuOpen(false); }}
+                      onClick={() => { navigate('/settings'); setMobileMenuOpen(false); }}
                     >
-                      <Calendar className="w-4 h-4 mr-2" />
-                      Plano de Estudos
+                      <Settings className="w-4 h-4 mr-2" />
+                      Configurações
                     </Button>
                     <Button 
                       variant="ghost" 
                       className="justify-start"
-                      onClick={() => { navigate('/settings'); setMobileMenuOpen(false); }}
+                      onClick={() => { navigate('/settings?tab=security'); setMobileMenuOpen(false); }}
                     >
-                      <User className="w-4 h-4 mr-2" />
-                      Configurações
+                      <Lock className="w-4 h-4 mr-2" />
+                      Alterar Senha
                     </Button>
                     {isAdmin && (
                       <Button 
@@ -186,7 +235,7 @@ const Header: React.FC = () => {
                         className="justify-start"
                         onClick={() => { navigate('/admin'); setMobileMenuOpen(false); }}
                       >
-                        <Settings className="w-4 h-4 mr-2" />
+                        <Shield className="w-4 h-4 mr-2" />
                         Painel Admin
                       </Button>
                     )}
