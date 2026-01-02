@@ -10,7 +10,6 @@ import AdminLayout from "@/components/layout/AdminLayout";
 
 // Pages
 import { Navigate } from "react-router-dom";
-import Index from "./pages/Index";
 import Login from "./pages/Login";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
@@ -49,7 +48,7 @@ const App = () => (
             <Sonner />
             <Routes>
               {/* Public Routes */}
-              <Route path="/" element={<Index />} />
+              <Route path="/" element={<Navigate to="/login" replace />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Navigate to="/login" replace />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
