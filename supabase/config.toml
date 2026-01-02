@@ -2,3 +2,6 @@ project_id = "radloafdvakhjlapgrbp"
 
 [functions.create-user]
 verify_jwt = false
+
+[functions.generate-module-banner]
+verify_jwt = true

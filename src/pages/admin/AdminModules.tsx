@@ -11,7 +11,8 @@ import {
   GripVertical,
   Eye,
   EyeOff,
-  Image
+  Image,
+  Wand2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,6 +44,7 @@ import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import MediaUploader from '@/components/admin/MediaUploader';
+import BannerGenerator from '@/components/admin/BannerGenerator';
 
 interface Module {
   id: string;
@@ -669,6 +671,16 @@ const AdminModules: React.FC = () => {
                   maxSizeMB={10}
                   label="Enviar Imagem"
                   currentUrl={editingModule.image_url || undefined}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Gerar Banner com IA</Label>
+                <BannerGenerator
+                  moduleId={editingModule.id}
+                  moduleTitle={editingModule.title}
+                  moduleDescription={editingModule.description}
+                  currentImageUrl={editingModule.image_url}
+                  onBannerGenerated={(url) => setEditingModule({ ...editingModule, image_url: url })}
                 />
               </div>
               <div className="flex items-center gap-2">
