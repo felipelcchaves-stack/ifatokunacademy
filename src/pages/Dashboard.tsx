@@ -1,9 +1,10 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, Clock, Award, TrendingUp, Loader2, Brain, Zap, Sparkles, Lock } from 'lucide-react';
+import { BookOpen, Clock, Award, TrendingUp, Loader2, Brain, Zap, Sparkles } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import ModuleSlider from '@/components/modules/ModuleSlider';
+import { ThematicProgressInfo } from '@/components/modules/ThematicProgressInfo';
 import ContentProtection from '@/components/ContentProtection';
 import StreakDisplay from '@/components/streak/StreakDisplay';
 import { AchievementsDisplay } from '@/components/achievements/AchievementsDisplay';
@@ -39,9 +40,9 @@ const Dashboard: React.FC = () => {
   const displayName = profile?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || 'Estudante';
 
   // Use new sequential progress logic
-  const { calculateLockedModules } = useSequentialProgress();
+  const { calculateLockedModules, areThematicsUnlocked, getThematicUnlockProgress, getActiveThematicModule } = useSequentialProgress();
   
-  const getLockedModules = () => {
+  const getLockedModulesAndThematicInfo = () => {
     // Convert completions to the format expected by the hook
     const formattedCompletions = completions.map(c => ({
       moduleId: c.module_id,
@@ -51,15 +52,29 @@ const Dashboard: React.FC = () => {
     // Convert modules to the format expected by the hook
     const formattedModules = modules.map(m => ({
       id: m.id,
+      title: m.title,
       type: m.type,
       level: m.level,
       display_order: m.display_order,
     }));
     
-    return calculateLockedModules(formattedModules, formattedCompletions);
+    const lockResult = calculateLockedModules(formattedModules, formattedCompletions, userProgress);
+    const thematicsUnlocked = areThematicsUnlocked(formattedModules, formattedCompletions);
+    const thematicProgress = getThematicUnlockProgress(formattedModules, formattedCompletions);
+    
+    // Get active thematic module
+    const thematicModulesForCheck = formattedModules.filter(m => m.type === 'thematic');
+    const activeThematic = getActiveThematicModule(thematicModulesForCheck, formattedCompletions, userProgress);
+    
+    return {
+      ...lockResult,
+      thematicsUnlocked,
+      thematicProgress,
+      activeThematicTitle: activeThematic?.title,
+    };
   };
 
-  const { lockedModules, unlockRequirements } = getLockedModules();
+  const { lockedModules, unlockRequirements, thematicsUnlocked, thematicProgress, activeThematicTitle } = getLockedModulesAndThematicInfo();
 
   // Filtrar módulos por permissão (admin vê todos)
   const accessibleModules = modules.filter(m => hasAccess(m.id));
@@ -220,10 +235,17 @@ const Dashboard: React.FC = () => {
             </div>
           </section>
 
-          {/* Thematic Modules (if any) */}
+          {/* Thematic Modules Section */}
           {thematicModules.length > 0 && (
             <section className="py-16 bg-muted/20">
-              <div className="container mx-auto px-4">
+              <div className="container mx-auto px-4 space-y-6">
+                {/* Thematic Progress Info */}
+                <ThematicProgressInfo
+                  isUnlocked={thematicsUnlocked}
+                  awoProgress={thematicProgress}
+                  activeThematicTitle={activeThematicTitle}
+                />
+                
                 <ModuleSlider 
                   modules={thematicModules.map(m => ({
                     id: m.id,
@@ -240,6 +262,8 @@ const Dashboard: React.FC = () => {
                   }))}
                   title="Módulos Temáticos"
                   subtitle="Aprofunde-se em áreas específicas do conhecimento"
+                  lockedModules={lockedModules}
+                  unlockRequirements={unlockRequirements}
                 />
               </div>
             </section>
