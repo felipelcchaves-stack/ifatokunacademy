@@ -119,9 +119,10 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
   const [masteredItems, setMasteredItems] = useState<Set<number>>(new Set());
   const [mode, setMode] = useState<'learn' | 'review'>('learn');
   
-  // Study mode state
+  // Study mode state - Auto-select progressive mode for medium+ texts
   const [studyMode, setStudyMode] = useState<StudyMode>('classic');
   const [showModeSelector, setShowModeSelector] = useState(true);
+  const [modeManuallySelected, setModeManuallySelected] = useState(false);
   
   // Progressive mode state (3 níveis: resumo, intermediário, completo)
   const [progressiveLevel, setProgressiveLevel] = useState<1 | 2 | 3>(1);
@@ -233,6 +234,18 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
     const wordCount = countWords(currentItem.text);
     return wordCount >= PROGRESSIVE_THRESHOLD;
   }, [currentItem]);
+
+  // Auto-select progressive mode for medium+ texts (if not manually selected)
+  useEffect(() => {
+    if (!currentItem || modeManuallySelected) return;
+    
+    const wordCount = countWords(currentItem.text);
+    if (wordCount >= PROGRESSIVE_THRESHOLD) {
+      // Auto-select progressive mode and hide selector for seamless experience
+      setStudyMode('progressive');
+      setShowModeSelector(false);
+    }
+  }, [currentItem, modeManuallySelected]);
 
   // Initialize study mode data when item changes
   useEffect(() => {
@@ -556,6 +569,7 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
   const handleModeSelect = (newMode: StudyMode) => {
     setStudyMode(newMode);
     setShowModeSelector(false);
+    setModeManuallySelected(true); // Mark as manually selected
     resetItemState();
   };
 
@@ -646,8 +660,8 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
     );
   }
 
-  // Mode Selector Screen
-  if (showModeSelector && isLongText) {
+  // Mode Selector Screen - show for long texts OR when progressive mode is available
+  if (showModeSelector && (isLongText || canUseProgressiveMode)) {
     return (
       <div className="bg-card rounded-xl border border-border shadow-soft overflow-hidden">
         <div className="p-6 border-b border-border bg-muted/30">
@@ -1018,12 +1032,13 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
                 {currentDifficultyInfo.label} • {currentDifficultyInfo.wordCount} palavras
               </span>
             )}
-            {isLongText && (
+            {(isLongText || canUseProgressiveMode) && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowModeSelector(true)}
                 className="h-7 px-2"
+                title="Configurar modo de estudo"
               >
                 <Settings2 className="w-4 h-4" />
               </Button>
