@@ -36,7 +36,6 @@ const HeroModuleSlider: React.FC<HeroModuleSliderProps> = ({
 }) => {
   const navigate = useNavigate();
   const sliderRef = useRef<HTMLDivElement>(null);
-  const [currentIndex, setCurrentIndex] = useState(activeModuleIndex);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
 
@@ -48,34 +47,23 @@ const HeroModuleSlider: React.FC<HeroModuleSliderProps> = ({
     }
   };
 
-  const scrollToIndex = (index: number) => {
+  const scroll = (direction: 'left' | 'right') => {
     if (sliderRef.current) {
-      const cardWidth = 400;
-      const gap = 24;
-      const containerWidth = sliderRef.current.clientWidth;
-      const scrollPosition = (cardWidth + gap) * index - (containerWidth - cardWidth) / 2;
+      const scrollAmount = 340; // cardWidth + gap
+      const newScrollPosition = direction === 'left' 
+        ? sliderRef.current.scrollLeft - scrollAmount
+        : sliderRef.current.scrollLeft + scrollAmount;
       
       sliderRef.current.scrollTo({
-        left: Math.max(0, scrollPosition),
+        left: newScrollPosition,
         behavior: 'smooth',
       });
-      setCurrentIndex(index);
     }
   };
 
-  const scroll = (direction: 'left' | 'right') => {
-    const newIndex = direction === 'left' 
-      ? Math.max(0, currentIndex - 1)
-      : Math.min(modules.length - 1, currentIndex + 1);
-    scrollToIndex(newIndex);
-  };
-
   useEffect(() => {
-    const timer = setTimeout(() => {
-      scrollToIndex(activeModuleIndex);
-    }, 100);
-    return () => clearTimeout(timer);
-  }, [activeModuleIndex]);
+    checkScroll();
+  }, [modules]);
 
   useEffect(() => {
     checkScroll();
@@ -113,9 +101,9 @@ const HeroModuleSlider: React.FC<HeroModuleSliderProps> = ({
         size="icon"
         onClick={() => scroll('left')}
         disabled={!canScrollLeft}
-        className="absolute left-0 top-1/2 -translate-y-1/2 z-10 rounded-full w-12 h-12 bg-background/90 backdrop-blur-sm border-forest-300 hover:border-forest-500 hover:bg-forest-50 shadow-lg transition-all duration-300 disabled:opacity-30"
+        className="absolute left-2 top-1/2 -translate-y-1/2 z-10 rounded-full w-10 h-10 bg-background/80 backdrop-blur-sm border-border hover:border-primary hover:bg-primary/10 shadow-md transition-all duration-300 disabled:opacity-0"
       >
-        <ChevronLeft className="w-6 h-6 text-forest-700" />
+        <ChevronLeft className="w-5 h-5" />
       </Button>
 
       <Button
@@ -123,9 +111,9 @@ const HeroModuleSlider: React.FC<HeroModuleSliderProps> = ({
         size="icon"
         onClick={() => scroll('right')}
         disabled={!canScrollRight}
-        className="absolute right-0 top-1/2 -translate-y-1/2 z-10 rounded-full w-12 h-12 bg-background/90 backdrop-blur-sm border-forest-300 hover:border-forest-500 hover:bg-forest-50 shadow-lg transition-all duration-300 disabled:opacity-30"
+        className="absolute right-2 top-1/2 -translate-y-1/2 z-10 rounded-full w-10 h-10 bg-background/80 backdrop-blur-sm border-border hover:border-primary hover:bg-primary/10 shadow-md transition-all duration-300 disabled:opacity-0"
       >
-        <ChevronRight className="w-6 h-6 text-forest-700" />
+        <ChevronRight className="w-5 h-5" />
       </Button>
 
       {/* Slider Container */}
@@ -136,45 +124,27 @@ const HeroModuleSlider: React.FC<HeroModuleSliderProps> = ({
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         {modules.map((module, index) => {
-          const isActive = index === currentIndex;
           const isLocked = lockedModules.has(module.id);
           
           return (
             <div 
               key={module.id}
-              className={cn(
-                "flex-shrink-0 snap-center transition-all duration-500",
-                isActive 
-                  ? 'scale-100 opacity-100' 
-                  : 'scale-95 opacity-70 hover:opacity-90'
-              )}
-              style={{ width: '380px' }}
-              onClick={() => scrollToIndex(index)}
+              className="flex-shrink-0 snap-center transition-all duration-300"
+              style={{ width: '320px' }}
             >
-              <div className={cn(
-                "relative",
-                isActive && "ring-2 ring-sacred-400 ring-offset-4 ring-offset-background rounded-2xl"
-              )}>
-                {isActive && (
-                  <div className="absolute -inset-1 bg-gradient-to-r from-forest-400 to-sacred-500 rounded-2xl blur opacity-30 animate-pulse-forest" />
+              {/* Module Card */}
+              <div 
+                className={cn(
+                  "group bg-card rounded-2xl overflow-hidden shadow-lg transition-all duration-300 h-full border",
+                  module.image_url 
+                    ? "border-sacred-300/40 hover:border-sacred-400/60" 
+                    : "border-border hover:border-primary/30",
+                  isLocked 
+                    ? "opacity-75 cursor-not-allowed" 
+                    : "hover:shadow-xl hover:-translate-y-1 cursor-pointer"
                 )}
-                <div className="relative">
-                  {/* Hero Module Card */}
-                  <div 
-                    className={cn(
-                      "group bg-card rounded-2xl overflow-hidden shadow-elevated transition-all duration-300 h-full",
-                      module.image_url 
-                        ? "border border-sacred-300/40 hover:border-sacred-400/60 hover:shadow-sacred" 
-                        : "border border-border hover:border-primary/30",
-                      isLocked 
-                        ? "opacity-70 cursor-not-allowed" 
-                        : "hover:shadow-xl cursor-pointer"
-                    )}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleModuleClick(module.id, isLocked);
-                    }}
-                  >
+                onClick={() => handleModuleClick(module.id, isLocked)}
+              >
                     {/* Image/Gradient Header - Expanded */}
                     <div className={cn(
                       "aspect-[16/9] relative overflow-hidden bg-gradient-to-br",
@@ -258,35 +228,33 @@ const HeroModuleSlider: React.FC<HeroModuleSliderProps> = ({
                         </div>
                       )}
 
-                      <Button 
-                        className={cn(
-                          "w-full font-semibold h-12 text-base transition-all duration-300",
-                          isLocked 
-                            ? "bg-muted text-muted-foreground cursor-not-allowed" 
-                            : "bg-gradient-to-r from-forest-600 to-forest-700 hover:from-forest-700 hover:to-forest-800 text-white shadow-lg hover:shadow-xl"
-                        )}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleModuleClick(module.id, isLocked);
-                        }}
-                        disabled={isLocked}
-                      >
-                        {isLocked ? (
-                          <>
-                            <Lock className="w-4 h-4 mr-2" />
-                            Bloqueado
-                          </>
-                        ) : module.progress > 0 ? (
-                          <>
-                            <Play className="w-4 h-4 mr-2" />
-                            Continuar
-                          </>
-                        ) : (
-                          'Começar'
-                        )}
-                      </Button>
-                    </div>
-                  </div>
+                  <Button 
+                    className={cn(
+                      "w-full font-semibold h-11 transition-all duration-300",
+                      isLocked 
+                        ? "bg-muted text-muted-foreground cursor-not-allowed" 
+                        : "bg-gradient-to-r from-forest-600 to-forest-700 hover:from-forest-700 hover:to-forest-800 text-white"
+                    )}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleModuleClick(module.id, isLocked);
+                    }}
+                    disabled={isLocked}
+                  >
+                    {isLocked ? (
+                      <>
+                        <Lock className="w-4 h-4 mr-2" />
+                        Bloqueado
+                      </>
+                    ) : module.progress > 0 ? (
+                      <>
+                        <Play className="w-4 h-4 mr-2" />
+                        Continuar
+                      </>
+                    ) : (
+                      'Começar'
+                    )}
+                  </Button>
                 </div>
               </div>
             </div>
@@ -294,22 +262,17 @@ const HeroModuleSlider: React.FC<HeroModuleSliderProps> = ({
         })}
       </div>
 
-      {/* Dot Indicators */}
-      <div className="flex justify-center gap-2 mt-4">
-        {modules.map((_, index) => (
-          <button
-            key={index}
-            onClick={() => scrollToIndex(index)}
-            className={cn(
-              "h-2.5 rounded-full transition-all duration-300",
-              index === currentIndex 
-                ? 'bg-sacred-500 w-8' 
-                : 'bg-forest-300 hover:bg-forest-400 w-2.5'
-            )}
-            aria-label={`Ir para módulo ${index + 1}`}
-          />
-        ))}
-      </div>
+      {/* Dot Indicators - Only show if more than 3 modules */}
+      {modules.length > 3 && (
+        <div className="flex justify-center gap-1.5 mt-4">
+          {modules.map((_, index) => (
+            <div
+              key={index}
+              className="h-2 w-2 rounded-full bg-muted-foreground/30"
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 };
