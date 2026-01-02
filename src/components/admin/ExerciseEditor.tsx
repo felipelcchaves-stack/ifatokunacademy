@@ -1,5 +1,5 @@
 import React, { useState, forwardRef } from 'react';
-import { ArrowLeft, Save, Eye, EyeOff, Mic, Plus, Trash2, GripVertical } from 'lucide-react';
+import { ArrowLeft, Save, Eye, EyeOff, Mic, Plus, Trash2, GripVertical, Sparkles, Volume2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import MediaUploader from './MediaUploader';
+import { generateSummary, generateIntermediateText, countWords } from '@/lib/textChunking';
 
 interface Exercise {
   id: string;
@@ -493,7 +494,7 @@ const ExerciseEditor = forwardRef<HTMLDivElement, ExerciseEditorProps>(({ exerci
     const items = editedExercise.content.items || [];
 
     const addItem = () => {
-      updateContent('items', [...items, { text: '', hint: '' }]);
+      updateContent('items', [...items, { text: '', hint: '', summary: '', intermediate: '' }]);
     };
 
     const updateItem = (index: number, field: string, value: string) => {
@@ -504,6 +505,29 @@ const ExerciseEditor = forwardRef<HTMLDivElement, ExerciseEditorProps>(({ exerci
 
     const removeItem = (index: number) => {
       updateContent('items', items.filter((_: any, i: number) => i !== index));
+    };
+
+    const handleAutoGenerate = (index: number) => {
+      const item = items[index];
+      if (!item.text) {
+        toast({
+          title: 'Texto necessário',
+          description: 'Adicione o texto completo primeiro.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      const newItems = [...items];
+      newItems[index] = {
+        ...newItems[index],
+        summary: generateSummary(item.text),
+        intermediate: generateIntermediateText(item.text),
+      };
+      updateContent('items', newItems);
+      toast({
+        title: 'Gerado com sucesso!',
+        description: 'Resumo e versão intermediária foram gerados automaticamente.',
+      });
     };
 
     return (
@@ -517,35 +541,78 @@ const ExerciseEditor = forwardRef<HTMLDivElement, ExerciseEditorProps>(({ exerci
         </div>
 
         <div className="space-y-4">
-          {items.map((item: { text: string; hint: string }, index: number) => (
+          {items.map((item: { text: string; hint: string; summary?: string; intermediate?: string }, index: number) => (
             <div 
               key={index} 
               className="bg-muted/50 rounded-xl p-4 space-y-4"
             >
               <div className="flex items-center justify-between">
                 <span className="font-medium text-sm">Item {index + 1}</span>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-8 w-8 text-destructive"
-                  onClick={() => removeItem(index)}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => handleAutoGenerate(index)}
+                    disabled={!item.text}
+                  >
+                    <Sparkles className="w-4 h-4 mr-1" />
+                    Auto Gerar
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-8 w-8 text-destructive"
+                    onClick={() => removeItem(index)}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
               
+              {/* Nível 1 - Resumo */}
               <div className="space-y-2">
-                <Label>Texto para Memorizar</Label>
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs text-muted-foreground">Nível 1 - Resumo (5-10 palavras)</Label>
+                  <span className="text-xs text-muted-foreground">{countWords(item.summary || '')} palavras</span>
+                </div>
                 <Textarea
-                  placeholder="Digite o texto ou conceito..."
+                  placeholder="Resumo curto do texto..."
+                  value={item.summary || ''}
+                  onChange={(e) => updateItem(index, 'summary', e.target.value)}
+                  className="min-h-[60px] text-sm"
+                />
+              </div>
+
+              {/* Nível 2 - Intermediário */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs text-muted-foreground">Nível 2 - Intermediário (20-40 palavras)</Label>
+                  <span className="text-xs text-muted-foreground">{countWords(item.intermediate || '')} palavras</span>
+                </div>
+                <Textarea
+                  placeholder="Versão intermediária do texto..."
+                  value={item.intermediate || ''}
+                  onChange={(e) => updateItem(index, 'intermediate', e.target.value)}
+                  className="min-h-[80px] text-sm"
+                />
+              </div>
+
+              {/* Nível 3 - Texto Completo */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>Nível 3 - Texto Completo</Label>
+                  <span className="text-xs text-muted-foreground">{countWords(item.text)} palavras</span>
+                </div>
+                <Textarea
+                  placeholder="Digite o texto ou conceito completo..."
                   value={item.text}
                   onChange={(e) => updateItem(index, 'text', e.target.value)}
-                  className="min-h-[80px]"
+                  className="min-h-[100px]"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label>Dica (opcional)</Label>
+                <Label className="text-xs text-muted-foreground">Dica (opcional)</Label>
                 <Input
                   placeholder="Uma dica para ajudar na memorização"
                   value={item.hint}

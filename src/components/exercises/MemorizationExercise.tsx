@@ -32,6 +32,9 @@ import {
   calculateTextDifficulty,
   generateChainSequence,
   combineChunks,
+  generateSummary,
+  generateIntermediateText,
+  countWords,
   TextChunk,
   ScaffoldLevel
 } from '@/lib/textChunking';
@@ -43,6 +46,7 @@ import VisualBuilder from './VisualBuilder';
 import MicrolearningMode from './MicrolearningMode';
 import ListenRepeatMode from './ListenRepeatMode';
 import AccessibilitySettings from './AccessibilitySettings';
+import { ProgressiveLevelIndicator, AudioSourceSelector, AudioSource } from './ProgressiveLevelSelector';
 import { useSpacedRepetition } from '@/hooks/useSpacedRepetition';
 import { useAccessibilityPreferences } from '@/hooks/useAccessibilityPreferences';
 import { useToast } from '@/hooks/use-toast';
@@ -53,6 +57,11 @@ interface MemorizationItem {
   text: string;
   hint?: string;
   imageUrl?: string;
+  // Novos campos para memorização progressiva
+  summary?: string;       // Nível 1: Resumo (5-10 palavras)
+  intermediate?: string;  // Nível 2: Intermediário (20-40 palavras)
+  // Múltiplos áudios
+  audioUrls?: AudioSource[];
 }
 
 interface MemorizationExerciseProps {
@@ -63,10 +72,11 @@ interface MemorizationExerciseProps {
   onComplete?: () => void;
 }
 
-type StudyMode = 'classic' | 'scaffold' | 'chunk' | 'chain' | 'microlearning' | 'tap' | 'karaoke' | 'visual' | 'listen';
+type StudyMode = 'classic' | 'scaffold' | 'chunk' | 'chain' | 'microlearning' | 'tap' | 'karaoke' | 'visual' | 'listen' | 'progressive';
 
 const LONG_TEXT_THRESHOLD = 30; // palavras
 const START_WORD_COUNT = 4;
+const PROGRESSIVE_THRESHOLD = 15; // mínimo de palavras para ativar modo progressivo
 
 // Helper to categorize text difficulty by word count
 const categorizeDifficulty = (wordCount: number): {
@@ -112,6 +122,14 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
   // Study mode state
   const [studyMode, setStudyMode] = useState<StudyMode>('classic');
   const [showModeSelector, setShowModeSelector] = useState(true);
+  
+  // Progressive mode state (3 níveis: resumo, intermediário, completo)
+  const [progressiveLevel, setProgressiveLevel] = useState<1 | 2 | 3>(1);
+  const [levelsMastered, setLevelsMastered] = useState<Record<1 | 2 | 3, boolean>>({ 1: false, 2: false, 3: false });
+  const [hasSeenFullText, setHasSeenFullText] = useState(false);
+  
+  // Audio source state
+  const [selectedAudioId, setSelectedAudioId] = useState<string | null>(null);
   
   // Scaffold mode state
   const [scaffoldLevel, setScaffoldLevel] = useState(0);
@@ -187,6 +205,35 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
 
   const isLongText = textDifficulty && textDifficulty.wordCount >= LONG_TEXT_THRESHOLD;
 
+  // Progressive mode: get text for each level
+  const getProgressiveText = useCallback((item: MemorizationItem, level: 1 | 2 | 3): string => {
+    switch (level) {
+      case 1:
+        return item.summary || generateSummary(item.text);
+      case 2:
+        return item.intermediate || generateIntermediateText(item.text);
+      case 3:
+        return item.text;
+    }
+  }, []);
+
+  // Progressive mode: word counts for each level
+  const progressiveWordCounts = useMemo(() => {
+    if (!currentItem) return { level1: 0, level2: 0, level3: 0 };
+    return {
+      level1: countWords(getProgressiveText(currentItem, 1)),
+      level2: countWords(getProgressiveText(currentItem, 2)),
+      level3: countWords(getProgressiveText(currentItem, 3)),
+    };
+  }, [currentItem, getProgressiveText]);
+
+  // Check if progressive mode should be available
+  const canUseProgressiveMode = useMemo(() => {
+    if (!currentItem) return false;
+    const wordCount = countWords(currentItem.text);
+    return wordCount >= PROGRESSIVE_THRESHOLD;
+  }, [currentItem]);
+
   // Initialize study mode data when item changes
   useEffect(() => {
     if (!currentItem) return;
@@ -206,6 +253,10 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
         setChainSequence(generateChainSequence(newChunks));
         setChainStep(0);
       }
+    } else if (studyMode === 'progressive') {
+      setProgressiveLevel(1);
+      setLevelsMastered({ 1: false, 2: false, 3: false });
+      setHasSeenFullText(false);
     }
   }, [currentItem, studyMode]);
 
@@ -214,6 +265,8 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
     if (!currentItem) return '';
 
     switch (studyMode) {
+      case 'progressive':
+        return getProgressiveText(currentItem, progressiveLevel);
       case 'scaffold':
         return scaffoldLevels[scaffoldLevel]?.hiddenText || '';
       case 'chunk':
@@ -227,13 +280,19 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
       default:
         return getTextRemainder(currentItem.text, START_WORD_COUNT);
     }
-  }, [currentItem, studyMode, scaffoldLevel, scaffoldLevels, chunks, currentChunkIndex, chainSequence, chainStep]);
+  }, [currentItem, studyMode, progressiveLevel, getProgressiveText, scaffoldLevel, scaffoldLevels, chunks, currentChunkIndex, chainSequence, chainStep]);
 
   // Get visible text/prompt based on mode
   const getVisibleText = useCallback(() => {
     if (!currentItem) return '';
 
     switch (studyMode) {
+      case 'progressive':
+        // No modo progressivo, mostra o nível anterior como contexto
+        if (progressiveLevel === 1) return '';
+        if (progressiveLevel === 2) return '✓ ' + getProgressiveText(currentItem, 1);
+        if (progressiveLevel === 3) return '✓ ' + getProgressiveText(currentItem, 2);
+        return '';
       case 'scaffold':
         return scaffoldLevels[scaffoldLevel]?.visibleText || '';
       case 'chunk':
@@ -251,14 +310,17 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
       default:
         return getTextStart(currentItem.text, START_WORD_COUNT);
     }
-  }, [currentItem, studyMode, scaffoldLevel, scaffoldLevels, chunks, currentChunkIndex, chainSequence, chainStep]);
+  }, [currentItem, studyMode, progressiveLevel, getProgressiveText, scaffoldLevel, scaffoldLevels, chunks, currentChunkIndex, chainSequence, chainStep]);
 
   // Get similarity threshold based on mode and level
   const getSimilarityThreshold = useCallback(() => {
     const basePenalty = hintPenalty;
     let baseThreshold = 80;
 
-    if (studyMode === 'scaffold') {
+    if (studyMode === 'progressive') {
+      // Thresholds mais baixos para níveis iniciais
+      baseThreshold = progressiveLevel === 1 ? 70 : progressiveLevel === 2 ? 75 : 80;
+    } else if (studyMode === 'scaffold') {
       // Lower threshold for early scaffold levels
       baseThreshold = 60 + (scaffoldLevel * 5);
     } else if (studyMode === 'chunk') {
@@ -266,7 +328,7 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
     }
 
     return Math.max(50, baseThreshold - basePenalty);
-  }, [studyMode, scaffoldLevel, hintPenalty]);
+  }, [studyMode, progressiveLevel, scaffoldLevel, hintPenalty]);
 
   const expectedText = getExpectedText();
   const visibleText = getVisibleText();
@@ -290,6 +352,11 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
     setMasteredChunks(new Set());
     setChainStep(0);
     setAudioUrl(null);
+    // Progressive mode reset
+    setProgressiveLevel(1);
+    setLevelsMastered({ 1: false, 2: false, 3: false });
+    setHasSeenFullText(false);
+    setSelectedAudioId(null);
   }, []);
 
   const handleNext = useCallback(() => {
@@ -372,7 +439,24 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
     
     if (isCorrect) {
       // Handle progression based on mode
-      if (studyMode === 'scaffold') {
+      if (studyMode === 'progressive') {
+        // Mark current level as mastered
+        setLevelsMastered(prev => ({ ...prev, [progressiveLevel]: true }));
+        
+        if (progressiveLevel < 3) {
+          // Move to next progressive level
+          setTimeout(() => {
+            setProgressiveLevel(prev => (prev + 1) as 1 | 2 | 3);
+            setUserInput('');
+            setValidationResult(null);
+          }, 1500);
+        } else {
+          // Completed all 3 levels
+          setMasteredItems(prev => new Set([...prev, currentIndex]));
+          setShowContent(true);
+          await addToSpacedRepetition(currentIndex, currentItem.text, true);
+        }
+      } else if (studyMode === 'scaffold') {
         if (scaffoldLevel < scaffoldLevels.length - 1) {
           // Move to next scaffold level
           setTimeout(() => {
@@ -582,12 +666,35 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
           </h3>
 
           <div className="grid gap-3">
+            {/* Progressive Mode - NEW recommended */}
+            {canUseProgressiveMode && (
+              <button
+                onClick={() => handleModeSelect('progressive')}
+                className="flex items-start gap-4 p-4 rounded-lg border-2 border-primary bg-primary/10 ring-2 ring-primary/20 text-left transition-all hover:border-primary/50"
+              >
+                <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                  <TrendingUp className="w-5 h-5 text-amber-600" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold">Modo Progressivo</span>
+                    <span className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded-full">
+                      ⭐ Recomendado
+                    </span>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Comece pelo resumo (5-10 palavras), depois versão intermediária, e por fim o texto completo. Construção gradual da memória.
+                  </p>
+                </div>
+              </button>
+            )}
+
             {/* Scaffold Mode */}
             <button
               onClick={() => handleModeSelect('scaffold')}
               className={cn(
                 "flex items-start gap-4 p-4 rounded-lg border-2 text-left transition-all hover:border-primary/50 hover:bg-primary/5",
-                textDifficulty?.recommendedMode === 'scaffold' 
+                !canUseProgressiveMode && textDifficulty?.recommendedMode === 'scaffold' 
                   ? "border-primary bg-primary/10 ring-2 ring-primary/20" 
                   : "border-border"
               )}
@@ -598,7 +705,7 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
               <div>
                 <div className="flex items-center gap-2">
                   <span className="font-semibold">Modo Escada</span>
-                  {textDifficulty?.recommendedMode === 'scaffold' && (
+                  {!canUseProgressiveMode && textDifficulty?.recommendedMode === 'scaffold' && (
                     <span className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded-full">
                       Recomendado
                     </span>
