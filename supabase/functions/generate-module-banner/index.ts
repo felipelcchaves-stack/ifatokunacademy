@@ -7,11 +7,68 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  console.log("generate-module-banner: Request received");
+  
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    // Manual authentication - get Authorization header
+    const authHeader = req.headers.get("authorization");
+    console.log("generate-module-banner: Auth header present:", !!authHeader);
+    
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      console.log("generate-module-banner: Missing or invalid auth header");
+      return new Response(
+        JSON.stringify({ error: "Sessão inválida. Faça login novamente." }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+    
+    // Validate user with anon client
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabaseAnon = createClient(supabaseUrl, supabaseAnonKey);
+    
+    const { data: { user }, error: userError } = await supabaseAnon.auth.getUser(token);
+    
+    if (userError || !user) {
+      console.log("generate-module-banner: User validation failed:", userError?.message);
+      return new Response(
+        JSON.stringify({ error: "Sessão expirada. Faça login novamente." }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    console.log("generate-module-banner: User validated:", user.id);
+
+    // Check if user is admin using service role client
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    
+    const { data: isAdmin, error: adminError } = await supabase.rpc("is_admin", { user_id: user.id });
+    
+    if (adminError) {
+      console.log("generate-module-banner: Admin check failed:", adminError.message);
+      return new Response(
+        JSON.stringify({ error: "Erro ao verificar permissões." }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    if (!isAdmin) {
+      console.log("generate-module-banner: User is not admin");
+      return new Response(
+        JSON.stringify({ error: "Apenas administradores podem gerar banners." }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    console.log("generate-module-banner: User is admin, proceeding");
+
     const { moduleId, title, description } = await req.json();
     
     if (!moduleId || !title) {
@@ -25,6 +82,8 @@ serve(async (req) => {
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
+
+    console.log("generate-module-banner: Generating banner for module:", moduleId);
 
     // Build contextual prompt based on module info
     const moduleDescription = description || title;
@@ -42,7 +101,7 @@ Style requirements:
 - No text or letters in the image
 - Ultra high resolution`;
 
-    console.log("Generating banner for module:", moduleId, "with prompt:", prompt);
+    console.log("generate-module-banner: Calling AI Gateway");
 
     // Call Lovable AI Gateway for image generation
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -84,7 +143,7 @@ Style requirements:
     }
 
     const aiData = await response.json();
-    console.log("AI response received");
+    console.log("generate-module-banner: AI response received");
 
     // Extract image from response
     const imageData = aiData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
@@ -94,17 +153,14 @@ Style requirements:
       throw new Error("No image generated from AI");
     }
 
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
     // Convert base64 to blob
     const base64Data = imageData.replace(/^data:image\/\w+;base64,/, "");
     const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
     
     // Generate unique filename
     const filename = `module-banner-${moduleId}-${Date.now()}.png`;
+    
+    console.log("generate-module-banner: Uploading to storage");
     
     // Upload to storage
     const { data: uploadData, error: uploadError } = await supabase.storage
@@ -125,7 +181,7 @@ Style requirements:
       .getPublicUrl(`banners/${filename}`);
 
     const publicUrl = urlData.publicUrl;
-    console.log("Image uploaded to:", publicUrl);
+    console.log("generate-module-banner: Image uploaded to:", publicUrl);
 
     // Update module with new image URL
     const { error: updateError } = await supabase
@@ -138,7 +194,7 @@ Style requirements:
       throw new Error(`Failed to update module: ${updateError.message}`);
     }
 
-    console.log("Module updated successfully with banner URL");
+    console.log("generate-module-banner: Module updated successfully");
 
     return new Response(
       JSON.stringify({ 
