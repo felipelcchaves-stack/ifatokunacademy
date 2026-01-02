@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, BookOpen, Clock, CheckCircle, Lock, Play, Loader2 } from 'lucide-react';
+import { ArrowLeft, BookOpen, Clock, CheckCircle, Lock, Play, Loader2, Trophy } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import ContentProtection from '@/components/ContentProtection';
@@ -269,6 +269,45 @@ const ModuleView: React.FC = () => {
                   <p className="text-muted-foreground">
                     As lições deste módulo estão sendo preparadas. Em breve estarão disponíveis!
                   </p>
+                </div>
+              )}
+
+              {/* Quiz Final Card */}
+              {lessons.length > 0 && progress === 100 && (
+                <div 
+                  className="bg-gradient-to-r from-primary/10 to-amber-500/10 rounded-xl p-6 border border-primary/30 cursor-pointer hover:shadow-soft transition-all mt-6"
+                  onClick={() => navigate(`/module/${module.id}/quiz`)}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 rounded-full gradient-gold flex items-center justify-center shadow-gold">
+                      <Trophy className="w-7 h-7 text-secondary" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-foreground text-lg">Quiz Final</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Complete o quiz com 90% de acerto para certificação
+                      </p>
+                    </div>
+                    <Button className="gradient-gold text-secondary shadow-gold">
+                      Fazer Quiz
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {lessons.length > 0 && progress < 100 && progress > 0 && (
+                <div className="bg-muted/50 rounded-xl p-6 border border-border mt-6">
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center">
+                      <Lock className="w-6 h-6 text-muted-foreground" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-muted-foreground text-lg">Quiz Final</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Complete todas as lições para desbloquear o quiz ({progress}% concluído)
+                      </p>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
