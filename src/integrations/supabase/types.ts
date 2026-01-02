@@ -298,6 +298,69 @@ export type Database = {
         }
         Relationships: []
       }
+      spaced_repetition_items: {
+        Row: {
+          correct_reviews: number
+          created_at: string
+          ease_factor: number
+          exercise_id: string | null
+          id: string
+          interval_days: number
+          item_index: number
+          item_text: string
+          next_review_at: string
+          repetitions: number
+          total_reviews: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          correct_reviews?: number
+          created_at?: string
+          ease_factor?: number
+          exercise_id?: string | null
+          id?: string
+          interval_days?: number
+          item_index: number
+          item_text: string
+          next_review_at?: string
+          repetitions?: number
+          total_reviews?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          correct_reviews?: number
+          created_at?: string
+          ease_factor?: number
+          exercise_id?: string | null
+          id?: string
+          interval_days?: number
+          item_index?: number
+          item_text?: string
+          next_review_at?: string
+          repetitions?: number
+          total_reviews?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "spaced_repetition_items_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "spaced_repetition_items_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_progress: {
         Row: {
           attempts: number
