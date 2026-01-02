@@ -40,7 +40,13 @@ const ModuleView: React.FC = () => {
   const { getLessonProgress } = useModuleProgress();
   const [module, setModule] = useState<Module | null>(null);
   const [lessons, setLessons] = useState<Lesson[]>([]);
-  const [lessonProgressMap, setLessonProgressMap] = useState<Record<string, { progress: number; isCompleted: boolean }>>({});
+  const [lessonProgressMap, setLessonProgressMap] = useState<Record<string, { 
+    progress: number; 
+    isCompleted: boolean;
+    phase1Complete: boolean;
+    phase1Total: number;
+    phase1Completed: number;
+  }>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -56,7 +62,13 @@ const ModuleView: React.FC = () => {
   }, [user, lessons]);
 
   const fetchLessonProgress = async () => {
-    const progressMap: Record<string, { progress: number; isCompleted: boolean }> = {};
+    const progressMap: Record<string, { 
+      progress: number; 
+      isCompleted: boolean;
+      phase1Complete: boolean;
+      phase1Total: number;
+      phase1Completed: number;
+    }> = {};
     
     for (const lesson of lessons) {
       const progress = await getLessonProgress(lesson.id);
@@ -64,6 +76,9 @@ const ModuleView: React.FC = () => {
         progressMap[lesson.id] = {
           progress: progress.progress,
           isCompleted: progress.isCompleted,
+          phase1Complete: progress.phase1Complete,
+          phase1Total: progress.phase1Total,
+          phase1Completed: progress.phase1Completed,
         };
       }
     }
@@ -118,16 +133,17 @@ const ModuleView: React.FC = () => {
     }
   };
 
-  // Determine if a lesson is locked based on sequential progress
+  // Determine if a lesson is locked based on Phase 1 completion of previous lesson
   const isLessonLocked = (lessonIndex: number): boolean => {
     if (!user) return true; // Lock all if not logged in
     if (lessonIndex === 0) return false; // First lesson is always unlocked
     
-    // Check if previous lesson is completed
+    // Check if previous lesson has Phase 1 completed (not 100% of all exercises)
     const previousLesson = lessons[lessonIndex - 1];
     const previousProgress = lessonProgressMap[previousLesson.id];
     
-    return !previousProgress?.isCompleted;
+    // Unlock next lesson when Phase 1 is complete OR lesson is 100% complete
+    return !previousProgress?.phase1Complete && !previousProgress?.isCompleted;
   };
 
   // Calculate overall module progress
@@ -276,6 +292,9 @@ const ModuleView: React.FC = () => {
                       moduleId={module.id}
                       isLocked={isLessonLocked(index)}
                       progress={lessonProgress?.progress || 0}
+                      phase1Complete={lessonProgress?.phase1Complete || false}
+                      phase1Total={lessonProgress?.phase1Total || 0}
+                      phase1Completed={lessonProgress?.phase1Completed || 0}
                     />
                   );
                 })

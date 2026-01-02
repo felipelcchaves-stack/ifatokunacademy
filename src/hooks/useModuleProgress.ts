@@ -17,7 +17,21 @@ interface LessonProgress {
   completedExercises: number;
   progress: number;
   isCompleted: boolean;
+  phase1Complete: boolean;
+  phase1Total: number;
+  phase1Completed: number;
 }
+
+// Helper to determine exercise phase based on title
+const getExercisePhase = (title: string): 1 | 2 => {
+  const lowerTitle = title.toLowerCase();
+  if (lowerTitle.includes('fase 2') || 
+      lowerTitle.includes('proficiência') ||
+      lowerTitle.includes('completo')) {
+    return 2;
+  }
+  return 1;
+};
 
 interface ModuleCompletion {
   moduleId: string;
@@ -87,10 +101,10 @@ export const useModuleProgress = () => {
     if (!user) return null;
 
     try {
-      // Get total exercises for this lesson
+      // Get total exercises for this lesson with titles for phase detection
       const { data: exercises } = await supabase
         .from('exercises')
-        .select('id')
+        .select('id, title')
         .eq('lesson_id', lessonId)
         .eq('is_published', true);
 
@@ -100,6 +114,13 @@ export const useModuleProgress = () => {
         .select('exercise_id')
         .eq('user_id', user.id)
         .eq('lesson_id', lessonId);
+
+      const completedIds = new Set((completed || []).map(p => p.exercise_id));
+      
+      // Separate exercises by phase
+      const phase1Exercises = (exercises || []).filter(e => getExercisePhase(e.title) === 1);
+      const phase1CompletedCount = phase1Exercises.filter(e => completedIds.has(e.id)).length;
+      const phase1Complete = phase1Exercises.length > 0 && phase1CompletedCount === phase1Exercises.length;
 
       const totalExercises = exercises?.length || 0;
       const completedExercises = completed?.length || 0;
@@ -111,6 +132,9 @@ export const useModuleProgress = () => {
         completedExercises,
         progress,
         isCompleted: progress === 100,
+        phase1Complete,
+        phase1Total: phase1Exercises.length,
+        phase1Completed: phase1CompletedCount,
       };
     } catch (error) {
       console.error('Error getting lesson progress:', error);
