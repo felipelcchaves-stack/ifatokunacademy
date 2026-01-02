@@ -34,6 +34,7 @@ import UserSettings from "./pages/UserSettings";
 import ModuleRetentionReview from "./pages/ModuleRetentionReview";
 import MFAVerify from "./pages/MFAVerify";
 import Achievements from "./pages/Achievements";
+import TestMemorization from "./pages/TestMemorization";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -114,6 +115,11 @@ const App = () => (
               <Route path="/achievements" element={
                 <ProtectedRoute>
                   <Achievements />
+                </ProtectedRoute>
+              } />
+              <Route path="/test-memorization" element={
+                <ProtectedRoute>
+                  <TestMemorization />
                 </ProtectedRoute>
               } />
               
