@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, Clock, Award, TrendingUp, Loader2, Brain, Zap, Sparkles } from 'lucide-react';
+import { BookOpen, Clock, Award, TrendingUp, Loader2, Brain, Zap, Sparkles, FlaskConical } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import ModuleSlider from '@/components/modules/ModuleSlider';
@@ -212,6 +212,34 @@ const Dashboard: React.FC = () => {
                     >
                       <Zap className="w-4 h-4 mr-2" />
                       Iniciar Desafio
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Test Memorization Modes */}
+                <div className="group relative bg-card rounded-2xl p-6 border border-border shadow-soft hover:shadow-elevated transition-all duration-300 overflow-hidden md:col-span-2 lg:col-span-4">
+                  {/* Background glow effect */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-teal-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  
+                  <div className="relative z-10 flex flex-col md:flex-row gap-4 items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-teal-600 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                        <FlaskConical className="w-6 h-6 text-white" />
+                      </div>
+                      <div>
+                        <span className="text-xs font-semibold text-cyan-600 uppercase tracking-wide">Novo!</span>
+                        <h3 className="font-bold text-foreground">Modos de Memorização Inclusivos</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Experimente 5 novos modos: Microlearning, Toque e Complete, Karaokê Visual, Construção Visual e Escuta e Repete
+                        </p>
+                      </div>
+                    </div>
+                    <Button 
+                      className="bg-gradient-to-r from-cyan-500 to-teal-600 hover:from-cyan-600 hover:to-teal-700 text-white font-bold shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all duration-200 shrink-0"
+                      onClick={() => navigate('/test-memorization')}
+                    >
+                      <FlaskConical className="w-4 h-4 mr-2" />
+                      Testar Modos
                     </Button>
                   </div>
                 </div>
