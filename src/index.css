@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+/* Fonts loaded via index.html for performance */
 
 @tailwind base;
 @tailwind components;
@@ -101,12 +101,19 @@
   }
 
   body {
-    @apply bg-background text-foreground;
-    font-family: 'Inter', sans-serif;
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Playfair Display', serif;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    @apply tracking-tight;
+  }
+  
+  /* Display headings - extra bold and tight */
+  .heading-display {
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    @apply font-extrabold tracking-tight;
   }
 
   /* Content Protection */
