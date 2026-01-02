@@ -316,7 +316,7 @@ const LessonView: React.FC = () => {
           <MemorizationExercise 
             items={items}
             exerciseId={exercise.id}
-            onComplete={() => handleExerciseComplete()}
+            onComplete={handleExerciseComplete}
           />
         );
       case 'quiz':

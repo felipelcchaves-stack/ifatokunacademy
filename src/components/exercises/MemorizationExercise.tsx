@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -361,11 +361,17 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
   const visibleText = getVisibleText();
   const similarityThreshold = getSimilarityThreshold();
 
+  // Prevent duplicate onComplete calls
+  const hasCalledComplete = useRef(false);
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
+
   useEffect(() => {
-    if (isCompleted && mode === 'learn') {
-      onComplete?.();
+    if (isCompleted && mode === 'learn' && !hasCalledComplete.current) {
+      hasCalledComplete.current = true;
+      onCompleteRef.current?.();
     }
-  }, [isCompleted, mode, onComplete]);
+  }, [isCompleted, mode]);
 
   const resetItemState = useCallback(() => {
     setShowContent(false);
@@ -384,6 +390,8 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
     setLevelsMastered({ 1: false, 2: false, 3: false });
     setHasSeenFullText(false);
     setSelectedAudioId(null);
+    // Reset completion flag for new items
+    hasCalledComplete.current = false;
   }, []);
 
   const handleNext = useCallback(() => {
