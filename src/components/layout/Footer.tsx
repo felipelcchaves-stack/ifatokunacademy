@@ -1,16 +1,14 @@
 import React, { forwardRef } from 'react';
 import { Mail, Phone, MapPin } from 'lucide-react';
 import { usePlatformSettings } from '@/hooks/usePlatformSettings';
-
 const Footer = forwardRef<HTMLElement>((_, ref) => {
-  const { platformName } = usePlatformSettings();
-  
+  const {
+    platformName
+  } = usePlatformSettings();
   const displayPlatformName = platformName?.split(' ').slice(0, 2).join(' ') || 'Offe Orunmila';
   const displayPlatformSuffix = platformName?.split(' ').slice(2).join(' ') || 'Learning';
   const fullPlatformName = platformName || 'Offe Orunmila Learning';
-
-  return (
-    <footer ref={ref} className="bg-secondary text-secondary-foreground">
+  return <footer ref={ref} className="bg-secondary text-secondary-foreground">
       <div className="container mx-auto px-4 py-12 md:py-16">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Brand */}
@@ -33,16 +31,13 @@ const Footer = forwardRef<HTMLElement>((_, ref) => {
           <div className="space-y-4">
             <h3 className="font-serif text-lg font-semibold">Contato</h3>
             <ul className="space-y-3">
-              <li className="flex items-center gap-2 text-sm text-secondary-foreground/80">
-                <Mail className="w-4 h-4 text-primary" />
+              <li className="flex items-center gap-2 text-sm text-secondary-foreground/80">ifatokun@ileaseifatokun.com.br<Mail className="w-4 h-4 text-primary" />
                 contato@offeorunmila.com
               </li>
-              <li className="flex items-center gap-2 text-sm text-secondary-foreground/80">
-                <Phone className="w-4 h-4 text-primary" />
+              <li className="flex items-center gap-2 text-sm text-secondary-foreground/80">+55 (21) 98796-7334<Phone className="w-4 h-4 text-primary" />
                 +55 (11) 99999-9999
               </li>
-              <li className="flex items-start gap-2 text-sm text-secondary-foreground/80">
-                <MapPin className="w-4 h-4 text-primary mt-0.5" />
+              <li className="flex items-start gap-2 text-sm text-secondary-foreground/80"><MapPin className="w-4 h-4 text-primary mt-0.5" />
                 São Paulo, Brasil
               </li>
             </ul>
@@ -60,10 +55,7 @@ const Footer = forwardRef<HTMLElement>((_, ref) => {
           </div>
         </div>
       </div>
-    </footer>
-  );
+    </footer>;
 });
-
 Footer.displayName = 'Footer';
-
 export default Footer;
