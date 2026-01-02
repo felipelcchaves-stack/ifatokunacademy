@@ -300,7 +300,8 @@ export const useStudyPlan = () => {
       const estimatedCompletionDate = completionDate.toISOString().split('T')[0];
 
       // Chamar edge function para insights da IA com dados mais detalhados
-      let aiInsights = '';
+      let aiInsights = `Com ${hoursPerWeek.toFixed(1)} horas de estudo efetivo por semana, você completará o conteúdo em aproximadamente ${weeksToComplete} semanas. O tempo inclui ${firstExposureHours.toFixed(0)}h de primeira exposição e ${reviewHours.toFixed(0)}h de revisões para memorização.`;
+      
       try {
         const { data: aiData, error: aiError } = await supabase.functions.invoke('calculate-study-plan', {
           body: {
@@ -323,10 +324,11 @@ export const useStudyPlan = () => {
 
         if (!aiError && aiData?.insights) {
           aiInsights = aiData.insights;
+        } else if (aiError) {
+          console.warn('AI insights unavailable:', aiError);
         }
       } catch (e) {
-        console.error('Error getting AI insights:', e);
-        aiInsights = `Com ${hoursPerWeek.toFixed(1)} horas de estudo efetivo por semana, você completará o conteúdo em aproximadamente ${weeksToComplete} semanas. O tempo inclui ${firstExposureHours.toFixed(0)}h de primeira exposição e ${reviewHours.toFixed(0)}h de revisões para memorização.`;
+        console.warn('Error getting AI insights, using fallback:', e);
       }
 
       const calc: StudyPlanCalculation = {
