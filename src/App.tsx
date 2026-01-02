@@ -22,6 +22,7 @@ import AdminModules from "./pages/admin/AdminModules";
 import AdminLessons from "./pages/admin/AdminLessons";
 import AdminLessonsOverview from "./pages/admin/AdminLessonsOverview";
 import AdminExercises from "./pages/admin/AdminExercises";
+import AdminImportOdu from "./pages/admin/AdminImportOdu";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -93,6 +94,11 @@ const App = () => (
               <Route path="/admin/lessons" element={
                 <ProtectedRoute requireAdmin>
                   <AdminLessonsOverview />
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/import-odu" element={
+                <ProtectedRoute requireAdmin>
+                  <AdminImportOdu />
                 </ProtectedRoute>
               } />
               <Route path="/admin/users" element={
