@@ -29,38 +29,34 @@ export const ActivityHeatmap: React.FC = () => {
       }
 
       try {
-        // Fetch all user progress for the last year
         const oneYearAgo = new Date();
         oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
 
-        const { data, error } = await supabase
-          .from('user_progress')
-          .select('completed_at')
-          .eq('user_id', user.id)
-          .gte('completed_at', oneYearAgo.toISOString());
+        // Fetch both in parallel
+        const [progressResult, reviewResult] = await Promise.all([
+          supabase
+            .from('user_progress')
+            .select('completed_at')
+            .eq('user_id', user.id)
+            .gte('completed_at', oneYearAgo.toISOString()),
+          supabase
+            .from('spaced_repetition_items')
+            .select('updated_at')
+            .eq('user_id', user.id)
+            .gte('updated_at', oneYearAgo.toISOString()),
+        ]);
 
-        if (error) throw error;
-
-        // Count activities per day
         const activityMap = new Map<string, number>();
-        data?.forEach((item) => {
+
+        progressResult.data?.forEach((item) => {
           const date = new Date(item.completed_at).toISOString().split('T')[0];
           activityMap.set(date, (activityMap.get(date) || 0) + 1);
         });
 
-        // Also fetch spaced repetition reviews
-        const { data: reviewData, error: reviewError } = await supabase
-          .from('spaced_repetition_items')
-          .select('updated_at')
-          .eq('user_id', user.id)
-          .gte('updated_at', oneYearAgo.toISOString());
-
-        if (!reviewError && reviewData) {
-          reviewData.forEach((item) => {
-            const date = new Date(item.updated_at).toISOString().split('T')[0];
-            activityMap.set(date, (activityMap.get(date) || 0) + 1);
-          });
-        }
+        reviewResult.data?.forEach((item) => {
+          const date = new Date(item.updated_at).toISOString().split('T')[0];
+          activityMap.set(date, (activityMap.get(date) || 0) + 1);
+        });
 
         setActivities(activityMap);
       } catch (error) {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BookOpen, Clock, Award, TrendingUp, Loader2, Brain, Zap, Sparkles } from 'lucide-react';
 import Header from '@/components/layout/Header';
@@ -19,120 +19,22 @@ import { AnimatedCounter } from '@/components/engagement/AnimatedCounter';
 import { StudyPlanSummaryCard } from '@/components/study-plan/StudyPlanSummaryCard';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
 import { useSpacedRepetition } from '@/hooks/useSpacedRepetition';
 import { useStreak } from '@/hooks/useStreak';
 import { useSequentialProgress } from '@/hooks/useSequentialProgress';
-
-interface Module {
-  id: string;
-  title: string;
-  description: string | null;
-  type: 'proficiency' | 'thematic';
-  level: string | null;
-  theme: string | null;
-  image_url: string | null;
-  color: string | null;
-  display_order: number;
-  is_published: boolean;
-  totalLessons?: number;
-  progress?: number;
-}
-
-interface ModuleCompletion {
-  module_id: string;
-  quiz_score: number;
-}
+import { useDashboardData } from '@/hooks/useDashboardData';
 
 const Dashboard: React.FC = () => {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
-  const [modules, setModules] = useState<Module[]>([]);
-  const [completions, setCompletions] = useState<ModuleCompletion[]>([]);
-  const [userProgress, setUserProgress] = useState<Record<string, number>>({});
-  const [loading, setLoading] = useState(true);
+  
+  // Use optimized hook for dashboard data
+  const { modules, completions, userProgress, loading } = useDashboardData(user);
   
   const { dueCount } = useSpacedRepetition();
   const { streak, loading: streakLoading } = useStreak();
 
   const displayName = profile?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || 'Estudante';
-
-  useEffect(() => {
-    fetchData();
-  }, [user]);
-
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      
-      const { data: modulesData, error: modulesError } = await supabase
-        .from('modules')
-        .select(`
-          *,
-          lessons:lessons(count)
-        `)
-        .eq('is_published', true)
-        .order('display_order', { ascending: true });
-
-      if (modulesError) throw modulesError;
-
-      const modulesWithCount = (modulesData || []).map((m: any) => ({
-        ...m,
-        type: m.type as 'proficiency' | 'thematic',
-        totalLessons: m.lessons?.[0]?.count || 0,
-        progress: 0,
-      }));
-
-      setModules(modulesWithCount);
-
-      if (user) {
-        const { data: completionsData } = await supabase
-          .from('module_completions')
-          .select('module_id, quiz_score')
-          .eq('user_id', user.id);
-
-        setCompletions(completionsData || []);
-
-        const progressByModule: Record<string, number> = {};
-        
-        for (const mod of modulesWithCount) {
-          const { data: lessons } = await supabase
-            .from('lessons')
-            .select('id')
-            .eq('module_id', mod.id)
-            .eq('is_published', true);
-
-          const lessonIds = lessons?.map(l => l.id) || [];
-          if (lessonIds.length === 0) continue;
-
-          const { data: exercises } = await supabase
-            .from('exercises')
-            .select('id')
-            .in('lesson_id', lessonIds)
-            .eq('is_published', true);
-
-          const { data: completed } = await supabase
-            .from('user_progress')
-            .select('exercise_id')
-            .eq('user_id', user.id)
-            .eq('module_id', mod.id);
-
-          const totalExercises = exercises?.length || 0;
-          const completedExercises = completed?.length || 0;
-          
-          progressByModule[mod.id] = totalExercises > 0 
-            ? Math.round((completedExercises / totalExercises) * 100)
-            : 0;
-        }
-
-        setUserProgress(progressByModule);
-      }
-    } catch (error) {
-      console.error('Error fetching data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Use new sequential progress logic
   const { calculateLockedModules } = useSequentialProgress();
