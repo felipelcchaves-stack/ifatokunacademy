@@ -4,4 +4,4 @@ project_id = "radloafdvakhjlapgrbp"
 verify_jwt = false
 
 [functions.generate-module-banner]
-verify_jwt = true
+verify_jwt = false
