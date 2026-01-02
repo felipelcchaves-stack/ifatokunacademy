@@ -34,6 +34,13 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({ items, onCo
   const progress = (masteredItems.size / items.length) * 100;
   const isCompleted = masteredItems.size === items.length;
 
+  // Extrai o início do texto (primeiras palavras) para mostrar como pista
+  const getTextStart = (text: string, wordCount: number = 3): string => {
+    const words = text.split(/\s+/);
+    if (words.length <= wordCount) return text;
+    return words.slice(0, wordCount).join(' ') + '...';
+  };
+
   useEffect(() => {
     if (isCompleted && mode === 'learn') {
       onComplete?.();
@@ -170,9 +177,19 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({ items, onCo
 
           {!showContent ? (
             <>
-              <Eye className="w-12 h-12 text-muted-foreground mb-4" />
-              <p className="text-muted-foreground mb-4">
-                Tente lembrar antes de revelar
+              {/* Mostra o início do texto como pista */}
+              <div className="mb-6">
+                <p className="text-xs uppercase tracking-wider text-muted-foreground mb-2">
+                  Complete o verso:
+                </p>
+                <p className="font-serif text-2xl text-primary font-medium">
+                  {getTextStart(currentItem.text, 4)}
+                </p>
+              </div>
+
+              <EyeOff className="w-8 h-8 text-muted-foreground mb-3" />
+              <p className="text-sm text-muted-foreground mb-4">
+                Tente lembrar o restante antes de revelar
               </p>
               
               {/* Hint */}
@@ -197,7 +214,7 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({ items, onCo
                 className="gradient-gold text-secondary shadow-gold"
               >
                 <Eye className="w-4 h-4 mr-2" />
-                Revelar
+                Revelar Completo
               </Button>
             </>
           ) : (
