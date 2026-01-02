@@ -28,13 +28,15 @@ interface MemorizationItem {
 interface MemorizationExerciseProps {
   items: MemorizationItem[];
   exerciseId?: string; // ID do exercício para salvar na repetição espaçada
+  lessonId?: string; // ID da lição para contexto
+  moduleId?: string; // ID do módulo para contexto
   onComplete?: () => void;
 }
 
 const SIMILARITY_THRESHOLD = 80; // Mínimo de 80% de acurácia para considerar correto
 const START_WORD_COUNT = 4; // Quantidade de palavras iniciais mostradas
 
-const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({ items, exerciseId, onComplete }) => {
+const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({ items, exerciseId, lessonId, moduleId, onComplete }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showContent, setShowContent] = useState(false);
   const [showHint, setShowHint] = useState(false);
@@ -92,17 +94,34 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({ items, exer
     }
   };
 
-  // Adiciona item à lista de repetição espaçada quando erra
-  const addToSpacedRepetition = async (itemIndex: number, itemText: string) => {
+  // Adiciona item à lista de repetição espaçada
+  // Agora adiciona TODOS os itens (acertos e erros) com ease_factor diferente
+  const addToSpacedRepetition = async (itemIndex: number, itemText: string, wasCorrect: boolean) => {
     if (!exerciseId) return;
     
     try {
-      await addItem(exerciseId, itemIndex, itemText);
-      toast({
-        title: "Adicionado à revisão",
-        description: "Este item será revisado novamente em breve.",
-        duration: 3000,
+      // Diferentes ease_factors baseado na performance:
+      // Acerto na primeira tentativa: 2.5 (normal)
+      // Errou e depois acertou: 2.0 (um pouco mais difícil)
+      // Revelou sem tentar: 1.5 (prioridade alta)
+      let easeFactor = 2.5;
+      if (!wasCorrect) {
+        easeFactor = attempts > 0 ? 2.0 : 1.5;
+      }
+      
+      await addItem(exerciseId, itemIndex, itemText, {
+        lessonId,
+        moduleId,
+        easeFactor,
       });
+      
+      if (!wasCorrect) {
+        toast({
+          title: "Adicionado à revisão",
+          description: "Este item será revisado novamente em breve.",
+          duration: 3000,
+        });
+      }
     } catch (error) {
       console.error('Error adding to spaced repetition:', error);
     }
@@ -125,13 +144,15 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({ items, exer
     if (isCorrect) {
       setMasteredItems(prev => new Set([...prev, currentIndex]));
       setShowContent(true);
+      // NOVO: Adiciona à revisão espaçada mesmo quando acerta (para manutenção)
+      await addToSpacedRepetition(currentIndex, currentItem.text, true);
     } else {
       // Adiciona à repetição espaçada quando erra
-      await addToSpacedRepetition(currentIndex, currentItem.text);
+      await addToSpacedRepetition(currentIndex, currentItem.text, false);
     }
   };
 
-  const handleRevealWithoutValidation = () => {
+  const handleRevealWithoutValidation = async () => {
     // Permite revelar sem validar, mas não marca como dominado
     setShowContent(true);
     setValidationResult({
@@ -139,6 +160,8 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({ items, exer
       isCorrect: false,
       showResult: false
     });
+    // Adiciona à revisão espaçada com prioridade alta (ease_factor baixo)
+    await addToSpacedRepetition(currentIndex, currentItem.text, false);
   };
 
   const handleTryAgain = () => {
