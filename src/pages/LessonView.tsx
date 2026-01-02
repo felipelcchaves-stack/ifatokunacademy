@@ -141,7 +141,7 @@ const LessonView: React.FC = () => {
       }
 
       // Save progress to database
-      await supabase.from('user_progress').upsert({
+      const { error: progressError } = await supabase.from('user_progress').upsert({
         user_id: user.id,
         exercise_id: currentExercise.id,
         lesson_id: lessonId,
@@ -149,6 +149,15 @@ const LessonView: React.FC = () => {
         score: score || null,
         completed_at: new Date().toISOString(),
       }, { onConflict: 'user_id,exercise_id' });
+
+      if (progressError) {
+        console.error('Error saving progress:', progressError);
+        toast({
+          title: 'Erro ao salvar progresso',
+          description: 'Tente novamente.',
+          variant: 'destructive',
+        });
+      }
 
       setCompletedExercises(prev => new Set([...prev, currentExercise.id]));
       

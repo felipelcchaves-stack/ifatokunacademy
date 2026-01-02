@@ -35,6 +35,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -99,6 +109,9 @@ const AdminExercises: React.FC = () => {
   // Drag and drop state
   const [draggedExercise, setDraggedExercise] = useState<Exercise | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  
+  // Delete confirmation state
+  const [deleteConfirmExercise, setDeleteConfirmExercise] = useState<Exercise | null>(null);
 
   useEffect(() => {
     if (moduleId && lessonId) {
@@ -374,15 +387,18 @@ const AdminExercises: React.FC = () => {
         display_order: idx,
       }));
       
-      // Update each exercise's display_order
-      for (const update of updates) {
-        const { error } = await supabase
-          .from('exercises')
-          .update({ display_order: update.display_order })
-          .eq('id', update.id);
-        
-        if (error) throw error;
-      }
+      // Update all exercises in parallel for better performance
+      await Promise.all(
+        updates.map(update =>
+          supabase
+            .from('exercises')
+            .update({ display_order: update.display_order })
+            .eq('id', update.id)
+            .then(({ error }) => {
+              if (error) throw error;
+            })
+        )
+      );
       
       toast({
         title: 'Ordem atualizada',
@@ -612,7 +628,7 @@ const AdminExercises: React.FC = () => {
                       </DropdownMenuItem>
                       <DropdownMenuItem 
                         className="text-destructive"
-                        onClick={() => handleDeleteExercise(exercise)}
+                        onClick={() => setDeleteConfirmExercise(exercise)}
                       >
                         <Trash2 className="w-4 h-4 mr-2" />
                         Excluir
@@ -625,6 +641,32 @@ const AdminExercises: React.FC = () => {
           </div>
         )}
       
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteConfirmExercise} onOpenChange={() => setDeleteConfirmExercise(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir exercício?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. O exercício "{deleteConfirmExercise?.title}" será permanentemente excluído.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (deleteConfirmExercise) {
+                  handleDeleteExercise(deleteConfirmExercise);
+                  setDeleteConfirmExercise(null);
+                }
+              }}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Create Exercise Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
