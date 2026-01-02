@@ -36,6 +36,7 @@ import MFAVerify from "./pages/MFAVerify";
 import Achievements from "./pages/Achievements";
 import TestMemorization from "./pages/TestMemorization";
 import MemorizationGuide from "./pages/MemorizationGuide";
+import RecordingStudio from "./pages/RecordingStudio";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -126,6 +127,11 @@ const App = () => (
               <Route path="/memorization-guide" element={
                 <ProtectedRoute>
                   <MemorizationGuide />
+                </ProtectedRoute>
+              } />
+              <Route path="/recording-studio" element={
+                <ProtectedRoute>
+                  <RecordingStudio />
                 </ProtectedRoute>
               } />
               
