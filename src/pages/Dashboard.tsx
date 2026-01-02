@@ -16,6 +16,7 @@ import { CompactStreak } from '@/components/engagement/CompactStreak';
 import { CompactXP } from '@/components/engagement/CompactXP';
 import { HeroStudyTrack } from '@/components/dashboard/HeroStudyTrack';
 import { AnimatedCounter } from '@/components/engagement/AnimatedCounter';
+import { StudyPlanSummaryCard } from '@/components/study-plan/StudyPlanSummaryCard';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -223,7 +224,10 @@ const Dashboard: React.FC = () => {
 
           {/* SECOND FOLD - Quick Engagement */}
           <section className="py-16 bg-gradient-to-b from-background to-muted/30">
-            <div className="container mx-auto px-4">
+            <div className="container mx-auto px-4 space-y-6">
+              {/* Study Plan Summary */}
+              <StudyPlanSummaryCard />
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* Daily Goal */}
                 <DailyGoalProgress />

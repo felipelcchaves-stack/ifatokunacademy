@@ -28,6 +28,7 @@ import AdminExercises from "./pages/admin/AdminExercises";
 import AdminImportOdu from "./pages/admin/AdminImportOdu";
 import AdminSettings from "./pages/admin/AdminSettings";
 import AdminUsers from "./pages/admin/AdminUsers";
+import UserSettings from "./pages/UserSettings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -87,6 +88,16 @@ const App = () => (
               <Route path="/challenge" element={
                 <ProtectedRoute>
                   <ChallengeMode />
+                </ProtectedRoute>
+              } />
+              <Route path="/settings" element={
+                <ProtectedRoute>
+                  <UserSettings />
+                </ProtectedRoute>
+              } />
+              <Route path="/settings/study-plan" element={
+                <ProtectedRoute>
+                  <UserSettings />
                 </ProtectedRoute>
               } />
               

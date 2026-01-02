@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Menu, X, User, LogOut, Settings, BookOpen } from 'lucide-react';
+import { Menu, X, User, LogOut, Settings, BookOpen, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -79,6 +79,14 @@ const Header: React.FC = () => {
                     <BookOpen className="w-4 h-4 mr-2" />
                     Meu Aprendizado
                   </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/settings?tab=study-plan')}>
+                    <Calendar className="w-4 h-4 mr-2" />
+                    Plano de Estudos
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/settings')}>
+                    <User className="w-4 h-4 mr-2" />
+                    Configurações
+                  </DropdownMenuItem>
                   {isAdmin && (
                     <DropdownMenuItem onClick={() => navigate('/admin')}>
                       <Settings className="w-4 h-4 mr-2" />
@@ -155,6 +163,22 @@ const Header: React.FC = () => {
                     >
                       <BookOpen className="w-4 h-4 mr-2" />
                       Meu Aprendizado
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      className="justify-start"
+                      onClick={() => { navigate('/settings?tab=study-plan'); setMobileMenuOpen(false); }}
+                    >
+                      <Calendar className="w-4 h-4 mr-2" />
+                      Plano de Estudos
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      className="justify-start"
+                      onClick={() => { navigate('/settings'); setMobileMenuOpen(false); }}
+                    >
+                      <User className="w-4 h-4 mr-2" />
+                      Configurações
                     </Button>
                     {isAdmin && (
                       <Button 

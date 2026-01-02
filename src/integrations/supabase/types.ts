@@ -649,6 +649,48 @@ export type Database = {
           },
         ]
       }
+      user_study_plans: {
+        Row: {
+          availability: Json
+          created_at: string
+          estimated_completion_date: string | null
+          id: string
+          last_calculated_at: string | null
+          preferred_time: string
+          session_duration_minutes: number
+          total_study_hours: number | null
+          updated_at: string
+          user_id: string
+          weekly_hours: number | null
+        }
+        Insert: {
+          availability?: Json
+          created_at?: string
+          estimated_completion_date?: string | null
+          id?: string
+          last_calculated_at?: string | null
+          preferred_time?: string
+          session_duration_minutes?: number
+          total_study_hours?: number | null
+          updated_at?: string
+          user_id: string
+          weekly_hours?: number | null
+        }
+        Update: {
+          availability?: Json
+          created_at?: string
+          estimated_completion_date?: string | null
+          id?: string
+          last_calculated_at?: string | null
+          preferred_time?: string
+          session_duration_minutes?: number
+          total_study_hours?: number | null
+          updated_at?: string
+          user_id?: string
+          weekly_hours?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
