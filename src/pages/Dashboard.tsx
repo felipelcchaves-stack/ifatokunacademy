@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, Clock, Award, TrendingUp, Play, Loader2, Lock, Brain, Calendar } from 'lucide-react';
+import { BookOpen, Clock, Award, TrendingUp, Play, Loader2, Lock, Brain, Calendar, Flame } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import ModuleCard from '@/components/modules/ModuleCard';
 import ModuleSlider from '@/components/modules/ModuleSlider';
 import ContentProtection from '@/components/ContentProtection';
+import StreakDisplay from '@/components/streak/StreakDisplay';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useSpacedRepetition } from '@/hooks/useSpacedRepetition';
+import { useStreak } from '@/hooks/useStreak';
 
 interface Module {
   id: string;
@@ -42,8 +44,9 @@ const Dashboard: React.FC = () => {
   const [userProgress, setUserProgress] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   
-  // Hook de repetição espaçada
+  // Hooks de repetição espaçada e streak
   const { dueCount } = useSpacedRepetition();
+  const { streak, loading: streakLoading } = useStreak();
 
   const displayName = profile?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || 'Estudante';
 
@@ -291,39 +294,51 @@ const Dashboard: React.FC = () => {
               </div>
             )}
 
-            {/* Spaced Repetition Review */}
-            {dueCount > 0 && (
-              <div className="mb-12">
-                <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 rounded-2xl p-6 md:p-8 border border-amber-200 dark:border-amber-800">
-                  <div className="flex flex-col md:flex-row gap-6 items-start md:items-center">
-                    <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center flex-shrink-0">
-                      <Brain className="w-8 h-8 text-white" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Calendar className="w-4 h-4 text-amber-600" />
-                        <span className="text-xs font-medium text-amber-600 uppercase tracking-wider">
-                          Revisão Espaçada
-                        </span>
+            {/* Streak and Review Section */}
+            <div className="grid md:grid-cols-3 gap-6 mb-12">
+              {/* Streak Card */}
+              <div className="md:col-span-1">
+                <StreakDisplay streak={streak} />
+              </div>
+              
+              {/* Spaced Repetition Review */}
+              <div className="md:col-span-2">
+                <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 rounded-2xl p-6 h-full border border-amber-200 dark:border-amber-800">
+                  <div className="flex flex-col gap-4 h-full justify-center">
+                    <div className="flex items-center gap-4">
+                      <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center flex-shrink-0">
+                        <Brain className="w-7 h-7 text-white" />
                       </div>
-                      <h3 className="font-serif text-xl font-semibold text-foreground mt-1">
-                        {dueCount} {dueCount === 1 ? 'item' : 'itens'} para revisar
-                      </h3>
-                      <p className="text-muted-foreground text-sm mt-1 mb-4">
-                        Revise agora para consolidar sua memória de longo prazo.
-                      </p>
-                      <Button 
-                        className="gradient-gold text-secondary font-semibold shadow-gold"
-                        onClick={() => navigate('/review')}
-                      >
-                        <Brain className="w-4 h-4 mr-2" />
-                        Iniciar Revisão
-                      </Button>
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <Calendar className="w-4 h-4 text-amber-600" />
+                          <span className="text-xs font-medium text-amber-600 uppercase tracking-wider">
+                            Revisão Espaçada
+                          </span>
+                        </div>
+                        <h3 className="font-serif text-xl font-semibold text-foreground">
+                          {dueCount > 0 
+                            ? `${dueCount} ${dueCount === 1 ? 'item' : 'itens'} para revisar`
+                            : 'Nenhum item pendente'}
+                        </h3>
+                      </div>
                     </div>
+                    <p className="text-muted-foreground text-sm">
+                      {dueCount > 0 
+                        ? 'Revise agora para consolidar sua memória de longo prazo.'
+                        : 'Continue estudando para adicionar itens à sua lista de revisão.'}
+                    </p>
+                    <Button 
+                      className="gradient-gold text-secondary font-semibold shadow-gold w-fit"
+                      onClick={() => navigate('/review')}
+                    >
+                      <Brain className="w-4 h-4 mr-2" />
+                      {dueCount > 0 ? 'Iniciar Revisão' : 'Ver Revisões'}
+                    </Button>
                   </div>
                 </div>
               </div>
-            )}
+            </div>
 
             {/* Proficiency Modules */}
             {proficiencyModules.length > 0 && (

@@ -11,7 +11,8 @@ import {
   Trophy,
   XCircle,
   AlertCircle,
-  BarChart3
+  BarChart3,
+  Flame
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -20,10 +21,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import ContentProtection from '@/components/ContentProtection';
+import StreakDisplay from '@/components/streak/StreakDisplay';
 import { useSpacedRepetition, SpacedRepetitionItem } from '@/hooks/useSpacedRepetition';
+import { useStreak } from '@/hooks/useStreak';
 import { calculateSimilarity, getTextStart, getTextRemainder } from '@/lib/textSimilarity';
 import { formatDistanceToNow, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { toast } from 'sonner';
 
 const SIMILARITY_THRESHOLD = 80;
 const START_WORD_COUNT = 4;
@@ -31,6 +35,7 @@ const START_WORD_COUNT = 4;
 const SpacedReview: React.FC = () => {
   const navigate = useNavigate();
   const { dueItems, allItems, loading, dueCount, recordReview, removeItem, refreshItems } = useSpacedRepetition();
+  const { streak, recordDailyReview } = useStreak();
   
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userInput, setUserInput] = useState('');
@@ -38,6 +43,7 @@ const SpacedReview: React.FC = () => {
   const [lastResult, setLastResult] = useState<{ similarity: number; correct: boolean } | null>(null);
   const [reviewedCount, setReviewedCount] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
+  const [streakRecorded, setStreakRecorded] = useState(false);
 
   const currentItem = dueItems[currentIndex];
   const isSessionComplete = currentIndex >= dueItems.length || dueItems.length === 0;
@@ -56,6 +62,17 @@ const SpacedReview: React.FC = () => {
     setReviewedCount(prev => prev + 1);
     if (isCorrect) {
       setCorrectCount(prev => prev + 1);
+    }
+
+    // Record daily streak on first review
+    if (!streakRecorded) {
+      const recorded = await recordDailyReview();
+      if (recorded) {
+        setStreakRecorded(true);
+        toast.success('🔥 Sequência atualizada!', {
+          description: `Você está em uma sequência de ${(streak?.current_streak || 0) + 1} dias!`,
+        });
+      }
     }
   };
 
@@ -121,14 +138,23 @@ const SpacedReview: React.FC = () => {
                   Revise os itens que precisam de reforço para consolidar sua memória.
                 </p>
               </div>
-              <Button 
-                variant="outline" 
-                onClick={() => navigate('/review/stats')}
-                className="self-start md:self-auto"
-              >
-                <BarChart3 className="w-4 h-4 mr-2" />
-                Ver Estatísticas
-              </Button>
+              <div className="flex items-center gap-3 self-start md:self-auto">
+                {streak && (
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-100 dark:bg-amber-900/30">
+                    <Flame className="w-4 h-4 text-amber-500" />
+                    <span className="text-sm font-bold text-amber-600 dark:text-amber-400">
+                      {streak.current_streak} dias
+                    </span>
+                  </div>
+                )}
+                <Button 
+                  variant="outline" 
+                  onClick={() => navigate('/review/stats')}
+                >
+                  <BarChart3 className="w-4 h-4 mr-2" />
+                  Ver Estatísticas
+                </Button>
+              </div>
             </div>
 
             {/* Stats Cards */}
@@ -167,28 +193,35 @@ const SpacedReview: React.FC = () => {
 
             {/* Review Card */}
             {isSessionComplete ? (
-              <Card className="border-2 border-green-200 bg-green-50">
-                <CardContent className="p-8 text-center">
-                  <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-                  <h2 className="font-serif text-2xl font-bold text-green-800 mb-2">
-                    Revisão Completa!
-                  </h2>
-                  <p className="text-green-700 mb-6">
-                    {reviewedCount > 0 
-                      ? `Você revisou ${reviewedCount} itens com ${correctCount} acertos (${Math.round((correctCount / reviewedCount) * 100)}%).`
-                      : 'Não há itens pendentes para revisão no momento.'}
-                  </p>
-                  <div className="flex flex-wrap justify-center gap-3">
-                    <Button variant="outline" onClick={() => navigate('/dashboard')}>
-                      Voltar ao Dashboard
-                    </Button>
-                    <Button onClick={handleRestart} className="gradient-gold text-secondary">
-                      <RotateCcw className="w-4 h-4 mr-2" />
-                      Verificar Novamente
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+              <div className="space-y-6">
+                <Card className="border-2 border-green-200 bg-green-50 dark:bg-green-950/20 dark:border-green-800">
+                  <CardContent className="p-8 text-center">
+                    <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
+                    <h2 className="font-serif text-2xl font-bold text-green-800 dark:text-green-200 mb-2">
+                      Revisão Completa!
+                    </h2>
+                    <p className="text-green-700 dark:text-green-300 mb-6">
+                      {reviewedCount > 0 
+                        ? `Você revisou ${reviewedCount} itens com ${correctCount} acertos (${Math.round((correctCount / reviewedCount) * 100)}%).`
+                        : 'Não há itens pendentes para revisão no momento.'}
+                    </p>
+                    <div className="flex flex-wrap justify-center gap-3">
+                      <Button variant="outline" onClick={() => navigate('/dashboard')}>
+                        Voltar ao Dashboard
+                      </Button>
+                      <Button onClick={handleRestart} className="gradient-gold text-secondary">
+                        <RotateCcw className="w-4 h-4 mr-2" />
+                        Verificar Novamente
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Streak Display after completion */}
+                {streak && (
+                  <StreakDisplay streak={streak} />
+                )}
+              </div>
             ) : (
               <Card>
                 <CardHeader className="border-b border-border">
