@@ -35,18 +35,27 @@ export function levenshteinDistance(str1: string, str2: string): number {
 
 /**
  * Normaliza texto para comparação:
- * - Remove acentos
+ * - Remove acentos/diacríticos
  * - Converte para minúsculas
- * - Remove pontuação
+ * - Mapeia caracteres Yorubá especiais (ẹ, ọ, ṣ) para equivalentes base
+ * - Remove pontuação (preservando letras Unicode)
  * - Remove espaços extras
  */
 export function normalizeText(text: string): string {
   return text
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '') // Remove acentos
-    .replace(/[^\w\s]/g, '') // Remove pontuação
-    .replace(/\s+/g, ' ') // Normaliza espaços
+    .replace(/[\u0300-\u036f]/g, '') // Remove diacríticos combinantes
+    .replace(/[\u1E00-\u1EFF]/g, (char) => {
+      // Mapeia caracteres Yorubá especiais (subdot) para equivalentes base
+      const yorubaMap: Record<string, string> = {
+        'ẹ': 'e', 'ọ': 'o', 'ṣ': 's',
+        'Ẹ': 'e', 'Ọ': 'o', 'Ṣ': 's',
+      };
+      return yorubaMap[char] || char;
+    })
+    .replace(/[^\p{L}\p{N}\s]/gu, '') // Remove apenas pontuação, preserva letras Unicode
+    .replace(/\s+/g, ' ')
     .trim();
 }
 
