@@ -14,6 +14,23 @@ import {
   EyeOff,
   Sparkles
 } from 'lucide-react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import PedagogicalExerciseGenerator from '@/components/admin/PedagogicalExerciseGenerator';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -67,6 +84,127 @@ interface Module {
   theme: string | null;
   color: string | null;
 }
+
+interface SortableLessonItemProps {
+  lesson: Lesson;
+  index: number;
+  moduleId: string;
+  navigate: (path: string) => void;
+  onEdit: (lesson: Lesson) => void;
+  onTogglePublish: (lesson: Lesson) => void;
+  onDelete: (lesson: Lesson) => void;
+}
+
+const SortableLessonItem: React.FC<SortableLessonItemProps> = ({
+  lesson,
+  index,
+  moduleId,
+  navigate,
+  onEdit,
+  onTogglePublish,
+  onDelete,
+}) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: lesson.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`bg-card rounded-xl border border-border shadow-soft p-4 flex items-center gap-4 group hover:shadow-elevated transition-shadow ${
+        isDragging ? 'opacity-50 shadow-lg z-50' : ''
+      }`}
+    >
+      <div
+        {...attributes}
+        {...listeners}
+        className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground touch-none"
+      >
+        <GripVertical className="w-5 h-5" />
+      </div>
+
+      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+        <span className="font-serif font-bold text-primary">{index + 1}</span>
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <h3 className="font-semibold text-foreground truncate">{lesson.title}</h3>
+          {lesson.is_published ? (
+            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+              Publicada
+            </span>
+          ) : (
+            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+              Rascunho
+            </span>
+          )}
+        </div>
+        <p className="text-sm text-muted-foreground truncate">
+          {lesson.description || 'Sem descrição'}
+        </p>
+      </div>
+
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Clock className="w-4 h-4" />
+        <span>{lesson.duration_minutes || 30} min</span>
+      </div>
+
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => navigate(`/admin/modules/${moduleId}/lessons/${lesson.id}/exercises`)}
+      >
+        Exercícios
+      </Button>
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-8 w-8">
+            <MoreVertical className="w-4 h-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={() => onEdit(lesson)}>
+            <Edit className="w-4 h-4 mr-2" />
+            Editar
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onTogglePublish(lesson)}>
+            {lesson.is_published ? (
+              <>
+                <EyeOff className="w-4 h-4 mr-2" />
+                Despublicar
+              </>
+            ) : (
+              <>
+                <Eye className="w-4 h-4 mr-2" />
+                Publicar
+              </>
+            )}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className="text-destructive"
+            onClick={() => onDelete(lesson)}
+          >
+            <Trash2 className="w-4 h-4 mr-2" />
+            Excluir
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+};
 
 const AdminLessons: React.FC = () => {
   const { moduleId } = useParams<{ moduleId: string }>();
@@ -294,6 +432,57 @@ const AdminLessons: React.FC = () => {
     }
   };
 
+  // Drag and drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (!over || active.id === over.id) return;
+    
+    const oldIndex = lessons.findIndex(l => l.id === active.id);
+    const newIndex = lessons.findIndex(l => l.id === over.id);
+    
+    if (oldIndex === -1 || newIndex === -1) return;
+    
+    const reordered = arrayMove(lessons, oldIndex, newIndex);
+    setLessons(reordered);
+    
+    // Persist to database
+    try {
+      const updates = reordered.map((lesson, i) => 
+        supabase
+          .from('lessons')
+          .update({ display_order: i })
+          .eq('id', lesson.id)
+      );
+      
+      await Promise.all(updates);
+      
+      toast({
+        title: 'Ordem atualizada',
+        description: 'A ordem das lições foi salva.',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao salvar ordem',
+        description: error.message,
+        variant: 'destructive',
+      });
+      // Revert on error
+      fetchModuleAndLessons();
+    }
+  };
+
   const filteredLessons = lessons.filter(lesson =>
     lesson.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     lesson.description?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -496,90 +685,34 @@ const AdminLessons: React.FC = () => {
             )}
           </div>
         ) : (
-          <div className="space-y-3">
-            {filteredLessons.map((lesson, index) => (
-              <div 
-                key={lesson.id}
-                className="bg-card rounded-xl border border-border shadow-soft p-4 flex items-center gap-4 group hover:shadow-elevated transition-shadow"
-              >
-                <div className="cursor-grab text-muted-foreground hover:text-foreground">
-                  <GripVertical className="w-5 h-5" />
-                </div>
-                
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <span className="font-serif font-bold text-primary">{index + 1}</span>
-                </div>
-
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-foreground truncate">{lesson.title}</h3>
-                    {lesson.is_published ? (
-                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                        Publicada
-                      </span>
-                    ) : (
-                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
-                        Rascunho
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-sm text-muted-foreground truncate">
-                    {lesson.description || 'Sem descrição'}
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Clock className="w-4 h-4" />
-                  <span>{lesson.duration_minutes || 30} min</span>
-                </div>
-
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => navigate(`/admin/modules/${moduleId}/lessons/${lesson.id}/exercises`)}
-                >
-                  Exercícios
-                </Button>
-
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <MoreVertical className="w-4 h-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => {
-                      setEditingLesson(lesson);
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={filteredLessons.map(l => l.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              <div className="space-y-3">
+                {filteredLessons.map((lesson, index) => (
+                  <SortableLessonItem
+                    key={lesson.id}
+                    lesson={lesson}
+                    index={index}
+                    moduleId={moduleId!}
+                    navigate={navigate}
+                    onEdit={(l) => {
+                      setEditingLesson(l);
                       setIsEditDialogOpen(true);
-                    }}>
-                      <Edit className="w-4 h-4 mr-2" />
-                      Editar
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => togglePublish(lesson)}>
-                      {lesson.is_published ? (
-                        <>
-                          <EyeOff className="w-4 h-4 mr-2" />
-                          Despublicar
-                        </>
-                      ) : (
-                        <>
-                          <Eye className="w-4 h-4 mr-2" />
-                          Publicar
-                        </>
-                      )}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      className="text-destructive"
-                      onClick={() => handleDeleteLesson(lesson)}
-                    >
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Excluir
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                    }}
+                    onTogglePublish={togglePublish}
+                    onDelete={handleDeleteLesson}
+                  />
+                ))}
               </div>
-            ))}
-          </div>
+            </SortableContext>
+          </DndContext>
         )}
       
 
