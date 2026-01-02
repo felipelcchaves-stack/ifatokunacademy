@@ -28,11 +28,27 @@ const BannerGenerator: React.FC<BannerGeneratorProps> = ({
     setGeneratedUrl(null);
 
     try {
+      // Get current session to send Authorization header explicitly
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) {
+        toast({
+          title: 'Sessão expirada',
+          description: 'Faça login novamente para continuar.',
+          variant: 'destructive',
+        });
+        setIsGenerating(false);
+        return;
+      }
+
       const { data, error } = await supabase.functions.invoke('generate-module-banner', {
         body: {
           moduleId,
           title: moduleTitle,
           description: moduleDescription,
+        },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
         },
       });
 
