@@ -28,21 +28,19 @@ export const usePlatformSettings = (): PlatformSettings => {
         const { data, error } = await supabase
           .from('platform_settings')
           .select('key, value')
-          .in('key', ['platform_name', 'platform_description']);
+          .eq('key', 'general')
+          .single();
 
-        if (error) throw error;
+        if (error && error.code !== 'PGRST116') throw error;
 
         let name: string | null = null;
         let description: string | null = null;
 
-        data?.forEach((setting) => {
-          if (setting.key === 'platform_name' && setting.value) {
-            name = typeof setting.value === 'string' ? setting.value : (setting.value as any)?.value || null;
-          }
-          if (setting.key === 'platform_description' && setting.value) {
-            description = typeof setting.value === 'string' ? setting.value : (setting.value as any)?.value || null;
-          }
-        });
+        if (data?.value) {
+          const value = data.value as { name?: string; description?: string };
+          name = value.name || null;
+          description = value.description || null;
+        }
 
         cachedSettings = { name, description };
         setPlatformName(name);
