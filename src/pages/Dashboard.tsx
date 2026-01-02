@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, Clock, Award, TrendingUp, Loader2, Brain, Zap } from 'lucide-react';
+import { BookOpen, Clock, Award, TrendingUp, Loader2, Brain, Zap, Sparkles } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import ModuleSlider from '@/components/modules/ModuleSlider';
@@ -15,6 +15,7 @@ import { StreakRiskAlert } from '@/components/engagement/StreakRiskAlert';
 import { CompactStreak } from '@/components/engagement/CompactStreak';
 import { CompactXP } from '@/components/engagement/CompactXP';
 import { HeroStudyTrack } from '@/components/dashboard/HeroStudyTrack';
+import { AnimatedCounter } from '@/components/engagement/AnimatedCounter';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -334,36 +335,79 @@ const Dashboard: React.FC = () => {
           )}
 
           {/* Quick Stats Footer */}
-          <section className="py-12 bg-secondary text-secondary-foreground">
-            <div className="container mx-auto px-4">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-                <div>
-                  <div className="w-12 h-12 rounded-xl bg-secondary-foreground/10 flex items-center justify-center mx-auto mb-3">
-                    <BookOpen className="w-6 h-6" />
-                  </div>
-                  <p className="text-3xl font-bold">{modules.length}</p>
-                  <p className="text-sm opacity-80">Módulos</p>
+          <section className="py-16 bg-gradient-to-br from-secondary via-secondary to-earth-600 text-secondary-foreground relative overflow-hidden">
+            {/* Background pattern */}
+            <div className="absolute inset-0 pattern-adinkra opacity-10" />
+            
+            {/* Decorative glow */}
+            <div className="absolute top-0 left-1/4 w-64 h-64 bg-primary/20 rounded-full blur-3xl" />
+            <div className="absolute bottom-0 right-1/4 w-48 h-48 bg-accent/20 rounded-full blur-3xl" />
+            
+            <div className="container mx-auto px-4 relative z-10">
+              {/* Section header */}
+              <div className="text-center mb-12">
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-secondary-foreground/10 border border-secondary-foreground/20 mb-4">
+                  <Sparkles className="w-4 h-4 text-accent" />
+                  <span className="text-sm font-semibold text-secondary-foreground/90">Seu Progresso</span>
                 </div>
-                <div>
-                  <div className="w-12 h-12 rounded-xl bg-secondary-foreground/10 flex items-center justify-center mx-auto mb-3">
-                    <Clock className="w-6 h-6" />
+                <h2 className="heading-display text-3xl md:text-4xl text-secondary-foreground">
+                  Estatísticas da Jornada
+                </h2>
+              </div>
+              
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
+                {/* Modules */}
+                <div className="group relative bg-secondary-foreground/5 backdrop-blur-sm rounded-2xl p-6 border border-secondary-foreground/10 hover:bg-secondary-foreground/10 hover:border-secondary-foreground/20 transition-all duration-300 text-center">
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl" />
+                  <div className="relative z-10">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-forest-600 flex items-center justify-center mx-auto mb-4 shadow-forest group-hover:scale-110 transition-transform duration-300">
+                      <BookOpen className="w-7 h-7 text-primary-foreground" />
+                    </div>
+                    <p className="text-4xl md:text-5xl font-extrabold tracking-tight mb-1">
+                      <AnimatedCounter value={modules.length} />
+                    </p>
+                    <p className="text-sm font-medium text-secondary-foreground/70">Módulos</p>
                   </div>
-                  <p className="text-3xl font-bold">∞</p>
-                  <p className="text-sm opacity-80">Horas de Estudo</p>
                 </div>
-                <div>
-                  <div className="w-12 h-12 rounded-xl bg-secondary-foreground/10 flex items-center justify-center mx-auto mb-3">
-                    <Award className="w-6 h-6" />
+
+                {/* Study Hours */}
+                <div className="group relative bg-secondary-foreground/5 backdrop-blur-sm rounded-2xl p-6 border border-secondary-foreground/10 hover:bg-secondary-foreground/10 hover:border-secondary-foreground/20 transition-all duration-300 text-center">
+                  <div className="absolute inset-0 bg-gradient-to-br from-accent/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl" />
+                  <div className="relative z-10">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-accent to-sacred-600 flex items-center justify-center mx-auto mb-4 shadow-sacred group-hover:scale-110 transition-transform duration-300">
+                      <Clock className="w-7 h-7 text-accent-foreground" />
+                    </div>
+                    <p className="text-4xl md:text-5xl font-extrabold tracking-tight mb-1">∞</p>
+                    <p className="text-sm font-medium text-secondary-foreground/70">Horas de Estudo</p>
                   </div>
-                  <p className="text-3xl font-bold">{completions.length}</p>
-                  <p className="text-sm opacity-80">Certificados</p>
                 </div>
-                <div>
-                  <div className="w-12 h-12 rounded-xl bg-secondary-foreground/10 flex items-center justify-center mx-auto mb-3">
-                    <TrendingUp className="w-6 h-6" />
+
+                {/* Certificates */}
+                <div className="group relative bg-secondary-foreground/5 backdrop-blur-sm rounded-2xl p-6 border border-secondary-foreground/10 hover:bg-secondary-foreground/10 hover:border-secondary-foreground/20 transition-all duration-300 text-center">
+                  <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl" />
+                  <div className="relative z-10">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center mx-auto mb-4 shadow-lg group-hover:scale-110 transition-transform duration-300">
+                      <Award className="w-7 h-7 text-white" />
+                    </div>
+                    <p className="text-4xl md:text-5xl font-extrabold tracking-tight mb-1">
+                      <AnimatedCounter value={completions.length} />
+                    </p>
+                    <p className="text-sm font-medium text-secondary-foreground/70">Certificados</p>
                   </div>
-                  <p className="text-3xl font-bold">{totalProgress}%</p>
-                  <p className="text-sm opacity-80">Progresso Total</p>
+                </div>
+
+                {/* Total Progress */}
+                <div className="group relative bg-secondary-foreground/5 backdrop-blur-sm rounded-2xl p-6 border border-secondary-foreground/10 hover:bg-secondary-foreground/10 hover:border-secondary-foreground/20 transition-all duration-300 text-center">
+                  <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl" />
+                  <div className="relative z-10">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center mx-auto mb-4 shadow-lg group-hover:scale-110 transition-transform duration-300">
+                      <TrendingUp className="w-7 h-7 text-white" />
+                    </div>
+                    <p className="text-4xl md:text-5xl font-extrabold tracking-tight mb-1">
+                      <AnimatedCounter value={totalProgress} suffix="%" />
+                    </p>
+                    <p className="text-sm font-medium text-secondary-foreground/70">Progresso Total</p>
+                  </div>
                 </div>
               </div>
             </div>
