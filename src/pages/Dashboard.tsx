@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, Clock, Award, TrendingUp, Play, Loader2, Lock, Brain, Calendar, Flame, Trophy, Zap } from 'lucide-react';
+import { BookOpen, Clock, Award, TrendingUp, Loader2, Brain, Zap } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import ModuleSlider from '@/components/modules/ModuleSlider';
@@ -12,7 +12,9 @@ import { DailyGoalProgress } from '@/components/engagement/DailyGoalProgress';
 import { SacredQuote } from '@/components/engagement/SacredQuote';
 import { ActivityHeatmap } from '@/components/engagement/ActivityHeatmap';
 import { StreakRiskAlert } from '@/components/engagement/StreakRiskAlert';
-import { Progress } from '@/components/ui/progress';
+import { CompactStreak } from '@/components/engagement/CompactStreak';
+import { CompactXP } from '@/components/engagement/CompactXP';
+import { HeroStudyTrack } from '@/components/dashboard/HeroStudyTrack';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -49,7 +51,6 @@ const Dashboard: React.FC = () => {
   const [userProgress, setUserProgress] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   
-  // Hooks de repetição espaçada e streak
   const { dueCount } = useSpacedRepetition();
   const { streak, loading: streakLoading } = useStreak();
 
@@ -63,7 +64,6 @@ const Dashboard: React.FC = () => {
     try {
       setLoading(true);
       
-      // Fetch modules
       const { data: modulesData, error: modulesError } = await supabase
         .from('modules')
         .select(`
@@ -84,7 +84,6 @@ const Dashboard: React.FC = () => {
 
       setModules(modulesWithCount);
 
-      // Fetch completions and progress if user is logged in
       if (user) {
         const { data: completionsData } = await supabase
           .from('module_completions')
@@ -93,11 +92,9 @@ const Dashboard: React.FC = () => {
 
         setCompletions(completionsData || []);
 
-        // Fetch user progress per module
         const progressByModule: Record<string, number> = {};
         
         for (const mod of modulesWithCount) {
-          // Get lessons for this module
           const { data: lessons } = await supabase
             .from('lessons')
             .select('id')
@@ -107,14 +104,12 @@ const Dashboard: React.FC = () => {
           const lessonIds = lessons?.map(l => l.id) || [];
           if (lessonIds.length === 0) continue;
 
-          // Get total exercises
           const { data: exercises } = await supabase
             .from('exercises')
             .select('id')
             .in('lesson_id', lessonIds)
             .eq('is_published', true);
 
-          // Get completed exercises
           const { data: completed } = await supabase
             .from('user_progress')
             .select('exercise_id')
@@ -138,7 +133,6 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  // Calculate locked modules for proficiency track
   const getLockedModules = () => {
     const locked = new Set<string>();
     const requirements: Record<string, string> = {};
@@ -149,7 +143,6 @@ const Dashboard: React.FC = () => {
       const levelIndex = LEVEL_ORDER.indexOf(mod.level?.toLowerCase() || '');
       
       if (levelIndex > 0) {
-        // Check if previous level is completed
         const previousLevel = LEVEL_ORDER[levelIndex - 1];
         const previousModules = profModules.filter(
           m => m.level?.toLowerCase() === previousLevel
@@ -172,7 +165,6 @@ const Dashboard: React.FC = () => {
 
   const { locked: lockedModules, requirements: unlockRequirements } = getLockedModules();
 
-  // Apply progress to modules
   const modulesWithProgress = modules.map(m => ({
     ...m,
     progress: userProgress[m.id] || 0,
@@ -180,24 +172,10 @@ const Dashboard: React.FC = () => {
 
   const proficiencyModules = modulesWithProgress.filter(m => m.type === 'proficiency');
   const thematicModules = modulesWithProgress.filter(m => m.type === 'thematic');
-  
-  // Get first unlocked module with progress for "Continue Learning"
-  const activeModule = modulesWithProgress.find(m => 
-    !lockedModules.has(m.id) && m.progress > 0 && m.progress < 100
-  ) || modulesWithProgress.find(m => !lockedModules.has(m.id));
 
   const totalProgress = modulesWithProgress.length > 0
     ? Math.round(modulesWithProgress.reduce((acc, m) => acc + (m.progress || 0), 0) / modulesWithProgress.length)
     : 0;
-
-  const completedExercises = Object.values(userProgress).reduce((acc, p) => acc + p, 0);
-
-  const stats = [
-    { icon: BookOpen, label: 'Módulos Disponíveis', value: modules.length },
-    { icon: Clock, label: 'Horas de Estudo', value: '0h' },
-    { icon: Award, label: 'Módulos Completos', value: completions.length },
-    { icon: TrendingUp, label: 'Progresso Geral', value: `${totalProgress}%` },
-  ];
 
   if (loading) {
     return (
@@ -220,192 +198,124 @@ const Dashboard: React.FC = () => {
       <div className="min-h-screen bg-background">
         <Header />
         
-        <main className="pt-24 pb-16">
-          <div className="container mx-auto px-4">
-            {/* Sacred Quote & XP Display */}
-            <div className="grid md:grid-cols-2 gap-6 mb-8">
-              <SacredQuote context="greeting" />
-              <XPDisplay />
-            </div>
-
-            {/* Streak Risk Alert */}
-            <div className="mb-6">
-              <StreakRiskAlert />
-            </div>
-
-            {/* Welcome Section */}
-            <div className="mb-8">
-              <h1 className="font-serif text-3xl md:text-4xl font-bold text-foreground mb-2">
-                Olá, {displayName}! 👋
-              </h1>
-              <p className="text-muted-foreground">
-                Continue sua jornada de aprendizado. Você está indo muito bem!
-              </p>
-            </div>
-
-            {/* Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
-              {stats.map((stat, index) => (
-                <div 
-                  key={index}
-                  className="bg-card rounded-xl p-4 md:p-6 shadow-soft border border-border"
-                >
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <stat.icon className="w-5 h-5 text-primary" />
-                    </div>
+        <main className="pt-20">
+          {/* FIRST FOLD - Hero Study Track */}
+          <section className="min-h-[calc(100vh-5rem)] relative">
+            {/* Floating stats bar */}
+            <div className="absolute top-4 left-0 right-0 z-20">
+              <div className="container mx-auto px-4">
+                <div className="flex items-center justify-between">
+                  {/* Left: Streak Risk Alert */}
+                  <div className="flex-1">
+                    <StreakRiskAlert />
                   </div>
-                  <p className="text-2xl md:text-3xl font-bold text-foreground">{stat.value}</p>
-                  <p className="text-sm text-muted-foreground">{stat.label}</p>
+                  
+                  {/* Right: Compact XP and Streak */}
+                  <div className="flex items-center gap-3">
+                    <CompactStreak streak={streak} />
+                    <CompactXP />
+                  </div>
                 </div>
-              ))}
+              </div>
             </div>
 
-            {/* Continue Learning */}
-            {activeModule && (
-              <div className="mb-12">
-                <h2 className="font-serif text-2xl font-bold text-foreground mb-6">
-                  Continuar Aprendendo
-                </h2>
-                <div className="bg-card rounded-2xl p-6 md:p-8 shadow-soft border border-border">
-                  <div className="flex flex-col md:flex-row gap-6 items-start md:items-center">
-                    <div className={`w-16 h-16 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden ${!activeModule.image_url && `bg-gradient-to-br ${activeModule.color || 'from-amber-500 to-orange-600'}`}`}>
-                      {activeModule.image_url ? (
-                        <img src={activeModule.image_url} alt={activeModule.title} className="w-full h-full object-cover" />
-                      ) : (
-                        <BookOpen className="w-8 h-8 text-white" />
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <span className="text-xs font-medium text-primary uppercase tracking-wider">
-                        {activeModule.type === 'proficiency' 
-                          ? `Nível ${activeModule.level?.charAt(0).toUpperCase()}${activeModule.level?.slice(1)}` 
-                          : activeModule.theme}
-                      </span>
-                      <h3 className="font-serif text-xl font-semibold text-foreground mt-1">
-                        {activeModule.title}
-                      </h3>
-                      <p className="text-muted-foreground text-sm mt-1 mb-4">
-                        {activeModule.description}
-                      </p>
-                      <div className="flex items-center gap-4">
-                        <div className="flex-1 max-w-xs">
-                          <div className="flex justify-between text-sm mb-1">
-                            <span className="text-muted-foreground">Progresso</span>
-                            <span className="font-medium text-primary">{activeModule.progress || 0}%</span>
-                          </div>
-                          <Progress value={activeModule.progress || 0} className="h-2" />
-                        </div>
-                        <Button 
-                          className="gradient-gold text-secondary font-semibold shadow-gold"
-                          onClick={() => navigate(`/module/${activeModule.id}`)}
-                        >
-                          <Play className="w-4 h-4 mr-2" />
-                          Continuar
-                        </Button>
+            {/* Hero Study Tracks */}
+            <div className="container mx-auto px-4 pt-16">
+              <HeroStudyTrack
+                modules={proficiencyModules}
+                lockedModules={lockedModules}
+                unlockRequirements={unlockRequirements}
+                displayName={displayName}
+              />
+            </div>
+          </section>
+
+          {/* SECOND FOLD - Quick Engagement */}
+          <section className="py-16 bg-gradient-to-b from-background to-muted/30">
+            <div className="container mx-auto px-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Daily Goal */}
+                <DailyGoalProgress />
+                
+                {/* Spaced Review */}
+                <div className="bg-card rounded-2xl p-6 border border-border shadow-soft hover:shadow-elevated transition-all">
+                  <div className="flex flex-col gap-4 h-full justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-forest-600 flex items-center justify-center">
+                        <Brain className="w-6 h-6 text-primary-foreground" />
+                      </div>
+                      <div>
+                        <span className="text-xs font-medium text-primary">Revisão Espaçada</span>
+                        <h3 className="font-semibold text-foreground">
+                          {dueCount > 0 ? `${dueCount} itens` : 'Nenhum pendente'}
+                        </h3>
                       </div>
                     </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Streak, Daily Goal and Review Section */}
-            <div className="grid md:grid-cols-3 gap-6 mb-12">
-              {/* Streak Card */}
-              <StreakDisplay streak={streak} />
-              
-              {/* Daily Goal */}
-              <DailyGoalProgress />
-              
-              {/* Spaced Repetition Review */}
-              <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 rounded-2xl p-6 border border-amber-200 dark:border-amber-800">
-                <div className="flex flex-col gap-4 h-full justify-center">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
-                      <Brain className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <span className="text-xs font-medium text-amber-600">Revisão Espaçada</span>
-                      <h3 className="font-semibold text-foreground">
-                        {dueCount > 0 ? `${dueCount} itens` : 'Nenhum pendente'}
-                      </h3>
-                    </div>
-                  </div>
-                  <Button 
-                    size="sm"
-                    className="gradient-gold text-secondary font-semibold"
-                    onClick={() => navigate('/review')}
-                  >
-                    <Brain className="w-4 h-4 mr-2" />
-                    {dueCount > 0 ? 'Revisar' : 'Ver Revisões'}
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            {/* Challenge Mode */}
-            <div className="mb-12">
-              <div className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 dark:from-purple-900/30 dark:to-pink-900/30 rounded-2xl p-6 border border-purple-200 dark:border-purple-800">
-                <div className="flex flex-col md:flex-row items-center gap-6">
-                  <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center flex-shrink-0">
-                    <Zap className="w-8 h-8 text-white" />
-                  </div>
-                  <div className="flex-1 text-center md:text-left">
-                    <h3 className="font-serif text-xl font-bold text-foreground">Modo Desafio ⚡</h3>
-                    <p className="text-muted-foreground text-sm mt-1">
-                      Teste sua velocidade! Responda o máximo de itens em 5 minutos e ganhe XP multiplicado.
+                    <p className="text-sm text-muted-foreground">
+                      A revisão espaçada ajuda a fixar o conteúdo na memória de longo prazo.
                     </p>
+                    <Button 
+                      className="w-full gradient-forest text-primary-foreground font-semibold"
+                      onClick={() => navigate('/review')}
+                    >
+                      <Brain className="w-4 h-4 mr-2" />
+                      {dueCount > 0 ? 'Revisar Agora' : 'Ver Revisões'}
+                    </Button>
                   </div>
-                  <Button 
-                    className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white font-semibold shadow-lg"
-                    onClick={() => navigate('/challenge')}
-                  >
-                    <Zap className="w-4 h-4 mr-2" />
-                    Iniciar Desafio
-                  </Button>
+                </div>
+
+                {/* Challenge Mode */}
+                <div className="bg-card rounded-2xl p-6 border border-border shadow-soft hover:shadow-elevated transition-all">
+                  <div className="flex flex-col gap-4 h-full justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center">
+                        <Zap className="w-6 h-6 text-white" />
+                      </div>
+                      <div>
+                        <span className="text-xs font-medium text-purple-600">Modo Desafio</span>
+                        <h3 className="font-semibold text-foreground">Contra o Tempo</h3>
+                      </div>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Teste sua velocidade e ganhe XP multiplicado respondendo rápido!
+                    </p>
+                    <Button 
+                      className="w-full bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white font-semibold"
+                      onClick={() => navigate('/challenge')}
+                    >
+                      <Zap className="w-4 h-4 mr-2" />
+                      Iniciar Desafio
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
+          </section>
 
-            {/* Activity Heatmap */}
-            <div className="mb-12">
-              <ActivityHeatmap />
-            </div>
-
-            {/* Achievements Section */}
-            <div className="mb-12">
-              <AchievementsDisplay />
-            </div>
-
-            {/* Proficiency Modules */}
-            {proficiencyModules.length > 0 && (
-              <div className="mb-12">
-                <ModuleSlider 
-                  modules={proficiencyModules.map(m => ({
-                    id: m.id,
-                    title: m.title,
-                    description: m.description || '',
-                    type: m.type,
-                    level: (m.level?.charAt(0).toUpperCase() + m.level?.slice(1)) as 'Akapo' | 'Awo' | 'Oluwo',
-                    theme: m.theme || '',
-                    image: m.image_url || '',
-                    color: m.color || 'from-amber-500 to-orange-600',
-                    totalLessons: m.totalLessons || 0,
-                    progress: m.progress || 0,
-                    lessons: [],
-                  }))}
-                  title="Trilhas de Proficiência"
-                  subtitle="Evolua do nível Akapo até Oluwo"
-                  lockedModules={lockedModules}
-                  unlockRequirements={unlockRequirements}
-                />
+          {/* THIRD FOLD - Detailed Progress */}
+          <section className="py-16">
+            <div className="container mx-auto px-4 space-y-12">
+              {/* XP and Streak Details */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <XPDisplay />
+                <StreakDisplay streak={streak} />
               </div>
-            )}
 
-            {/* Thematic Modules */}
-            {thematicModules.length > 0 && (
-              <div>
+              {/* Activity Heatmap */}
+              <ActivityHeatmap />
+
+              {/* Achievements */}
+              <AchievementsDisplay />
+
+              {/* Sacred Quote */}
+              <SacredQuote context="motivation" />
+            </div>
+          </section>
+
+          {/* Thematic Modules (if any) */}
+          {thematicModules.length > 0 && (
+            <section className="py-16 bg-muted/20">
+              <div className="container mx-auto px-4">
                 <ModuleSlider 
                   modules={thematicModules.map(m => ({
                     id: m.id,
@@ -415,30 +325,53 @@ const Dashboard: React.FC = () => {
                     level: 'Akapo' as const,
                     theme: m.theme || '',
                     image: m.image_url || '',
-                    color: m.color || 'from-emerald-500 to-teal-600',
+                    color: m.color || 'from-forest-500 to-forest-600',
                     totalLessons: m.totalLessons || 0,
                     progress: m.progress || 0,
                     lessons: [],
                   }))}
                   title="Módulos Temáticos"
-                  subtitle="Aprofunde-se em áreas específicas"
+                  subtitle="Aprofunde-se em áreas específicas do conhecimento"
                 />
               </div>
-            )}
+            </section>
+          )}
 
-            {/* Empty State */}
-            {modules.length === 0 && (
-              <div className="bg-card rounded-xl p-12 text-center border border-border">
-                <BookOpen className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="font-serif text-xl font-semibold text-foreground mb-2">
-                  Nenhum módulo disponível
-                </h3>
-                <p className="text-muted-foreground">
-                  Os módulos estão sendo preparados. Volte em breve!
-                </p>
+          {/* Quick Stats Footer */}
+          <section className="py-12 bg-secondary text-secondary-foreground">
+            <div className="container mx-auto px-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+                <div>
+                  <div className="w-12 h-12 rounded-xl bg-secondary-foreground/10 flex items-center justify-center mx-auto mb-3">
+                    <BookOpen className="w-6 h-6" />
+                  </div>
+                  <p className="text-3xl font-bold">{modules.length}</p>
+                  <p className="text-sm opacity-80">Módulos</p>
+                </div>
+                <div>
+                  <div className="w-12 h-12 rounded-xl bg-secondary-foreground/10 flex items-center justify-center mx-auto mb-3">
+                    <Clock className="w-6 h-6" />
+                  </div>
+                  <p className="text-3xl font-bold">∞</p>
+                  <p className="text-sm opacity-80">Horas de Estudo</p>
+                </div>
+                <div>
+                  <div className="w-12 h-12 rounded-xl bg-secondary-foreground/10 flex items-center justify-center mx-auto mb-3">
+                    <Award className="w-6 h-6" />
+                  </div>
+                  <p className="text-3xl font-bold">{completions.length}</p>
+                  <p className="text-sm opacity-80">Certificados</p>
+                </div>
+                <div>
+                  <div className="w-12 h-12 rounded-xl bg-secondary-foreground/10 flex items-center justify-center mx-auto mb-3">
+                    <TrendingUp className="w-6 h-6" />
+                  </div>
+                  <p className="text-3xl font-bold">{totalProgress}%</p>
+                  <p className="text-sm opacity-80">Progresso Total</p>
+                </div>
               </div>
-            )}
-          </div>
+            </div>
+          </section>
         </main>
 
         <Footer />

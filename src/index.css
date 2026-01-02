@@ -6,90 +6,92 @@
 
 @layer base {
   :root {
-    /* Orunmila-inspired palette - wisdom, earth, gold */
-    --background: 30 20% 98%;
-    --foreground: 25 30% 12%;
+    /* Forest of Knowledge - Green + Brown + Gold */
+    --background: 85 15% 97%;
+    --foreground: 25 35% 12%;
 
-    --card: 30 25% 97%;
-    --card-foreground: 25 30% 12%;
+    --card: 85 12% 96%;
+    --card-foreground: 25 35% 12%;
 
-    --popover: 30 25% 97%;
-    --popover-foreground: 25 30% 12%;
+    --popover: 85 12% 96%;
+    --popover-foreground: 25 35% 12%;
 
-    /* Sacred gold - Orunmila's wisdom */
-    --primary: 38 75% 50%;
-    --primary-foreground: 30 20% 98%;
+    /* Forest Green - Primary action color */
+    --primary: 145 45% 35%;
+    --primary-foreground: 85 15% 98%;
 
-    /* Earth brown - grounding */
-    --secondary: 25 35% 25%;
-    --secondary-foreground: 30 20% 98%;
+    /* Earth Brown - Secondary, grounding */
+    --secondary: 25 45% 25%;
+    --secondary-foreground: 85 15% 98%;
 
-    /* Warm cream */
-    --muted: 30 20% 92%;
-    --muted-foreground: 25 20% 45%;
+    /* Warm cream with green tint */
+    --muted: 85 12% 90%;
+    --muted-foreground: 25 25% 40%;
 
-    /* Accent - deep terracotta */
-    --accent: 15 60% 45%;
-    --accent-foreground: 30 20% 98%;
+    /* Ifá Gold - Accent for sacred elements */
+    --accent: 42 75% 55%;
+    --accent-foreground: 25 45% 15%;
 
     --destructive: 0 84% 60%;
-    --destructive-foreground: 30 20% 98%;
+    --destructive-foreground: 85 15% 98%;
 
-    --border: 30 20% 88%;
-    --input: 30 20% 88%;
-    --ring: 38 75% 50%;
+    --border: 85 12% 85%;
+    --input: 85 12% 85%;
+    --ring: 145 45% 35%;
 
     --radius: 0.75rem;
 
     /* Custom gradients */
-    --gradient-gold: linear-gradient(135deg, hsl(38, 75%, 50%) 0%, hsl(45, 85%, 60%) 50%, hsl(38, 75%, 50%) 100%);
-    --gradient-earth: linear-gradient(135deg, hsl(25, 35%, 25%) 0%, hsl(20, 40%, 35%) 100%);
-    --gradient-warm: linear-gradient(180deg, hsl(30, 20%, 98%) 0%, hsl(30, 25%, 94%) 100%);
-    --gradient-hero: linear-gradient(135deg, hsl(25, 35%, 18%) 0%, hsl(20, 40%, 28%) 50%, hsl(25, 30%, 22%) 100%);
+    --gradient-forest: linear-gradient(135deg, hsl(145, 45%, 35%) 0%, hsl(42, 75%, 55%) 100%);
+    --gradient-earth: linear-gradient(135deg, hsl(25, 45%, 25%) 0%, hsl(145, 35%, 30%) 100%);
+    --gradient-sacred: linear-gradient(135deg, hsl(42, 75%, 55%) 0%, hsl(38, 85%, 65%) 50%, hsl(42, 75%, 55%) 100%);
+    --gradient-hero: linear-gradient(135deg, hsl(25, 45%, 18%) 0%, hsl(145, 30%, 22%) 50%, hsl(25, 40%, 20%) 100%);
+    --gradient-warm: linear-gradient(180deg, hsl(85, 15%, 97%) 0%, hsl(85, 12%, 94%) 100%);
 
     /* Shadows */
-    --shadow-soft: 0 4px 20px -4px hsla(25, 30%, 12%, 0.1);
-    --shadow-gold: 0 4px 20px -4px hsla(38, 75%, 50%, 0.3);
-    --shadow-elevated: 0 12px 40px -8px hsla(25, 30%, 12%, 0.15);
+    --shadow-soft: 0 4px 20px -4px hsla(145, 45%, 20%, 0.1);
+    --shadow-forest: 0 4px 20px -4px hsla(145, 45%, 35%, 0.3);
+    --shadow-elevated: 0 12px 40px -8px hsla(25, 35%, 12%, 0.15);
+    --shadow-sacred: 0 0 30px -5px hsla(42, 75%, 55%, 0.4);
 
-    --sidebar-background: 25 35% 25%;
-    --sidebar-foreground: 30 20% 95%;
-    --sidebar-primary: 38 75% 50%;
-    --sidebar-primary-foreground: 25 35% 15%;
-    --sidebar-accent: 25 30% 32%;
-    --sidebar-accent-foreground: 30 20% 95%;
-    --sidebar-border: 25 25% 35%;
-    --sidebar-ring: 38 75% 50%;
+    --sidebar-background: 25 45% 22%;
+    --sidebar-foreground: 85 15% 95%;
+    --sidebar-primary: 145 45% 45%;
+    --sidebar-primary-foreground: 25 45% 12%;
+    --sidebar-accent: 25 35% 30%;
+    --sidebar-accent-foreground: 85 15% 95%;
+    --sidebar-border: 25 30% 32%;
+    --sidebar-ring: 145 45% 35%;
   }
 
   .dark {
-    --background: 25 30% 8%;
-    --foreground: 30 20% 95%;
+    --background: 25 35% 8%;
+    --foreground: 85 15% 95%;
 
-    --card: 25 28% 12%;
-    --card-foreground: 30 20% 95%;
+    --card: 25 32% 12%;
+    --card-foreground: 85 15% 95%;
 
-    --popover: 25 28% 12%;
-    --popover-foreground: 30 20% 95%;
+    --popover: 25 32% 12%;
+    --popover-foreground: 85 15% 95%;
 
-    --primary: 38 75% 55%;
-    --primary-foreground: 25 35% 10%;
+    --primary: 145 45% 45%;
+    --primary-foreground: 25 45% 10%;
 
-    --secondary: 30 25% 85%;
-    --secondary-foreground: 25 30% 12%;
+    --secondary: 85 20% 85%;
+    --secondary-foreground: 25 35% 12%;
 
-    --muted: 25 25% 18%;
-    --muted-foreground: 30 15% 65%;
+    --muted: 25 28% 18%;
+    --muted-foreground: 85 12% 60%;
 
-    --accent: 15 55% 55%;
-    --accent-foreground: 30 20% 98%;
+    --accent: 42 70% 50%;
+    --accent-foreground: 85 15% 98%;
 
     --destructive: 0 62% 50%;
-    --destructive-foreground: 30 20% 98%;
+    --destructive-foreground: 85 15% 98%;
 
-    --border: 25 25% 20%;
-    --input: 25 25% 20%;
-    --ring: 38 75% 55%;
+    --border: 25 28% 22%;
+    --input: 25 28% 22%;
+    --ring: 145 45% 45%;
   }
 }
 
@@ -123,20 +125,44 @@
 }
 
 @layer components {
-  .gradient-gold {
-    background: var(--gradient-gold);
+  .gradient-forest {
+    background: var(--gradient-forest);
   }
 
   .gradient-earth {
     background: var(--gradient-earth);
   }
 
+  .gradient-sacred {
+    background: var(--gradient-sacred);
+  }
+
   .gradient-hero {
     background: var(--gradient-hero);
   }
 
+  /* Legacy support */
+  .gradient-gold {
+    background: var(--gradient-sacred);
+  }
+
+  .text-gradient-forest {
+    background: var(--gradient-forest);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .text-gradient-sacred {
+    background: var(--gradient-sacred);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Legacy support */
   .text-gradient-gold {
-    background: var(--gradient-gold);
+    background: var(--gradient-sacred);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -146,17 +172,26 @@
     box-shadow: var(--shadow-soft);
   }
 
-  .shadow-gold {
-    box-shadow: var(--shadow-gold);
+  .shadow-forest {
+    box-shadow: var(--shadow-forest);
+  }
+
+  .shadow-sacred {
+    box-shadow: var(--shadow-sacred);
   }
 
   .shadow-elevated {
     box-shadow: var(--shadow-elevated);
   }
 
-  /* African pattern overlay */
+  /* Legacy support */
+  .shadow-gold {
+    box-shadow: var(--shadow-sacred);
+  }
+
+  /* African pattern overlay - now with green tint */
   .pattern-adinkra {
-    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23c9a961' fill-opacity='0.08'%3E%3Cpath d='M30 30c0-11.046 8.954-20 20-20s20 8.954 20 20-8.954 20-20 20-20-8.954-20-20zm0 0c0 11.046-8.954 20-20 20S-10 41.046-10 30s8.954-20 20-20 20 8.954 20 20z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23285c3b' fill-opacity='0.06'%3E%3Cpath d='M30 30c0-11.046 8.954-20 20-20s20 8.954 20 20-8.954 20-20 20-20-8.954-20-20zm0 0c0 11.046-8.954 20-20 20S-10 41.046-10 30s8.954-20 20-20 20 8.954 20 20z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
   }
 
   /* Slider/Carousel styles */
@@ -192,12 +227,51 @@
     }
   }
 
-  @keyframes pulse-gold {
+  @keyframes pulse-forest {
     0%, 100% {
-      box-shadow: 0 0 0 0 hsla(38, 75%, 50%, 0.4);
+      box-shadow: 0 0 0 0 hsla(145, 45%, 35%, 0.5);
     }
     50% {
-      box-shadow: 0 0 0 12px hsla(38, 75%, 50%, 0);
+      box-shadow: 0 0 25px 12px hsla(145, 45%, 35%, 0.15);
+    }
+  }
+
+  @keyframes pulse-sacred {
+    0%, 100% {
+      box-shadow: 0 0 0 0 hsla(42, 75%, 55%, 0.4);
+    }
+    50% {
+      box-shadow: 0 0 20px 10px hsla(42, 75%, 55%, 0.1);
+    }
+  }
+
+  @keyframes glow-sacred {
+    0%, 100% {
+      filter: drop-shadow(0 0 8px hsla(42, 75%, 55%, 0.6));
+    }
+    50% {
+      filter: drop-shadow(0 0 16px hsla(42, 75%, 55%, 0.8));
+    }
+  }
+
+  @keyframes float-gentle {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-6px);
+    }
+  }
+
+  @keyframes streak-flame {
+    0%, 100% {
+      transform: scaleY(1) scaleX(1);
+    }
+    25% {
+      transform: scaleY(1.1) scaleX(0.95);
+    }
+    75% {
+      transform: scaleY(0.95) scaleX(1.05);
     }
   }
 
@@ -206,13 +280,34 @@
   }
 
   .animate-shimmer {
-    background: linear-gradient(90deg, transparent 0%, hsla(38, 75%, 50%, 0.1) 50%, transparent 100%);
+    background: linear-gradient(90deg, transparent 0%, hsla(145, 45%, 35%, 0.1) 50%, transparent 100%);
     background-size: 200% 100%;
     animation: shimmer 2s infinite;
   }
 
+  .animate-pulse-forest {
+    animation: pulse-forest 2.5s infinite;
+  }
+
+  .animate-pulse-sacred {
+    animation: pulse-sacred 2s infinite;
+  }
+
+  .animate-glow-sacred {
+    animation: glow-sacred 2s ease-in-out infinite;
+  }
+
+  .animate-float-gentle {
+    animation: float-gentle 4s ease-in-out infinite;
+  }
+
+  .animate-streak-flame {
+    animation: streak-flame 0.8s ease-in-out infinite;
+  }
+
+  /* Legacy support */
   .animate-pulse-gold {
-    animation: pulse-gold 2s infinite;
+    animation: pulse-sacred 2s infinite;
   }
 
   /* Stagger animations */
@@ -221,4 +316,31 @@
   .stagger-3 { animation-delay: 0.3s; }
   .stagger-4 { animation-delay: 0.4s; }
   .stagger-5 { animation-delay: 0.5s; }
+
+  /* Main CTA Button */
+  .cta-main {
+    @apply relative overflow-hidden;
+    background: var(--gradient-forest);
+    transition: all 0.3s ease;
+  }
+
+  .cta-main::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, hsla(255, 255%, 255%, 0.2), transparent);
+    transition: left 0.5s ease;
+  }
+
+  .cta-main:hover::before {
+    left: 100%;
+  }
+
+  .cta-main:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-forest);
+  }
 }
