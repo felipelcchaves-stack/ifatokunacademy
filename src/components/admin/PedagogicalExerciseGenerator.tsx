@@ -127,22 +127,18 @@ const PedagogicalExerciseGenerator: React.FC<PedagogicalExerciseGeneratorProps> 
     return { items, targets, correctMatches };
   };
 
-  // Generate fill-columns exercise
-  const generateFillColumns = (text: string): { columns: string[]; rows: { cells: { text: string; isEditable: boolean }[] }[] } => {
+  // Generate fill-columns exercise - formato padronizado string[][]
+  const generateFillColumns = (text: string): { columns: string[]; rows: string[][] } => {
     const lines = splitIntoLines(text);
     const columns = ['Linha', 'Complete o verso'];
-    const rows = lines.map((line, i) => {
+    // Formato padronizado: array de arrays de strings
+    const rows: string[][] = lines.map((line, i) => {
       const words = line.split(' ');
       // Hide some words (every 3rd word)
       const displayWords = words.map((word, idx) => 
         idx % 3 === 1 ? '______' : word
       );
-      return {
-        cells: [
-          { text: `${i + 1}`, isEditable: false },
-          { text: displayWords.join(' '), isEditable: true },
-        ],
-      };
+      return [`${i + 1}`, displayWords.join(' ')];
     });
     return { columns, rows };
   };

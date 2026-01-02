@@ -59,6 +59,7 @@ import { supabase } from '@/integrations/supabase/client';
 import ExerciseEditor from '@/components/admin/ExerciseEditor';
 import QuizExerciseEditor from '@/components/admin/QuizExerciseEditor';
 import PedagogicalExerciseGenerator from '@/components/admin/PedagogicalExerciseGenerator';
+import AdminErrorBoundary from '@/components/errors/AdminErrorBoundary';
 
 interface Exercise {
   id: string;
@@ -444,28 +445,39 @@ const AdminExercises: React.FC = () => {
   }
 
   if (isEditorOpen && editingExercise) {
+    const handleEditorBack = () => {
+      setIsEditorOpen(false);
+      setEditingExercise(null);
+    };
+
     if (editingExercise.type === 'quiz') {
       return (
-        <QuizExerciseEditor
-          exercise={editingExercise}
-          onSave={(e) => handleSaveExercise(e as Exercise)}
-          onCancel={() => {
-            setIsEditorOpen(false);
-            setEditingExercise(null);
-          }}
-        />
+        <AdminErrorBoundary
+          fallbackTitle="Erro ao carregar o editor de quiz"
+          onBack={handleEditorBack}
+          onReset={handleEditorBack}
+        >
+          <QuizExerciseEditor
+            exercise={editingExercise}
+            onSave={(e) => handleSaveExercise(e as Exercise)}
+            onCancel={handleEditorBack}
+          />
+        </AdminErrorBoundary>
       );
     }
     
     return (
-      <ExerciseEditor
-        exercise={editingExercise}
-        onSave={handleSaveExercise}
-        onCancel={() => {
-          setIsEditorOpen(false);
-          setEditingExercise(null);
-        }}
-      />
+      <AdminErrorBoundary
+        fallbackTitle="Erro ao carregar o editor de exercício"
+        onBack={handleEditorBack}
+        onReset={handleEditorBack}
+      >
+        <ExerciseEditor
+          exercise={editingExercise}
+          onSave={handleSaveExercise}
+          onCancel={handleEditorBack}
+        />
+      </AdminErrorBoundary>
     );
   }
 
