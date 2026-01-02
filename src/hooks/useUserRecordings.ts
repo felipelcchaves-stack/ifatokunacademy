@@ -13,6 +13,8 @@ interface UserRecording {
   lesson_id: string | null;
   module_id: string | null;
   created_at: string;
+  module_title?: string | null;
+  lesson_title?: string | null;
 }
 
 interface UseUserRecordingsProps {
@@ -39,7 +41,11 @@ export function useUserRecordings(props: UseUserRecordingsProps = {}) {
     try {
       let query = supabase
         .from('user_recordings')
-        .select('*')
+        .select(`
+          *,
+          modules:module_id(title),
+          lessons:lesson_id(title)
+        `)
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
@@ -57,7 +63,15 @@ export function useUserRecordings(props: UseUserRecordingsProps = {}) {
       const { data, error } = await query;
 
       if (error) throw error;
-      setRecordings(data || []);
+      
+      // Map the joined data to flat structure
+      const mappedData = (data || []).map((rec: any) => ({
+        ...rec,
+        module_title: rec.modules?.title || null,
+        lesson_title: rec.lessons?.title || null,
+      }));
+      
+      setRecordings(mappedData);
     } catch (error) {
       console.error('Error fetching recordings:', error);
       toast({
