@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
 import loginBg from '@/assets/login-bg.jpg';
@@ -24,6 +24,8 @@ const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [showMFA, setShowMFA] = useState(false);
+  const [parallaxOffset, setParallaxOffset] = useState({ x: 0, y: 0 });
+  const parallaxRef = useRef<HTMLDivElement>(null);
   
   const { signIn, isAuthenticated } = useAuth();
   const { platformName } = usePlatformSettings();
@@ -42,6 +44,26 @@ const Login: React.FC = () => {
       checkMFAStatus();
     }
   }, [isAuthenticated]);
+
+  // Parallax effect on mouse movement
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!parallaxRef.current) return;
+      
+      const rect = parallaxRef.current.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      
+      // Calculate offset from center (max 15px movement)
+      const offsetX = ((e.clientX - centerX) / rect.width) * 15;
+      const offsetY = ((e.clientY - centerY) / rect.height) * 15;
+      
+      setParallaxOffset({ x: offsetX, y: offsetY });
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
 
   const checkMFAStatus = async () => {
     try {
@@ -147,15 +169,25 @@ const Login: React.FC = () => {
         </div>
 
         <div 
-          className="hidden lg:flex flex-1 relative items-center justify-center p-12"
-          style={{
-            backgroundImage: `url(${loginBg})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-          }}
+          ref={parallaxRef}
+          className="hidden lg:flex flex-1 relative items-center justify-center p-12 overflow-hidden"
         >
+          <div 
+            className="absolute inset-[-20px] transition-transform duration-300 ease-out"
+            style={{
+              backgroundImage: `url(${loginBg})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              transform: `translate(${parallaxOffset.x}px, ${parallaxOffset.y}px) scale(1.05)`,
+            }}
+          />
           <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/40 to-black/60" />
-          <div className="relative max-w-lg text-center text-white z-10">
+          <div 
+            className="relative max-w-lg text-center text-white z-10 transition-transform duration-300 ease-out"
+            style={{
+              transform: `translate(${-parallaxOffset.x * 0.5}px, ${-parallaxOffset.y * 0.5}px)`,
+            }}
+          >
             <h2 className="font-serif text-4xl font-bold mb-6 drop-shadow-lg">
               "A segurança é a fortaleza do sábio."
             </h2>
@@ -261,17 +293,27 @@ const Login: React.FC = () => {
         </div>
       </div>
 
-      {/* Right Side - Decorative */}
+      {/* Right Side - Decorative with Parallax */}
       <div 
-        className="hidden lg:flex flex-1 relative items-center justify-center p-12"
-        style={{
-          backgroundImage: `url(${loginBg})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-        }}
+        ref={parallaxRef}
+        className="hidden lg:flex flex-1 relative items-center justify-center p-12 overflow-hidden"
       >
+        <div 
+          className="absolute inset-[-20px] transition-transform duration-300 ease-out"
+          style={{
+            backgroundImage: `url(${loginBg})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            transform: `translate(${parallaxOffset.x}px, ${parallaxOffset.y}px) scale(1.05)`,
+          }}
+        />
         <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/40 to-black/60" />
-        <div className="relative max-w-lg text-center text-white z-10">
+        <div 
+          className="relative max-w-lg text-center text-white z-10 transition-transform duration-300 ease-out"
+          style={{
+            transform: `translate(${-parallaxOffset.x * 0.5}px, ${-parallaxOffset.y * 0.5}px)`,
+          }}
+        >
           <h2 className="font-serif text-4xl font-bold mb-6 drop-shadow-lg">
             "O conhecimento é a chave que abre todas as portas."
           </h2>
