@@ -776,7 +776,6 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
       </div>
     );
   }
-  }
 
   // Get progress info based on mode
   const getModeProgress = () => {
