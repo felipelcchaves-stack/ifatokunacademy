@@ -27,6 +27,7 @@ import AdminLessonsOverview from "./pages/admin/AdminLessonsOverview";
 import AdminExercises from "./pages/admin/AdminExercises";
 import AdminImportOdu from "./pages/admin/AdminImportOdu";
 import AdminSettings from "./pages/admin/AdminSettings";
+import AdminUsers from "./pages/admin/AdminUsers";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -122,7 +123,7 @@ const App = () => (
               } />
               <Route path="/admin/users" element={
                 <ProtectedRoute requireAdmin>
-                  <AdminDashboard />
+                  <AdminUsers />
                 </ProtectedRoute>
               } />
               <Route path="/admin/payments" element={
