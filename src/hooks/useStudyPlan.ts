@@ -27,6 +27,14 @@ export interface StudyPlan {
   updated_at: string;
 }
 
+export interface ExerciseBreakdown {
+  type: string;
+  count: number;
+  firstExposureHours: number;
+  reviewHours: number;
+  totalHours: number;
+}
+
 export interface StudyPlanCalculation {
   estimatedCompletionDate: string;
   weeksToComplete: number;
@@ -35,6 +43,19 @@ export interface StudyPlanCalculation {
   totalPendingHours: number;
   totalPendingLessons: number;
   aiInsights: string;
+  // Novos campos para cálculo detalhado
+  firstExposureHours: number;
+  reviewHours: number;
+  exerciseBreakdown: ExerciseBreakdown[];
+  pendingExercisesCount: number;
+  itemsInSpacedRepetition: number;
+}
+
+interface TimeEstimate {
+  exercise_type: string;
+  base_minutes: number;
+  review_minutes: number;
+  repetitions_to_master: number;
 }
 
 export const useStudyPlan = () => {
@@ -64,7 +85,6 @@ export const useStudyPlan = () => {
       }
 
       if (data) {
-        // Parse availability from Json to DayAvailability[]
         const availability = Array.isArray(data.availability) 
           ? (data.availability as unknown as DayAvailability[])
           : [];
@@ -134,24 +154,121 @@ export const useStudyPlan = () => {
     setCalculating(true);
 
     try {
-      // Buscar dados de módulos e progresso do usuário
-      const [modulesResult, lessonsResult, progressResult] = await Promise.all([
-        supabase.from('modules').select('id, title').eq('is_published', true),
-        supabase.from('lessons').select('id, module_id, duration_minutes').eq('is_published', true),
-        supabase.from('user_progress').select('lesson_id').eq('user_id', user.id),
+      // Buscar dados em paralelo
+      const [
+        exercisesResult, 
+        progressResult, 
+        timeEstimatesResult,
+        spacedRepResult,
+        lessonsResult
+      ] = await Promise.all([
+        supabase.from('exercises').select('id, lesson_id, type').eq('is_published', true),
+        supabase.from('user_progress').select('exercise_id, lesson_id').eq('user_id', user.id),
+        supabase.from('exercise_time_estimates').select('*'),
+        supabase.from('spaced_repetition_items').select('id, exercise_id, repetitions, ease_factor').eq('user_id', user.id),
+        supabase.from('lessons').select('id, title').eq('is_published', true),
       ]);
 
-      const modules = modulesResult.data || [];
+      const exercises = exercisesResult.data || [];
+      const completedExerciseIds = new Set((progressResult.data || []).filter(p => p.exercise_id).map(p => p.exercise_id));
+      const completedLessonIds = new Set((progressResult.data || []).filter(p => p.lesson_id).map(p => p.lesson_id));
       const lessons = lessonsResult.data || [];
-      const completedLessonIds = new Set((progressResult.data || []).map(p => p.lesson_id));
+      const spacedItems = spacedRepResult.data || [];
+      
+      // Mapear itens de repetição espaçada por exercise_id
+      const spacedItemsByExercise = new Map<string, { repetitions: number; easeFactor: number }>();
+      spacedItems.forEach(item => {
+        if (item.exercise_id) {
+          spacedItemsByExercise.set(item.exercise_id, {
+            repetitions: item.repetitions,
+            easeFactor: Number(item.ease_factor) || 2.5,
+          });
+        }
+      });
+
+      // Criar mapa de estimativas de tempo por tipo
+      const timeEstimates = (timeEstimatesResult.data || []) as TimeEstimate[];
+      const timeEstimateMap = new Map<string, TimeEstimate>();
+      timeEstimates.forEach(te => timeEstimateMap.set(te.exercise_type, te));
+
+      // Valores padrão caso não exista configuração para o tipo
+      const defaultEstimate: TimeEstimate = {
+        exercise_type: 'default',
+        base_minutes: 10,
+        review_minutes: 5,
+        repetitions_to_master: 3,
+      };
+
+      // Calcular tempo por exercício considerando:
+      // 1. Tipo de exercício (base_minutes, review_minutes, repetitions_to_master)
+      // 2. Se já está em spaced repetition (quantas repetições restam)
+      // 3. Fator de facilidade do usuário
+
+      let totalFirstExposureMinutes = 0;
+      let totalReviewMinutes = 0;
+      const exerciseBreakdownMap = new Map<string, ExerciseBreakdown>();
+
+      for (const exercise of exercises) {
+        const isCompleted = completedExerciseIds.has(exercise.id);
+        const spacedData = spacedItemsByExercise.get(exercise.id);
+        const estimate = timeEstimateMap.get(exercise.type) || defaultEstimate;
+        
+        let firstExposure = 0;
+        let reviews = 0;
+
+        if (!isCompleted) {
+          // Primeira exposição
+          firstExposure = estimate.base_minutes;
+          
+          // Revisões necessárias para domínio
+          const repetitionsToMaster = estimate.repetitions_to_master;
+          const completedReps = spacedData?.repetitions || 0;
+          const remainingReps = Math.max(0, repetitionsToMaster - completedReps);
+          
+          // Ajustar tempo de revisão baseado no ease_factor do usuário
+          // Ease factor menor = usuário tem mais dificuldade = mais tempo
+          const easeFactor = spacedData?.easeFactor || 2.5;
+          const difficultyMultiplier = easeFactor < 2.0 ? 1.5 : easeFactor < 2.5 ? 1.0 : 0.8;
+          
+          reviews = estimate.review_minutes * remainingReps * difficultyMultiplier;
+        } else if (spacedData) {
+          // Exercício já completado mas ainda em revisão
+          const repetitionsToMaster = estimate.repetitions_to_master;
+          const completedReps = spacedData.repetitions;
+          const remainingReps = Math.max(0, repetitionsToMaster - completedReps);
+          
+          const easeFactor = spacedData.easeFactor;
+          const difficultyMultiplier = easeFactor < 2.0 ? 1.5 : easeFactor < 2.5 ? 1.0 : 0.8;
+          
+          reviews = estimate.review_minutes * remainingReps * difficultyMultiplier;
+        }
+
+        totalFirstExposureMinutes += firstExposure;
+        totalReviewMinutes += reviews;
+
+        // Agregar por tipo
+        const existing = exerciseBreakdownMap.get(exercise.type) || {
+          type: exercise.type,
+          count: 0,
+          firstExposureHours: 0,
+          reviewHours: 0,
+          totalHours: 0,
+        };
+        existing.count++;
+        existing.firstExposureHours += firstExposure / 60;
+        existing.reviewHours += reviews / 60;
+        existing.totalHours += (firstExposure + reviews) / 60;
+        exerciseBreakdownMap.set(exercise.type, existing);
+      }
+
+      const firstExposureHours = totalFirstExposureMinutes / 60;
+      const reviewHours = totalReviewMinutes / 60;
+      const totalPendingHours = firstExposureHours + reviewHours;
+      const exerciseBreakdown = Array.from(exerciseBreakdownMap.values()).sort((a, b) => b.totalHours - a.totalHours);
 
       // Calcular lições pendentes
       const pendingLessons = lessons.filter(l => !completedLessonIds.has(l.id));
-      const totalPendingMinutes = pendingLessons.reduce(
-        (sum, l) => sum + (l.duration_minutes || 30),
-        0
-      );
-      const totalPendingHours = totalPendingMinutes / 60;
+      const pendingExercises = exercises.filter(e => !completedExerciseIds.has(e.id));
 
       // Calcular horas semanais disponíveis
       let weeklyMinutes = 0;
@@ -163,7 +280,12 @@ export const useStudyPlan = () => {
           weeklyMinutes += slotMinutes;
         }
       }
-      const hoursPerWeek = weeklyMinutes / 60;
+      
+      // Fator de fadiga: não se estuda mais de 2.5h/dia com eficiência máxima
+      const maxEffectiveMinutesPerDay = 150; // 2.5 horas
+      const effectiveWeeklyMinutes = Math.min(weeklyMinutes, maxEffectiveMinutesPerDay * studyPlan.availability.length);
+      
+      const hoursPerWeek = effectiveWeeklyMinutes / 60;
       const sessionsPerWeek = studyPlan.availability.reduce(
         (sum, day) => sum + day.slots.length,
         0
@@ -177,17 +299,25 @@ export const useStudyPlan = () => {
       completionDate.setDate(completionDate.getDate() + weeksToComplete * 7);
       const estimatedCompletionDate = completionDate.toISOString().split('T')[0];
 
-      // Chamar edge function para insights da IA
+      // Chamar edge function para insights da IA com dados mais detalhados
       let aiInsights = '';
       try {
         const { data: aiData, error: aiError } = await supabase.functions.invoke('calculate-study-plan', {
           body: {
             availability: studyPlan.availability,
             totalPendingHours,
+            firstExposureHours,
+            reviewHours,
             pendingLessonsCount: pendingLessons.length,
+            pendingExercisesCount: pendingExercises.length,
             hoursPerWeek,
             weeksToComplete,
             sessionDurationMinutes: studyPlan.session_duration_minutes,
+            exercisesByType: Object.fromEntries(
+              exerciseBreakdown.map(eb => [eb.type, { count: eb.count, hours: eb.totalHours }])
+            ),
+            itemsInSpacedRepetition: spacedItems.length,
+            memorizationHours: exerciseBreakdown.find(e => e.type === 'memorization')?.totalHours || 0,
           },
         });
 
@@ -196,7 +326,7 @@ export const useStudyPlan = () => {
         }
       } catch (e) {
         console.error('Error getting AI insights:', e);
-        aiInsights = `Com ${hoursPerWeek.toFixed(1)} horas de estudo por semana, você completará o curso em aproximadamente ${weeksToComplete} semanas. Continue firme nos estudos!`;
+        aiInsights = `Com ${hoursPerWeek.toFixed(1)} horas de estudo efetivo por semana, você completará o conteúdo em aproximadamente ${weeksToComplete} semanas. O tempo inclui ${firstExposureHours.toFixed(0)}h de primeira exposição e ${reviewHours.toFixed(0)}h de revisões para memorização.`;
       }
 
       const calc: StudyPlanCalculation = {
@@ -207,6 +337,11 @@ export const useStudyPlan = () => {
         totalPendingHours,
         totalPendingLessons: pendingLessons.length,
         aiInsights,
+        firstExposureHours,
+        reviewHours,
+        exerciseBreakdown,
+        pendingExercisesCount: pendingExercises.length,
+        itemsInSpacedRepetition: spacedItems.length,
       };
 
       setCalculation(calc);
