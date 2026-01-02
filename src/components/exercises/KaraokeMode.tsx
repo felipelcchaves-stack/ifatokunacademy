@@ -59,14 +59,20 @@ const KaraokeMode: React.FC<KaraokeModeProps> = ({
 
       if (error) throw error;
 
-      if (data?.audioContent) {
-        const url = `data:audio/mpeg;base64,${data.audioContent}`;
-        audioRef.current = new Audio(url);
+      if (data?.audioUrl) {
+        audioRef.current = new Audio(data.audioUrl);
         audioRef.current.playbackRate = speed;
         await audioRef.current.play();
+      } else if (data?.error) {
+        throw new Error(data.error);
       }
     } catch (error) {
       console.error('Error playing audio:', error);
+      toast({
+        title: "Erro ao carregar áudio",
+        description: "Não foi possível gerar o áudio. Tente novamente.",
+        variant: "destructive"
+      });
     } finally {
       setAudioLoading(false);
     }
