@@ -10,7 +10,8 @@ import {
   LogOut,
   Upload,
   FileText,
-  Home
+  Home,
+  UserPlus
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
@@ -28,6 +29,7 @@ const AdminLayout: React.FC = () => {
     { icon: FileText, label: 'Lições', path: '/admin/lessons' },
     { icon: Upload, label: 'Importar Odu', path: '/admin/import-odu' },
     { icon: Users, label: 'Usuários', path: '/admin/users' },
+    { icon: UserPlus, label: 'Convites', path: '/admin/invites' },
     { icon: CreditCard, label: 'Pagamentos', path: '/admin/payments' },
     { icon: BarChart3, label: 'Relatórios', path: '/admin/reports' },
     { icon: Settings, label: 'Configurações', path: '/admin/settings' },
