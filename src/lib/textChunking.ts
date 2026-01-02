@@ -329,6 +329,7 @@ export function generateIntermediateText(text: string): string {
 /**
  * Conta palavras em um texto
  */
-export function countWords(text: string): number {
+export function countWords(text: string | undefined | null): number {
+  if (!text) return 0;
   return text.split(/\s+/).filter(w => w.length > 0).length;
 }

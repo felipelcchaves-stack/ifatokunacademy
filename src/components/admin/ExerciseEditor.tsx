@@ -615,11 +615,11 @@ const ExerciseEditor: React.FC<ExerciseEditorProps> = ({ exercise, onSave, onCan
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label>Nível 3 - Texto Completo</Label>
-                  <span className="text-xs text-muted-foreground">{countWords(item.text)} palavras</span>
+                  <span className="text-xs text-muted-foreground">{countWords(item.text || '')} palavras</span>
                 </div>
                 <Textarea
                   placeholder="Digite o texto ou conceito completo..."
-                  value={item.text}
+                  value={item.text || ''}
                   onChange={(e) => updateItem(index, 'text', e.target.value)}
                   className="min-h-[100px]"
                 />
