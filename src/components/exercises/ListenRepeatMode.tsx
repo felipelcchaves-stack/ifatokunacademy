@@ -53,11 +53,12 @@ const ListenRepeatMode: React.FC<ListenRepeatModeProps> = ({
 
       if (error) throw error;
 
-      if (data?.audioContent) {
-        const url = `data:audio/mpeg;base64,${data.audioContent}`;
-        const audio = new Audio(url);
+      if (data?.audioUrl) {
+        const audio = new Audio(data.audioUrl);
         audio.onended = () => setPhase('idle');
         await audio.play();
+      } else if (data?.error) {
+        throw new Error(data.error);
       }
     } catch (error) {
       console.error('Error playing audio:', error);
