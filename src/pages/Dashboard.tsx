@@ -1,7 +1,7 @@
 import React from 'react';
 import { BookOpen as GuideIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, Clock, Award, TrendingUp, Loader2, Brain, Zap, Sparkles, FlaskConical } from 'lucide-react';
+import { BookOpen, Clock, Award, TrendingUp, Loader2, Brain, Zap, Sparkles, FlaskConical, Mic } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import ModuleSlider from '@/components/modules/ModuleSlider';
@@ -218,40 +218,70 @@ const Dashboard: React.FC = () => {
                 </div>
 
                 {/* Test Memorization Modes */}
-                <div className="group relative bg-card rounded-2xl p-6 border border-border shadow-soft hover:shadow-elevated transition-all duration-300 overflow-hidden md:col-span-2 lg:col-span-4">
+                <div className="group relative bg-card rounded-2xl p-6 border border-border shadow-soft hover:shadow-elevated transition-all duration-300 overflow-hidden">
                   {/* Background glow effect */}
                   <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-teal-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                   
-                  <div className="relative z-10 flex flex-col md:flex-row gap-4 items-center justify-between">
+                  <div className="relative z-10 space-y-4">
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-teal-600 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
                         <FlaskConical className="w-6 h-6 text-white" />
                       </div>
                       <div>
-                        <span className="text-xs font-semibold text-cyan-600 uppercase tracking-wide">Novo!</span>
-                        <h3 className="font-bold text-foreground">Modos de Memorização Inclusivos</h3>
-                        <p className="text-sm text-muted-foreground">
-                          Experimente 5 novos modos: Microlearning, Toque e Complete, Karaokê Visual, Construção Visual e Escuta e Repete
-                        </p>
+                        <span className="text-xs font-semibold text-cyan-600 uppercase tracking-wide">Modos</span>
+                        <h3 className="font-bold text-foreground">Memorização</h3>
                       </div>
                     </div>
-                    <div className="flex gap-2 shrink-0">
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      5 modos inclusivos: Microlearning, Karaokê, Construção Visual e mais!
+                    </p>
+                    <div className="flex gap-2">
                       <Button 
                         variant="outline"
-                        className="border-cyan-300 text-cyan-700 hover:bg-cyan-50"
+                        size="sm"
+                        className="flex-1 border-cyan-300 text-cyan-700 hover:bg-cyan-50"
                         onClick={() => navigate('/memorization-guide')}
                       >
-                        <GuideIcon className="w-4 h-4 mr-2" />
-                        Ver Guia
+                        <GuideIcon className="w-4 h-4 mr-1" />
+                        Guia
                       </Button>
                       <Button 
-                        className="bg-gradient-to-r from-cyan-500 to-teal-600 hover:from-cyan-600 hover:to-teal-700 text-white font-bold shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all duration-200"
+                        size="sm"
+                        className="flex-1 bg-gradient-to-r from-cyan-500 to-teal-600 hover:from-cyan-600 hover:to-teal-700 text-white font-bold"
                         onClick={() => navigate('/test-memorization')}
                       >
-                        <FlaskConical className="w-4 h-4 mr-2" />
-                        Testar Modos
+                        <FlaskConical className="w-4 h-4 mr-1" />
+                        Testar
                       </Button>
                     </div>
+                  </div>
+                </div>
+
+                {/* Recording Studio Card */}
+                <div className="group relative bg-card rounded-2xl p-6 border border-border shadow-soft hover:shadow-elevated transition-all duration-300 overflow-hidden">
+                  {/* Background glow effect */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 via-transparent to-emerald-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  
+                  <div className="relative z-10 space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                        <Mic className="w-6 h-6 text-white" />
+                      </div>
+                      <div>
+                        <span className="text-xs font-semibold text-green-600 uppercase tracking-wide">Novo!</span>
+                        <h3 className="font-bold text-foreground">Estúdio de Gravação</h3>
+                      </div>
+                    </div>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      Grave textos com sua própria voz para potencializar a memorização!
+                    </p>
+                    <Button 
+                      className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all duration-200"
+                      onClick={() => navigate('/recording-studio')}
+                    >
+                      <Mic className="w-4 h-4 mr-2" />
+                      Abrir Estúdio
+                    </Button>
                   </div>
                 </div>
               </div>
