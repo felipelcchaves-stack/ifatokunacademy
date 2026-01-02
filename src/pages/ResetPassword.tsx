@@ -8,9 +8,15 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { usePlatformSettings } from '@/hooks/usePlatformSettings';
 import { z } from 'zod';
+import { validatePassword } from '@/lib/passwordValidation';
+import { PasswordStrengthIndicator } from '@/components/auth/PasswordStrengthIndicator';
 
 const passwordSchema = z.object({
-  password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres'),
+  password: z.string()
+    .min(8, 'A senha deve ter pelo menos 8 caracteres')
+    .refine((password) => validatePassword(password).isValid, {
+      message: 'A senha não atende aos requisitos de segurança'
+    }),
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: 'As senhas não coincidem',
@@ -182,7 +188,7 @@ const ResetPassword: React.FC = () => {
                 <Input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="••••••••"
+                  placeholder="Senha forte (8+ caracteres)"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className={`pl-10 pr-10 ${errors.password ? 'border-destructive' : ''}`}
@@ -197,6 +203,7 @@ const ResetPassword: React.FC = () => {
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
+              <PasswordStrengthIndicator password={password} />
               {errors.password && (
                 <p className="text-sm text-destructive">{errors.password}</p>
               )}

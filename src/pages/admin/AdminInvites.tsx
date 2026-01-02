@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { validatePassword } from "@/lib/passwordValidation";
+import { PasswordStrengthIndicator } from "@/components/auth/PasswordStrengthIndicator";
 import { 
   Search, 
   Filter, 
@@ -193,8 +195,9 @@ export default function AdminInvites() {
   const handleActivateInvite = async () => {
     if (!selectedInvite) return;
     
-    if (!activateForm.password || activateForm.password.length < 6) {
-      toast.error('Senha deve ter no mínimo 6 caracteres');
+    const passwordValidation = validatePassword(activateForm.password);
+    if (!passwordValidation.isValid) {
+      toast.error(passwordValidation.feedback[0] || 'Senha não atende aos requisitos de segurança');
       return;
     }
 
@@ -617,7 +620,7 @@ export default function AdminInvites() {
                 <Input
                   id="activate-password"
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="Mínimo 6 caracteres"
+                  placeholder="Senha forte (8+ caracteres)"
                   value={activateForm.password}
                   onChange={(e) => setActivateForm(prev => ({ ...prev, password: e.target.value }))}
                   className="pl-9 pr-10"
@@ -630,6 +633,7 @@ export default function AdminInvites() {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
+              <PasswordStrengthIndicator password={activateForm.password} />
             </div>
 
             <div className="space-y-2">
