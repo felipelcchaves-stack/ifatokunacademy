@@ -321,35 +321,8 @@ const AdminModules: React.FC = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-muted/30 flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">Carregando...</div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-muted/30" data-allow-context-menu data-allow-copy>
-      {/* Sidebar */}
-      <aside className="fixed left-0 top-0 bottom-0 w-64 bg-sidebar border-r border-sidebar-border z-50">
-        <div className="flex flex-col h-full">
-          <div className="p-6 border-b border-sidebar-border">
-            <Link to="/" className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full gradient-gold flex items-center justify-center shadow-gold">
-                <span className="font-serif text-lg font-bold text-secondary">O</span>
-              </div>
-              <div>
-                <h1 className="font-serif font-semibold text-sidebar-foreground">Admin</h1>
-                <p className="text-xs text-sidebar-foreground/60">Offe Orunmila</p>
-              </div>
-            </Link>
-          </div>
-        </div>
-      </aside>
-
-      {/* Main Content */}
-      <main className="ml-64 p-8">
+    <div data-allow-context-menu data-allow-copy>
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
           <Button variant="ghost" onClick={() => navigate('/admin')}>
@@ -656,7 +629,7 @@ const AdminModules: React.FC = () => {
             ))}
           </div>
         )}
-      </main>
+      
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>

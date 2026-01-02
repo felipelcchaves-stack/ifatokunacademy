@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import ContentProtection from "@/components/ContentProtection";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import AdminLayout from "@/components/layout/AdminLayout";
 
 // Pages
 import Index from "./pages/Index";
@@ -101,57 +102,23 @@ const App = () => (
                 </ProtectedRoute>
               } />
               
-              {/* Admin Routes - Protected & Admin Only */}
+              {/* Admin Routes - Protected & Admin Only with shared layout */}
               <Route path="/admin" element={
                 <ProtectedRoute requireAdmin>
-                  <AdminDashboard />
+                  <AdminLayout />
                 </ProtectedRoute>
-              } />
-              <Route path="/admin/modules" element={
-                <ProtectedRoute requireAdmin>
-                  <AdminModules />
-                </ProtectedRoute>
-              } />
-              <Route path="/admin/modules/:moduleId/lessons" element={
-                <ProtectedRoute requireAdmin>
-                  <AdminLessons />
-                </ProtectedRoute>
-              } />
-              <Route path="/admin/modules/:moduleId/lessons/:lessonId/exercises" element={
-                <ProtectedRoute requireAdmin>
-                  <AdminExercises />
-                </ProtectedRoute>
-              } />
-              <Route path="/admin/lessons" element={
-                <ProtectedRoute requireAdmin>
-                  <AdminLessonsOverview />
-                </ProtectedRoute>
-              } />
-              <Route path="/admin/import-odu" element={
-                <ProtectedRoute requireAdmin>
-                  <AdminImportOdu />
-                </ProtectedRoute>
-              } />
-              <Route path="/admin/users" element={
-                <ProtectedRoute requireAdmin>
-                  <AdminUsers />
-                </ProtectedRoute>
-              } />
-              <Route path="/admin/payments" element={
-                <ProtectedRoute requireAdmin>
-                  <AdminDashboard />
-                </ProtectedRoute>
-              } />
-              <Route path="/admin/reports" element={
-                <ProtectedRoute requireAdmin>
-                  <AdminDashboard />
-                </ProtectedRoute>
-              } />
-              <Route path="/admin/settings" element={
-                <ProtectedRoute requireAdmin>
-                  <AdminSettings />
-                </ProtectedRoute>
-              } />
+              }>
+                <Route index element={<AdminDashboard />} />
+                <Route path="modules" element={<AdminModules />} />
+                <Route path="modules/:moduleId/lessons" element={<AdminLessons />} />
+                <Route path="modules/:moduleId/lessons/:lessonId/exercises" element={<AdminExercises />} />
+                <Route path="lessons" element={<AdminLessonsOverview />} />
+                <Route path="import-odu" element={<AdminImportOdu />} />
+                <Route path="users" element={<AdminUsers />} />
+                <Route path="payments" element={<AdminDashboard />} />
+                <Route path="reports" element={<AdminDashboard />} />
+                <Route path="settings" element={<AdminSettings />} />
+              </Route>
               
               {/* Catch-all */}
               <Route path="*" element={<NotFound />} />
