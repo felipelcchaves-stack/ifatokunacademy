@@ -228,24 +228,27 @@ const Dashboard: React.FC = () => {
                 <DailyGoalProgress />
                 
                 {/* Spaced Review */}
-                <div className="bg-card rounded-2xl p-6 border border-border shadow-soft hover:shadow-elevated transition-all">
-                  <div className="flex flex-col gap-4 h-full justify-between">
+                <div className="group relative bg-card rounded-2xl p-6 border border-border shadow-soft hover:shadow-elevated transition-all duration-300 overflow-hidden">
+                  {/* Background glow effect */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-forest-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  
+                  <div className="relative z-10 flex flex-col gap-4 h-full justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-forest-600 flex items-center justify-center">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-forest-600 flex items-center justify-center shadow-forest group-hover:scale-110 transition-transform duration-300">
                         <Brain className="w-6 h-6 text-primary-foreground" />
                       </div>
                       <div>
-                        <span className="text-xs font-medium text-primary">Revisão Espaçada</span>
-                        <h3 className="font-semibold text-foreground">
-                          {dueCount > 0 ? `${dueCount} itens` : 'Nenhum pendente'}
+                        <span className="text-xs font-semibold text-primary uppercase tracking-wide">Revisão Espaçada</span>
+                        <h3 className="font-bold text-foreground">
+                          {dueCount > 0 ? `${dueCount} itens pendentes` : 'Nenhum pendente'}
                         </h3>
                       </div>
                     </div>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-muted-foreground leading-relaxed">
                       A revisão espaçada ajuda a fixar o conteúdo na memória de longo prazo.
                     </p>
                     <Button 
-                      className="w-full gradient-forest text-primary-foreground font-semibold"
+                      className="w-full gradient-forest text-primary-foreground font-bold shadow-forest hover:shadow-lg hover:scale-[1.02] transition-all duration-200"
                       onClick={() => navigate('/review')}
                     >
                       <Brain className="w-4 h-4 mr-2" />
@@ -255,22 +258,25 @@ const Dashboard: React.FC = () => {
                 </div>
 
                 {/* Challenge Mode */}
-                <div className="bg-card rounded-2xl p-6 border border-border shadow-soft hover:shadow-elevated transition-all">
-                  <div className="flex flex-col gap-4 h-full justify-between">
+                <div className="group relative bg-card rounded-2xl p-6 border border-border shadow-soft hover:shadow-elevated transition-all duration-300 overflow-hidden">
+                  {/* Background glow effect */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 via-transparent to-pink-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  
+                  <div className="relative z-10 flex flex-col gap-4 h-full justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
                         <Zap className="w-6 h-6 text-white" />
                       </div>
                       <div>
-                        <span className="text-xs font-medium text-purple-600">Modo Desafio</span>
-                        <h3 className="font-semibold text-foreground">Contra o Tempo</h3>
+                        <span className="text-xs font-semibold text-purple-600 uppercase tracking-wide">Modo Desafio</span>
+                        <h3 className="font-bold text-foreground">Contra o Tempo</h3>
                       </div>
                     </div>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-muted-foreground leading-relaxed">
                       Teste sua velocidade e ganhe XP multiplicado respondendo rápido!
                     </p>
                     <Button 
-                      className="w-full bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white font-semibold"
+                      className="w-full bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white font-bold shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all duration-200"
                       onClick={() => navigate('/challenge')}
                     >
                       <Zap className="w-4 h-4 mr-2" />
