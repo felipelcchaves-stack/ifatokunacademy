@@ -45,9 +45,9 @@ const App = () => (
     <BrowserRouter>
       <AuthProvider>
         <TooltipProvider>
+          <Toaster />
+          <Sonner />
           <ContentProtection>
-            <Toaster />
-            <Sonner />
             <Routes>
               {/* Public Routes */}
               <Route path="/" element={<Navigate to="/login" replace />} />
