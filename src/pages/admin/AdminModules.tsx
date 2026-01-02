@@ -348,14 +348,14 @@ const AdminModules: React.FC = () => {
                 Novo Módulo
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-lg">
+            <DialogContent className="sm:max-w-lg max-h-[90vh] flex flex-col">
               <DialogHeader>
                 <DialogTitle className="font-serif">Criar Novo Módulo</DialogTitle>
                 <DialogDescription>
                   Preencha as informações do novo módulo
                 </DialogDescription>
               </DialogHeader>
-              <div className="space-y-4 py-4">
+              <div className="flex-1 overflow-y-auto space-y-4 py-4 pr-2">
                 <div className="space-y-2">
                   <Label htmlFor="title">Título do Módulo</Label>
                   <Input
@@ -633,7 +633,7 @@ const AdminModules: React.FC = () => {
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-lg max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="font-serif">Editar Módulo</DialogTitle>
             <DialogDescription>
@@ -641,7 +641,7 @@ const AdminModules: React.FC = () => {
             </DialogDescription>
           </DialogHeader>
           {editingModule && (
-            <div className="space-y-4 py-4">
+            <div className="flex-1 overflow-y-auto space-y-4 py-4 pr-2">
               <div className="space-y-2">
                 <Label htmlFor="edit-title">Título do Módulo</Label>
                 <Input
