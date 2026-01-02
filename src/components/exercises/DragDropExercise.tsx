@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, forwardRef } from 'react';
 import { Check, X, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -9,12 +9,12 @@ interface DragDropExerciseProps {
   onComplete?: () => void;
 }
 
-const DragDropExercise: React.FC<DragDropExerciseProps> = ({
+const DragDropExercise = forwardRef<HTMLDivElement, DragDropExerciseProps>(({
   items,
   targets,
   correctMatches,
   onComplete,
-}) => {
+}, ref) => {
   const [matches, setMatches] = useState<Record<string, string>>({});
   const [availableItems, setAvailableItems] = useState<string[]>(items);
   const [draggedItem, setDraggedItem] = useState<string | null>(null);
@@ -59,8 +59,8 @@ const DragDropExercise: React.FC<DragDropExerciseProps> = ({
 
     targets.forEach(target => {
       const matchedItem = matches[target];
-      const isCorrect = matchedItem && correctMatches[matchedItem] === target;
-      newResults[target] = isCorrect;
+      const isCorrect = matchedItem && correctMatches[target] === matchedItem;
+      newResults[target] = isCorrect !== undefined ? isCorrect : false;
       if (!isCorrect) allCorrect = false;
     });
 
@@ -80,7 +80,7 @@ const DragDropExercise: React.FC<DragDropExerciseProps> = ({
   };
 
   return (
-    <div className="protected-content w-full max-w-2xl mx-auto">
+    <div ref={ref} className="protected-content w-full max-w-2xl mx-auto">
       {/* Available Items */}
       <div className="mb-8">
         <h3 className="text-sm font-medium text-muted-foreground mb-3">Arraste os itens:</h3>
@@ -156,6 +156,8 @@ const DragDropExercise: React.FC<DragDropExerciseProps> = ({
       </div>
     </div>
   );
-};
+});
+
+DragDropExercise.displayName = 'DragDropExercise';
 
 export default DragDropExercise;
