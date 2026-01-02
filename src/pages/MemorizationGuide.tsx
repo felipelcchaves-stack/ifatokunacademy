@@ -18,7 +18,8 @@ import {
   Sparkles,
   ChevronDown,
   ChevronUp,
-  Play
+  Play,
+  Eye
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -26,6 +27,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
+import { modeAnimations } from '@/components/guide/ModeAnimations';
 
 interface ModeInfo {
   id: string;
@@ -339,6 +341,19 @@ const ModeCard = ({ mode, isExpanded, onToggle }: { mode: ModeInfo; isExpanded: 
       
       {isExpanded && (
         <CardContent className="p-6 space-y-6 animate-in slide-in-from-top-2 duration-200">
+          {/* Animation Demo */}
+          {modeAnimations[mode.id] && (
+            <div className="mb-4">
+              <h4 className="font-semibold mb-3 flex items-center gap-2">
+                <Eye className="w-4 h-4" />
+                Demonstração:
+              </h4>
+              <div className="border rounded-xl overflow-hidden bg-gradient-to-br from-muted/30 to-muted/10">
+                {React.createElement(modeAnimations[mode.id])}
+              </div>
+            </div>
+          )}
+          
           {/* Description */}
           <div>
             <p className="text-muted-foreground">{mode.description}</p>
