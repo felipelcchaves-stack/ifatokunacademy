@@ -18,6 +18,7 @@ import { StudyPlanPreview } from '@/components/study-plan/StudyPlanPreview';
 import { WeeklyScheduleView } from '@/components/study-plan/WeeklyScheduleView';
 import { useStudyPlan } from '@/hooks/useStudyPlan';
 import { useSearchParams } from 'react-router-dom';
+import MFASetup from '@/components/auth/MFASetup';
 
 const UserSettings = () => {
   const { user, profile, refreshProfile } = useAuth();
@@ -44,6 +45,9 @@ const UserSettings = () => {
   // Reset progress state
   const [confirmReset, setConfirmReset] = useState(false);
   const [resetting, setResetting] = useState(false);
+  
+  // MFA state
+  const [mfaEnabled, setMfaEnabled] = useState(false);
 
   const { 
     studyPlan, 
@@ -477,6 +481,12 @@ const UserSettings = () => {
                   </Button>
                 </CardContent>
               </Card>
+
+              {/* 2FA Setup */}
+              <MFASetup 
+                onSetupComplete={() => setMfaEnabled(!mfaEnabled)} 
+                mfaEnabled={mfaEnabled}
+              />
             </TabsContent>
 
             {/* Tab Plano de Estudos */}
