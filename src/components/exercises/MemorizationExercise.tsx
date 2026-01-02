@@ -421,11 +421,12 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
 
       if (error) throw error;
 
-      if (data?.audioContent) {
-        const url = `data:audio/mpeg;base64,${data.audioContent}`;
-        setAudioUrl(url);
-        const audio = new Audio(url);
+      if (data?.audioUrl) {
+        setAudioUrl(data.audioUrl);
+        const audio = new Audio(data.audioUrl);
         await audio.play();
+      } else if (data?.error) {
+        throw new Error(data.error);
       }
     } catch (error) {
       console.error('Error playing audio:', error);
