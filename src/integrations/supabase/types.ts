@@ -172,6 +172,39 @@ export type Database = {
           },
         ]
       }
+      exercise_time_estimates: {
+        Row: {
+          base_minutes: number
+          created_at: string | null
+          description: string | null
+          exercise_type: string
+          id: string
+          repetitions_to_master: number
+          review_minutes: number
+          updated_at: string | null
+        }
+        Insert: {
+          base_minutes: number
+          created_at?: string | null
+          description?: string | null
+          exercise_type: string
+          id?: string
+          repetitions_to_master: number
+          review_minutes: number
+          updated_at?: string | null
+        }
+        Update: {
+          base_minutes?: number
+          created_at?: string | null
+          description?: string | null
+          exercise_type?: string
+          id?: string
+          repetitions_to_master?: number
+          review_minutes?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       exercises: {
         Row: {
           content: Json
