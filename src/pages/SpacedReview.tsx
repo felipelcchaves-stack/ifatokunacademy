@@ -25,6 +25,7 @@ import StreakDisplay from '@/components/streak/StreakDisplay';
 import { useSpacedRepetition, SpacedRepetitionItem } from '@/hooks/useSpacedRepetition';
 import { useStreak } from '@/hooks/useStreak';
 import { useAchievements } from '@/hooks/useAchievements';
+import { useAchievementTriggers } from '@/hooks/useAchievementTriggers';
 import { showAchievementUnlockToast } from '@/components/achievements/AchievementUnlockToast';
 import { calculateSimilarity, getTextStart, getTextRemainder } from '@/lib/textSimilarity';
 import { formatDistanceToNow, format } from 'date-fns';
@@ -38,7 +39,8 @@ const SpacedReview: React.FC = () => {
   const navigate = useNavigate();
   const { dueItems, allItems, loading, dueCount, recordReview, removeItem, refreshItems } = useSpacedRepetition();
   const { streak, recordDailyReview } = useStreak();
-  const { checkAndUnlockAchievements } = useAchievements();
+  const { checkAndUnlockAchievements, checkAllAchievements } = useAchievements();
+  const { onReviewComplete, onStudySessionStart } = useAchievementTriggers();
   
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userInput, setUserInput] = useState('');
@@ -67,6 +69,11 @@ const SpacedReview: React.FC = () => {
       setCorrectCount(prev => prev + 1);
     }
 
+    // Check time-based achievements on first review
+    if (!streakRecorded) {
+      onStudySessionStart();
+    }
+
     // Record daily streak on first review
     if (!streakRecorded) {
       const recorded = await recordDailyReview();
@@ -89,6 +96,12 @@ const SpacedReview: React.FC = () => {
         });
       }
     }
+
+    // Trigger achievement check for review completion
+    const newlyUnlocked = await onReviewComplete({
+      totalReviews: reviewedCount + 1,
+      accuracy: Math.round(((correctCount + (isCorrect ? 1 : 0)) / (reviewedCount + 1)) * 100),
+    });
   };
 
   const handleNext = () => {
