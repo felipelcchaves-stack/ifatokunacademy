@@ -8,7 +8,7 @@ export interface Achievement {
   description: string;
   icon: string;
   requirement: number;
-  type: 'streak' | 'reviews' | 'items' | 'modules' | 'accuracy';
+  type: 'streak' | 'reviews' | 'items' | 'modules' | 'accuracy' | 'mastery' | 'time' | 'retention' | 'challenge' | 'journey';
 }
 
 export interface UnlockedAchievement {
@@ -49,6 +49,31 @@ export const ACHIEVEMENTS: Achievement[] = [
   // Accuracy achievements
   { key: 'accuracy_90', name: 'Precisão Alta', description: 'Alcance 90% de precisão em 20+ revisões', icon: '🎯', requirement: 90, type: 'accuracy' },
   { key: 'accuracy_95', name: 'Quase Perfeito', description: 'Alcance 95% de precisão em 50+ revisões', icon: '💯', requirement: 95, type: 'accuracy' },
+
+  // Mastery achievements (NEW)
+  { key: 'mastery_first_verse', name: 'Primeiro Verso', description: 'Complete sua primeira memorização com 100%', icon: '📜', requirement: 1, type: 'mastery' },
+  { key: 'mastery_perfect_lesson', name: 'Lição Perfeita', description: 'Complete uma lição inteira sem erros', icon: '✅', requirement: 1, type: 'mastery' },
+  { key: 'mastery_speed_demon', name: 'Velocidade Sagrada', description: 'Complete 10 itens em menos de 2 min no Desafio', icon: '⚡', requirement: 1, type: 'mastery' },
+
+  // Time-based achievements (NEW)
+  { key: 'time_early_bird', name: 'Madrugador', description: 'Estude antes das 6h da manhã', icon: '🌅', requirement: 1, type: 'time' },
+  { key: 'time_night_owl', name: 'Coruja Noturna', description: 'Estude depois das 22h', icon: '🦉', requirement: 1, type: 'time' },
+  { key: 'time_weekend_warrior', name: 'Guerreiro de Fim de Semana', description: 'Estude todos os dias de um fim de semana', icon: '⚔️', requirement: 1, type: 'time' },
+
+  // Retention achievements (NEW)
+  { key: 'retention_first_review', name: 'Primeira Revisão', description: 'Complete sua primeira revisão de módulo', icon: '🔄', requirement: 1, type: 'retention' },
+  { key: 'retention_memory_keeper', name: 'Guardião da Memória', description: 'Mantenha 90%+ de retenção em 3 módulos', icon: '🛡️', requirement: 3, type: 'retention' },
+  { key: 'retention_perfect_recall', name: 'Memória Perfeita', description: '100% de acerto em uma revisão de módulo', icon: '💫', requirement: 1, type: 'retention' },
+
+  // Challenge achievements (NEW)
+  { key: 'challenge_first_win', name: 'Primeiro Desafio', description: 'Complete seu primeiro Modo Desafio', icon: '🎮', requirement: 1, type: 'challenge' },
+  { key: 'challenge_high_score', name: 'Pontuação Alta', description: 'Alcance 500+ pontos em um desafio', icon: '🏅', requirement: 500, type: 'challenge' },
+  { key: 'challenge_combo_master', name: 'Mestre dos Combos', description: 'Acerte 15 itens consecutivos', icon: '🔥', requirement: 15, type: 'challenge' },
+
+  // Journey achievements (NEW)
+  { key: 'journey_first_module', name: 'Jornada Iniciada', description: 'Complete seu primeiro módulo', icon: '🚀', requirement: 1, type: 'journey' },
+  { key: 'journey_proficiency_complete', name: 'Trilha de Proficiência', description: 'Complete toda a trilha Akapo → Awo → Oluwo', icon: '🏛️', requirement: 1, type: 'journey' },
+  { key: 'journey_thematic_explorer', name: 'Explorador Temático', description: 'Complete 3 módulos temáticos', icon: '🧭', requirement: 3, type: 'journey' },
 ];
 
 export const useAchievements = () => {

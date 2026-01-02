@@ -7,10 +7,10 @@ import ModuleSlider from '@/components/modules/ModuleSlider';
 import { ThematicProgressInfo } from '@/components/modules/ThematicProgressInfo';
 import ContentProtection from '@/components/ContentProtection';
 import StreakDisplay from '@/components/streak/StreakDisplay';
-import { AchievementsDisplay } from '@/components/achievements/AchievementsDisplay';
+import { CompactAchievements } from '@/components/achievements/CompactAchievements';
 import { XPDisplay } from '@/components/engagement/XPDisplay';
 import { DailyGoalProgress } from '@/components/engagement/DailyGoalProgress';
-import { SacredQuote } from '@/components/engagement/SacredQuote';
+
 import { ActivityHeatmap } from '@/components/engagement/ActivityHeatmap';
 import { StreakRiskAlert } from '@/components/engagement/StreakRiskAlert';
 import { CompactStreak } from '@/components/engagement/CompactStreak';
@@ -231,11 +231,8 @@ const Dashboard: React.FC = () => {
               {/* Activity Heatmap */}
               <ActivityHeatmap />
 
-              {/* Achievements */}
-              <AchievementsDisplay />
-
-              {/* Sacred Quote */}
-              <SacredQuote context="motivation" />
+              {/* Achievements - Compact */}
+              <CompactAchievements />
             </div>
           </section>
 

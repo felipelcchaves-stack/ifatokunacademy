@@ -1,8 +1,9 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen } from 'lucide-react';
+import { BookOpen, Sparkles } from 'lucide-react';
 import { MainCTAButton } from '@/components/ui/MainCTAButton';
 import HeroModuleSlider from './HeroModuleSlider';
+import { getRandomProverb, YorubaProverb } from '@/data/yorubaProverbs';
 
 // Interface for modules from database
 interface DatabaseModule {
@@ -34,6 +35,12 @@ export const HeroStudyTrack: React.FC<HeroStudyTrackProps> = ({
   displayName,
 }) => {
   const navigate = useNavigate();
+  const [proverb, setProverb] = useState<YorubaProverb | null>(null);
+
+  useEffect(() => {
+    // Get a random motivational proverb
+    setProverb(getRandomProverb('motivation'));
+  }, []);
 
   // Find active module index (first unlocked with progress or first unlocked)
   const activeModuleIndex = useMemo(() => {
@@ -54,15 +61,28 @@ export const HeroStudyTrack: React.FC<HeroStudyTrackProps> = ({
       <div className="absolute inset-0 pattern-adinkra opacity-50" />
       
       <div className="relative z-10">
-        {/* Greeting */}
+        {/* Greeting with Yoruba Proverb */}
         <div className="text-center mb-8">
           <p className="text-muted-foreground text-sm font-medium mb-2 tracking-wide uppercase">Bem-vindo de volta</p>
           <h1 className="heading-display text-4xl md:text-5xl lg:text-6xl text-foreground mb-4">
             Olá, <span className="text-gradient-forest">{displayName}</span>!
           </h1>
-          <p className="text-muted-foreground max-w-md mx-auto text-lg">
-            Continue sua jornada de conhecimento. Cada passo te aproxima da sabedoria.
-          </p>
+          
+          {/* Yoruba Proverb */}
+          {proverb && (
+            <div className="max-w-lg mx-auto">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <Sparkles className="w-4 h-4 text-primary/60" />
+                <p className="text-primary font-serif italic text-lg">
+                  "{proverb.yoruba}"
+                </p>
+                <Sparkles className="w-4 h-4 text-primary/60" />
+              </div>
+              <p className="text-muted-foreground text-sm">
+                {proverb.portuguese}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Main CTA */}
