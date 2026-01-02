@@ -1,26 +1,53 @@
 import React, { useState } from 'react';
-import { Lightbulb, Eye, Volume2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Lightbulb, Eye, Volume2, ChevronDown, ChevronUp, Mic, Bot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { generateFirstLetterHints, extractKeywords } from '@/lib/textChunking';
+import { AudioSourceSelector } from './AudioSourceSelector';
 import { cn } from '@/lib/utils';
 
 interface MemorizationHintsProps {
   text: string;
+  exerciseId?: string;
+  lessonId?: string;
+  moduleId?: string;
   onHintUsed?: (hintLevel: number) => void;
   onPlayAudio?: () => void;
   audioLoading?: boolean;
   maxHints?: number;
+  showAudioSourceSelector?: boolean;
 }
 
 const MemorizationHints: React.FC<MemorizationHintsProps> = ({
   text,
+  exerciseId,
+  lessonId,
+  moduleId,
   onHintUsed,
   onPlayAudio,
   audioLoading = false,
-  maxHints = 3
+  maxHints = 3,
+  showAudioSourceSelector = true
 }) => {
   const [usedHints, setUsedHints] = useState<Set<number>>(new Set());
   const [expandedHint, setExpandedHint] = useState<number | null>(null);
+  const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
+
+  const handlePlayFromSelector = (audioUrl: string) => {
+    // Stop any existing audio
+    if (currentAudio) {
+      currentAudio.pause();
+    }
+    
+    const audio = new Audio(audioUrl);
+    setCurrentAudio(audio);
+    audio.play();
+    
+    // Mark audio hint as used
+    if (!usedHints.has(3)) {
+      setUsedHints(prev => new Set([...prev, 3]));
+      onHintUsed?.(3);
+    }
+  };
 
   const firstLetterHint = generateFirstLetterHints(text);
   const keywords = extractKeywords(text, 4);
@@ -45,17 +72,8 @@ const MemorizationHints: React.FC<MemorizationHintsProps> = ({
         </span>
       )),
       penalty: 10
-    },
-    {
-      level: 3,
-      title: 'Ouvir Áudio',
-      description: 'Escute o texto uma vez',
-      icon: Volume2,
-      content: null,
-      penalty: 15,
-      action: onPlayAudio
     }
-  ].slice(0, maxHints);
+  ].slice(0, maxHints > 2 ? 2 : maxHints);
 
   const handleUseHint = (level: number, action?: () => void) => {
     if (!usedHints.has(level)) {
@@ -72,10 +90,35 @@ const MemorizationHints: React.FC<MemorizationHintsProps> = ({
 
   const totalPenalty = hints
     .filter(h => usedHints.has(h.level))
-    .reduce((sum, h) => sum + h.penalty, 0);
+    .reduce((sum, h) => sum + h.penalty, 0) + (usedHints.has(3) ? 15 : 0);
 
   return (
     <div className="w-full">
+      {/* Audio Source Selector - Always visible when enabled */}
+      {showAudioSourceSelector && maxHints >= 3 && (
+        <div className="mb-3 p-3 bg-muted/50 rounded-lg border">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Volume2 className="w-4 h-4 text-primary" />
+              <span className="text-sm font-medium">Ouvir Texto</span>
+              <span className="text-xs text-muted-foreground">(-15%)</span>
+            </div>
+            <AudioSourceSelector
+              text={text}
+              exerciseId={exerciseId}
+              lessonId={lessonId}
+              moduleId={moduleId}
+              onPlay={handlePlayFromSelector}
+            />
+          </div>
+          {usedHints.has(3) && (
+            <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+              <Mic className="w-3 h-3" /> Dica de áudio utilizada
+            </p>
+          )}
+        </div>
+      )}
+
       {/* Hints List */}
       <div className="space-y-2">
         {hints.map((hint) => {
@@ -93,12 +136,8 @@ const MemorizationHints: React.FC<MemorizationHintsProps> = ({
               )}
             >
               <button
-                onClick={() => handleUseHint(hint.level, hint.action)}
-                disabled={hint.level === 3 && audioLoading}
-                className={cn(
-                  "w-full flex items-center justify-between p-3 text-left",
-                  hint.level === 3 && audioLoading && "opacity-50 cursor-not-allowed"
-                )}
+                onClick={() => handleUseHint(hint.level)}
+                className="w-full flex items-center justify-between p-3 text-left"
               >
                 <div className="flex items-center gap-3">
                   <div className={cn(
@@ -134,10 +173,6 @@ const MemorizationHints: React.FC<MemorizationHintsProps> = ({
                     )}
                   </div>
                 )}
-
-                {hint.level === 3 && audioLoading && (
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent" />
-                )}
               </button>
 
               {/* Hint Content */}
@@ -162,7 +197,7 @@ const MemorizationHints: React.FC<MemorizationHintsProps> = ({
       </div>
 
       {/* Penalty Summary */}
-      {usedHints.size > 0 && (
+      {(usedHints.size > 0) && (
         <div className="mt-3 text-center">
           <p className="text-xs text-muted-foreground">
             Dicas usadas: {usedHints.size} | Penalidade total: -{totalPenalty}%
