@@ -13,6 +13,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import ModuleView from "./pages/ModuleView";
+import ModuleQuiz from "./pages/ModuleQuiz";
 import LessonView from "./pages/LessonView";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminModules from "./pages/admin/AdminModules";
@@ -50,6 +51,11 @@ const App = () => (
               <Route path="/module/:moduleId/lesson/:lessonId" element={
                 <ProtectedRoute>
                   <LessonView />
+                </ProtectedRoute>
+              } />
+              <Route path="/module/:moduleId/quiz" element={
+                <ProtectedRoute>
+                  <ModuleQuiz />
                 </ProtectedRoute>
               } />
               <Route path="/modules" element={
