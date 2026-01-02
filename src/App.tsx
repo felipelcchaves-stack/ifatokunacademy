@@ -29,6 +29,7 @@ import AdminExercises from "./pages/admin/AdminExercises";
 import AdminImportOdu from "./pages/admin/AdminImportOdu";
 import AdminSettings from "./pages/admin/AdminSettings";
 import AdminUsers from "./pages/admin/AdminUsers";
+import AdminInvites from "./pages/admin/AdminInvites";
 import AdminReports from "./pages/admin/AdminReports";
 import UserSettings from "./pages/UserSettings";
 import NotFound from "./pages/NotFound";
@@ -116,6 +117,7 @@ const App = () => (
                 <Route path="lessons" element={<AdminLessonsOverview />} />
                 <Route path="import-odu" element={<AdminImportOdu />} />
                 <Route path="users" element={<AdminUsers />} />
+                <Route path="invites" element={<AdminInvites />} />
                 <Route path="payments" element={<AdminDashboard />} />
                 <Route path="reports" element={<AdminReports />} />
                 <Route path="settings" element={<AdminSettings />} />
