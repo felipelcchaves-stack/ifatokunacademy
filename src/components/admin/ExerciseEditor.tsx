@@ -1,4 +1,4 @@
-import React, { useState, forwardRef } from 'react';
+import React, { useState } from 'react';
 import { ArrowLeft, Save, Eye, EyeOff, Mic, Plus, Trash2, GripVertical, Sparkles, Volume2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,7 +26,7 @@ interface ExerciseEditorProps {
   onCancel: () => void;
 }
 
-const ExerciseEditor = forwardRef<HTMLDivElement, ExerciseEditorProps>(({ exercise, onSave, onCancel }, ref) => {
+const ExerciseEditor: React.FC<ExerciseEditorProps> = ({ exercise, onSave, onCancel }) => {
   const { toast } = useToast();
   const [editedExercise, setEditedExercise] = useState<Exercise>(exercise);
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
@@ -400,7 +400,21 @@ const ExerciseEditor = forwardRef<HTMLDivElement, ExerciseEditorProps>(({ exerci
 
   const renderFillColumnsEditor = () => {
     const columns = editedExercise.content.columns || ['Coluna 1', 'Coluna 2'];
-    const rows = editedExercise.content.rows || [];
+    const rawRows = editedExercise.content.rows || [];
+
+    // Normalizar estrutura de dados (suporta formato antigo com cells e novo com arrays)
+    const rows: string[][] = rawRows.map((row: any) => {
+      // Se já é array de strings, retornar como está
+      if (Array.isArray(row) && (row.length === 0 || typeof row[0] === 'string')) {
+        return row;
+      }
+      // Se é objeto com cells, converter para array de strings
+      if (row && row.cells && Array.isArray(row.cells)) {
+        return row.cells.map((cell: any) => cell.text || cell || '');
+      }
+      // Fallback: criar array vazio com tamanho das colunas
+      return columns.map(() => '');
+    });
 
     const addColumn = () => {
       updateContent('columns', [...columns, `Coluna ${columns.length + 1}`]);
@@ -658,7 +672,7 @@ const ExerciseEditor = forwardRef<HTMLDivElement, ExerciseEditorProps>(({ exerci
   };
 
   return (
-    <div ref={ref} className="space-y-6" data-allow-context-menu data-allow-copy>
+    <div className="space-y-6" data-allow-context-menu data-allow-copy>
       {/* Header */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" onClick={onCancel}>
@@ -724,8 +738,6 @@ const ExerciseEditor = forwardRef<HTMLDivElement, ExerciseEditorProps>(({ exerci
       </div>
     </div>
   );
-});
-
-ExerciseEditor.displayName = 'ExerciseEditor';
+};
 
 export default ExerciseEditor;
