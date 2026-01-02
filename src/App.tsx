@@ -26,6 +26,7 @@ import AdminLessons from "./pages/admin/AdminLessons";
 import AdminLessonsOverview from "./pages/admin/AdminLessonsOverview";
 import AdminExercises from "./pages/admin/AdminExercises";
 import AdminImportOdu from "./pages/admin/AdminImportOdu";
+import AdminSettings from "./pages/admin/AdminSettings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -136,7 +137,7 @@ const App = () => (
               } />
               <Route path="/admin/settings" element={
                 <ProtectedRoute requireAdmin>
-                  <AdminDashboard />
+                  <AdminSettings />
                 </ProtectedRoute>
               } />
               
