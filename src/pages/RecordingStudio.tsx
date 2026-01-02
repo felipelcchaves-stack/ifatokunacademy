@@ -19,17 +19,21 @@ import {
   BookOpen,
   Plus,
   Library,
-  AlertTriangle
+  AlertTriangle,
+  Calendar
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useQuery } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { isAudioUrlPlayable, getFormatCompatibilityMessage } from '@/lib/audioFormatUtils';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export default function RecordingStudio() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [showNewRecording, setShowNewRecording] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newText, setNewText] = useState('');
@@ -125,7 +129,7 @@ export default function RecordingStudio() {
               </div>
               <Button 
                 onClick={() => setShowNewRecording(!showNewRecording)}
-                className="gap-2"
+                className="gap-2 bg-green-600 hover:bg-green-700 text-white"
               >
                 <Plus className="h-4 w-4" />
                 Nova Gravação
@@ -219,65 +223,147 @@ export default function RecordingStudio() {
                       Criar primeira gravação
                     </Button>
                   </div>
-                ) : (
+                ) : isMobile ? (
+                  // Mobile: Cards empilhados
                   <div className="space-y-3">
                     {recordings.map(recording => {
                       const isPlayable = isAudioUrlPlayable(recording.audio_url);
                       return (
                         <div 
                           key={recording.id}
-                          className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg border"
+                          className="p-4 bg-muted/50 rounded-lg border space-y-3"
                         >
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handlePlay(recording.id, recording.audio_url)}
-                            className="shrink-0"
-                            disabled={!isPlayable}
-                          >
-                            {!isPlayable ? (
-                              <AlertTriangle className="h-5 w-5 text-amber-500" />
-                            ) : playingId === recording.id ? (
-                              <Pause className="h-5 w-5" />
-                            ) : (
-                              <Play className="h-5 w-5" />
-                            )}
-                          </Button>
-                          
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <h4 className="font-medium truncate">{recording.title}</h4>
-                              {!isPlayable && (
-                                <span className="text-xs bg-amber-500/20 text-amber-600 px-1.5 py-0.5 rounded">
-                                  Formato incompatível
-                                </span>
-                              )}
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-medium truncate">{recording.title}</h4>
+                                {!isPlayable && (
+                                  <span className="text-xs bg-amber-500/20 text-amber-600 px-1.5 py-0.5 rounded shrink-0">
+                                    Incompatível
+                                  </span>
+                                )}
+                              </div>
                             </div>
-                            <p className="text-sm text-muted-foreground line-clamp-1">
-                              {recording.text_content}
-                            </p>
-                            <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
-                              <span className="flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                {formatDuration(recording.duration_seconds)}
-                              </span>
-                              <span>
-                                {format(new Date(recording.created_at), "d 'de' MMMM", { locale: ptBR })}
-                              </span>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handlePlay(recording.id, recording.audio_url)}
+                                disabled={!isPlayable}
+                                className="h-8 w-8"
+                              >
+                                {!isPlayable ? (
+                                  <AlertTriangle className="h-4 w-4 text-amber-500" />
+                                ) : playingId === recording.id ? (
+                                  <Pause className="h-4 w-4" />
+                                ) : (
+                                  <Play className="h-4 w-4" />
+                                )}
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDelete(recording.id, recording.audio_url)}
+                                className="text-destructive hover:text-destructive h-8 w-8"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
                             </div>
                           </div>
-
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDelete(recording.id, recording.audio_url)}
-                            className="text-destructive hover:text-destructive shrink-0"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                            <div className="flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              {format(new Date(recording.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {formatDuration(recording.duration_seconds)}
+                            </div>
+                            <div className="truncate">
+                              <span className="font-medium">Módulo:</span> {recording.module_title || '-'}
+                            </div>
+                            <div className="truncate">
+                              <span className="font-medium">Lição:</span> {recording.lesson_title || '-'}
+                            </div>
+                          </div>
                         </div>
                       );
                     })}
+                  </div>
+                ) : (
+                  // Desktop: Tabela
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-12">Play</TableHead>
+                          <TableHead>Título</TableHead>
+                          <TableHead>Data</TableHead>
+                          <TableHead>Módulo</TableHead>
+                          <TableHead>Lição</TableHead>
+                          <TableHead className="w-16">Duração</TableHead>
+                          <TableHead className="w-12">Ação</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {recordings.map(recording => {
+                          const isPlayable = isAudioUrlPlayable(recording.audio_url);
+                          return (
+                            <TableRow key={recording.id}>
+                              <TableCell>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handlePlay(recording.id, recording.audio_url)}
+                                  disabled={!isPlayable}
+                                  className="h-8 w-8"
+                                >
+                                  {!isPlayable ? (
+                                    <AlertTriangle className="h-4 w-4 text-amber-500" />
+                                  ) : playingId === recording.id ? (
+                                    <Pause className="h-4 w-4" />
+                                  ) : (
+                                    <Play className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium truncate max-w-[200px]">{recording.title}</span>
+                                  {!isPlayable && (
+                                    <span className="text-xs bg-amber-500/20 text-amber-600 px-1.5 py-0.5 rounded shrink-0">
+                                      Incompatível
+                                    </span>
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-muted-foreground">
+                                {format(new Date(recording.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                              </TableCell>
+                              <TableCell className="text-muted-foreground">
+                                {recording.module_title || '-'}
+                              </TableCell>
+                              <TableCell className="text-muted-foreground">
+                                {recording.lesson_title || '-'}
+                              </TableCell>
+                              <TableCell className="text-muted-foreground">
+                                {formatDuration(recording.duration_seconds)}
+                              </TableCell>
+                              <TableCell>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleDelete(recording.id, recording.audio_url)}
+                                  className="text-destructive hover:text-destructive h-8 w-8"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
                   </div>
                 )}
               </CardContent>
