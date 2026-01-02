@@ -90,9 +90,28 @@ const ReadingExercise: React.FC<ReadingExerciseProps> = ({ text, audioUrl, onCom
       } else {
         throw new Error('URL do áudio não retornada');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error generating audio:', error);
-      toast.error('Erro ao gerar áudio. Tente novamente.');
+      
+      // Show user-friendly error message
+      const errorMessage = error?.message || 'Erro ao gerar áudio';
+      
+      if (errorMessage.includes('Limite de créditos') || errorMessage.includes('quota')) {
+        toast.error('Limite de créditos atingido. O áudio estará disponível em breve.', {
+          description: 'Entre em contato com o administrador se o problema persistir.',
+          duration: 5000
+        });
+      } else if (errorMessage.includes('indisponível') || errorMessage.includes('unusual')) {
+        toast.error('Serviço de áudio temporariamente indisponível.', {
+          description: 'Tente novamente em alguns minutos.',
+          duration: 5000
+        });
+      } else {
+        toast.error('Erro ao gerar áudio.', {
+          description: 'Tente novamente mais tarde.',
+          duration: 4000
+        });
+      }
     } finally {
       setIsGenerating(false);
     }
