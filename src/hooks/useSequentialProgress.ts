@@ -6,6 +6,12 @@ interface ModuleCompletion {
   quizScore: number;
 }
 
+interface PhaseProgress {
+  moduleId: string;
+  phase1CompletedAt: string | null;
+  phase2CompletedAt: string | null;
+}
+
 interface Module {
   id: string;
   type: string;
@@ -23,21 +29,40 @@ interface ThematicLockInfo {
 /**
  * Hook para gerenciar a progressão sequencial dos módulos.
  * 
- * Regras de Proficiência:
- * - Akapo: sempre desbloqueados sequencialmente
- * - Awo: desbloqueados após completar todos os Akapo com 90%+
- * - Oluwo: desbloqueados após completar todos os Awo com 90%+
+ * NOVO MODELO DE PROGRESSÃO FLUIDA:
+ * - Completar Fase 1 de um módulo desbloqueia o próximo módulo
+ * - Fase 2 (proficiência) pode ser feita depois, quando o aluno quiser
+ * - Quiz 90%+ ainda é necessário para certificação, mas não para progresso
  * 
  * Regras de Temáticos:
- * - Só ficam disponíveis após completar TODOS os módulos Awo com 90%+
+ * - Só ficam disponíveis após completar TODOS os módulos Awo com Fase 1
  * - Apenas um módulo temático pode estar em progresso por vez
- * - Deve concluir o atual antes de iniciar outro
  */
 export const useSequentialProgress = () => {
   const { user } = useAuth();
 
   /**
+   * Verifica se todos os módulos de um determinado nível tiveram Fase 1 completada
+   */
+  const hasCompletedPhase1OfLevel = (
+    level: string,
+    allModules: Module[],
+    phaseProgress: PhaseProgress[]
+  ): boolean => {
+    const levelModules = allModules.filter(
+      m => m.type === 'proficiency' && m.level?.toLowerCase() === level.toLowerCase()
+    );
+    
+    if (levelModules.length === 0) return true;
+    
+    return levelModules.every(m =>
+      phaseProgress.some(p => p.moduleId === m.id && p.phase1CompletedAt !== null)
+    );
+  };
+
+  /**
    * Verifica se todos os módulos de um determinado nível foram completados com 90%+
+   * (mantido para certificação/proficiência)
    */
   const hasCompletedAllModulesOfLevel = (
     level: string,
@@ -56,7 +81,25 @@ export const useSequentialProgress = () => {
   };
 
   /**
-   * Conta quantos módulos Awo foram completados
+   * Conta quantos módulos Awo tiveram Fase 1 completada
+   */
+  const getAwoPhase1Progress = (
+    allModules: Module[],
+    phaseProgress: PhaseProgress[]
+  ): { completed: number; total: number } => {
+    const awoModules = allModules.filter(
+      m => m.type === 'proficiency' && m.level?.toLowerCase() === 'awo'
+    );
+    
+    const completed = awoModules.filter(m =>
+      phaseProgress.some(p => p.moduleId === m.id && p.phase1CompletedAt !== null)
+    ).length;
+    
+    return { completed, total: awoModules.length };
+  };
+
+  /**
+   * Conta quantos módulos Awo foram completados com proficiência (90%+)
    */
   const getAwoProgress = (
     allModules: Module[],
@@ -96,13 +139,14 @@ export const useSequentialProgress = () => {
     module: Module,
     allModules: Module[],
     completions: ModuleCompletion[],
-    userProgress: Record<string, number>
+    userProgress: Record<string, number>,
+    phaseProgress: PhaseProgress[] = []
   ): ThematicLockInfo => {
-    // Regra 1: Verificar se todos os módulos Awo foram completados
-    if (!hasCompletedAllModulesOfLevel('awo', allModules, completions)) {
+    // Regra 1: Verificar se todos os módulos Awo tiveram Fase 1 completada
+    if (!hasCompletedPhase1OfLevel('awo', allModules, phaseProgress)) {
       return {
         reason: 'awo_incomplete',
-        awoProgress: getAwoProgress(allModules, completions),
+        awoProgress: getAwoPhase1Progress(allModules, phaseProgress),
       };
     }
     
@@ -124,16 +168,18 @@ export const useSequentialProgress = () => {
 
   /**
    * Verifica se um módulo está desbloqueado baseado na progressão sequencial.
+   * NOVA LÓGICA: Fase 1 do módulo anterior completa = próximo desbloqueado
    */
   const isModuleUnlocked = (
     module: Module,
     allModules: Module[],
     completions: ModuleCompletion[],
-    userProgress: Record<string, number> = {}
+    userProgress: Record<string, number> = {},
+    phaseProgress: PhaseProgress[] = []
   ): boolean => {
     // Módulos temáticos: regras especiais
     if (module.type === 'thematic') {
-      const lockInfo = getThematicLockInfo(module, allModules, completions, userProgress);
+      const lockInfo = getThematicLockInfo(module, allModules, completions, userProgress, phaseProgress);
       return lockInfo.reason === null;
     }
 
@@ -151,14 +197,46 @@ export const useSequentialProgress = () => {
       return true;
     }
 
-    // Para os demais, verifica se o módulo anterior foi completado com 90%+
+    // Para os demais, verifica se a Fase 1 do módulo anterior foi completada
     const previousModule = sortedModules[currentIndex - 1];
     if (!previousModule) {
       return true;
     }
 
+    // NOVA LÓGICA: Verificar Fase 1 do módulo anterior
+    const previousPhaseProgress = phaseProgress.find(p => p.moduleId === previousModule.id);
+    if (previousPhaseProgress?.phase1CompletedAt) {
+      return true;
+    }
+
+    // Fallback: se tiver completion com quiz (legado), também desbloqueia
     const previousCompletion = completions.find(c => c.moduleId === previousModule.id);
     return previousCompletion !== undefined && previousCompletion.quizScore >= 90;
+  };
+
+  /**
+   * Busca o progresso de fases do usuário atual
+   */
+  const fetchPhaseProgress = async (): Promise<PhaseProgress[]> => {
+    if (!user) return [];
+
+    try {
+      const { data, error } = await supabase
+        .from('module_phase_progress')
+        .select('module_id, phase1_completed_at, phase2_completed_at')
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      return (data || []).map(p => ({
+        moduleId: p.module_id,
+        phase1CompletedAt: p.phase1_completed_at,
+        phase2CompletedAt: p.phase2_completed_at,
+      }));
+    } catch (error) {
+      console.error('Error fetching phase progress:', error);
+      return [];
+    }
   };
 
   /**
@@ -168,15 +246,16 @@ export const useSequentialProgress = () => {
     module: Module,
     allModules: Module[],
     completions: ModuleCompletion[],
-    userProgress: Record<string, number> = {}
+    userProgress: Record<string, number> = {},
+    phaseProgress: PhaseProgress[] = []
   ): string | null => {
     // Módulos temáticos: mensagens específicas
     if (module.type === 'thematic') {
-      const lockInfo = getThematicLockInfo(module, allModules, completions, userProgress);
+      const lockInfo = getThematicLockInfo(module, allModules, completions, userProgress, phaseProgress);
       
       if (lockInfo.reason === 'awo_incomplete') {
         const { completed, total } = lockInfo.awoProgress!;
-        return `Complete todos os módulos Awo para desbloquear (${completed}/${total} concluídos)`;
+        return `Complete a Fase 1 de todos os módulos Awo para desbloquear (${completed}/${total})`;
       }
       
       if (lockInfo.reason === 'another_in_progress') {
@@ -201,17 +280,14 @@ export const useSequentialProgress = () => {
       return null;
     }
 
-    const previousCompletion = completions.find(c => c.moduleId === previousModule.id);
+    // Verificar Fase 1 do módulo anterior
+    const previousPhaseProgress = phaseProgress.find(p => p.moduleId === previousModule.id);
     
-    if (!previousCompletion) {
-      return `Complete o módulo anterior com 90% no quiz`;
-    }
-    
-    if (previousCompletion.quizScore < 90) {
-      return `Obtenha 90%+ no quiz do módulo anterior (atual: ${previousCompletion.quizScore}%)`;
+    if (previousPhaseProgress?.phase1CompletedAt) {
+      return null; // Desbloqueado
     }
 
-    return null;
+    return `Complete a Fase 1 do módulo anterior para desbloquear`;
   };
 
   /**
@@ -244,15 +320,16 @@ export const useSequentialProgress = () => {
   const calculateLockedModules = (
     modules: Module[],
     completions: ModuleCompletion[],
-    userProgress: Record<string, number> = {}
+    userProgress: Record<string, number> = {},
+    phaseProgress: PhaseProgress[] = []
   ): { lockedModules: Set<string>; unlockRequirements: Record<string, string> } => {
     const lockedModules = new Set<string>();
     const unlockRequirements: Record<string, string> = {};
 
     modules.forEach(module => {
-      if (!isModuleUnlocked(module, modules, completions, userProgress)) {
+      if (!isModuleUnlocked(module, modules, completions, userProgress, phaseProgress)) {
         lockedModules.add(module.id);
-        const requirement = getUnlockRequirement(module, modules, completions, userProgress);
+        const requirement = getUnlockRequirement(module, modules, completions, userProgress, phaseProgress);
         if (requirement) {
           unlockRequirements[module.id] = requirement;
         }
@@ -263,12 +340,18 @@ export const useSequentialProgress = () => {
   };
 
   /**
-   * Verifica se os módulos temáticos estão liberados (todos Awo completados)
+   * Verifica se os módulos temáticos estão liberados (todos Awo com Fase 1)
    */
   const areThematicsUnlocked = (
     allModules: Module[],
-    completions: ModuleCompletion[]
+    completions: ModuleCompletion[],
+    phaseProgress: PhaseProgress[] = []
   ): boolean => {
+    // Primeiro verifica pelo novo sistema de fases
+    if (hasCompletedPhase1OfLevel('awo', allModules, phaseProgress)) {
+      return true;
+    }
+    // Fallback para o sistema antigo
     return hasCompletedAllModulesOfLevel('awo', allModules, completions);
   };
 
@@ -277,8 +360,18 @@ export const useSequentialProgress = () => {
    */
   const getThematicUnlockProgress = (
     allModules: Module[],
-    completions: ModuleCompletion[]
+    completions: ModuleCompletion[],
+    phaseProgress: PhaseProgress[] = []
   ): { completed: number; total: number; percentage: number } => {
+    // Usar progresso de Fase 1 primeiro
+    const phase1Progress = getAwoPhase1Progress(allModules, phaseProgress);
+    if (phase1Progress.completed > 0) {
+      return {
+        ...phase1Progress,
+        percentage: phase1Progress.total > 0 ? Math.round((phase1Progress.completed / phase1Progress.total) * 100) : 0,
+      };
+    }
+    // Fallback para quiz completions
     const progress = getAwoProgress(allModules, completions);
     return {
       ...progress,
@@ -290,6 +383,7 @@ export const useSequentialProgress = () => {
     isModuleUnlocked,
     getUnlockRequirement,
     fetchUserCompletions,
+    fetchPhaseProgress,
     calculateLockedModules,
     areThematicsUnlocked,
     getThematicUnlockProgress,

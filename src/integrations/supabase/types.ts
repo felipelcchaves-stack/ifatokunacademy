@@ -368,6 +368,51 @@ export type Database = {
           },
         ]
       }
+      module_phase_progress: {
+        Row: {
+          created_at: string | null
+          id: string
+          module_id: string
+          phase1_completed_at: string | null
+          phase2_completed_at: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          module_id: string
+          phase1_completed_at?: string | null
+          phase2_completed_at?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          module_id?: string
+          phase1_completed_at?: string | null
+          phase2_completed_at?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "module_phase_progress_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "module_phase_progress_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       module_retention_schedule: {
         Row: {
           created_at: string | null
@@ -972,6 +1017,10 @@ export type Database = {
     }
     Functions: {
       is_admin: { Args: { user_id: string }; Returns: boolean }
+      is_module_phase1_complete: {
+        Args: { p_module_id: string; p_user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

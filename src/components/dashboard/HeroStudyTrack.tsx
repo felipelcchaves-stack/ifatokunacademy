@@ -26,6 +26,7 @@ interface HeroStudyTrackProps {
   lockedModules: Set<string>;
   unlockRequirements: Record<string, string>;
   displayName: string;
+  pendingPhase2Modules?: string[];
 }
 
 export const HeroStudyTrack: React.FC<HeroStudyTrackProps> = ({
@@ -33,6 +34,7 @@ export const HeroStudyTrack: React.FC<HeroStudyTrackProps> = ({
   lockedModules,
   unlockRequirements,
   displayName,
+  pendingPhase2Modules = [],
 }) => {
   const navigate = useNavigate();
   const [proverb, setProverb] = useState<YorubaProverb | null>(null);
