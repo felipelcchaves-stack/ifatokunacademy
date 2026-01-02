@@ -13,7 +13,8 @@ import {
   FileText,
   CheckCircle,
   Clock,
-  Upload
+  Upload,
+  Home
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
@@ -224,6 +225,17 @@ const AdminDashboard: React.FC = () => {
 
           {/* Navigation */}
           <nav className="flex-1 p-4 space-y-1">
+            {/* Botão Área do Aluno */}
+            <Link
+              to="/dashboard"
+              className="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors mb-2 bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20"
+            >
+              <Home className="w-5 h-5" />
+              <span className="font-medium">Área do Aluno</span>
+            </Link>
+
+            <div className="border-b border-sidebar-border my-2" />
+
             {sidebarItems.map((item) => (
               <Link
                 key={item.path}
