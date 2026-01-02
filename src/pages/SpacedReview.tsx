@@ -24,6 +24,8 @@ import ContentProtection from '@/components/ContentProtection';
 import StreakDisplay from '@/components/streak/StreakDisplay';
 import { useSpacedRepetition, SpacedRepetitionItem } from '@/hooks/useSpacedRepetition';
 import { useStreak } from '@/hooks/useStreak';
+import { useAchievements } from '@/hooks/useAchievements';
+import { showAchievementUnlockToast } from '@/components/achievements/AchievementUnlockToast';
 import { calculateSimilarity, getTextStart, getTextRemainder } from '@/lib/textSimilarity';
 import { formatDistanceToNow, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -36,6 +38,7 @@ const SpacedReview: React.FC = () => {
   const navigate = useNavigate();
   const { dueItems, allItems, loading, dueCount, recordReview, removeItem, refreshItems } = useSpacedRepetition();
   const { streak, recordDailyReview } = useStreak();
+  const { checkAndUnlockAchievements } = useAchievements();
   
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userInput, setUserInput] = useState('');
@@ -69,8 +72,17 @@ const SpacedReview: React.FC = () => {
       const recorded = await recordDailyReview();
       if (recorded) {
         setStreakRecorded(true);
+        const newStreak = (streak?.current_streak || 0) + 1;
+        const newTotalDays = (streak?.total_review_days || 0) + 1;
+        
         toast.success('🔥 Sequência atualizada!', {
-          description: `Você está em uma sequência de ${(streak?.current_streak || 0) + 1} dias!`,
+          description: `Você está em uma sequência de ${newStreak} dias!`,
+        });
+
+        // Check for new achievements
+        const newAchievements = await checkAndUnlockAchievements(newStreak, newTotalDays);
+        newAchievements.forEach(achievement => {
+          showAchievementUnlockToast(achievement);
         });
       }
     }
