@@ -4,14 +4,25 @@ import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { toast } from 'sonner';
 import { calculateWordTimings, findWordAtTime, type WordTiming } from '@/lib/audioSyncUtils';
+import InlineRecorder from '@/components/recording/InlineRecorder';
 
 interface ReadingExerciseProps {
   text: string;
   audioUrl?: string | null;
   onComplete?: () => void;
+  exerciseId?: string;
+  lessonId?: string;
+  moduleId?: string;
 }
 
-const ReadingExercise: React.FC<ReadingExerciseProps> = ({ text, audioUrl, onComplete }) => {
+const ReadingExercise: React.FC<ReadingExerciseProps> = ({ 
+  text, 
+  audioUrl, 
+  onComplete,
+  exerciseId,
+  lessonId,
+  moduleId
+}) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -288,6 +299,16 @@ const ReadingExercise: React.FC<ReadingExerciseProps> = ({ text, audioUrl, onCom
           </div>
         </div>
       )}
+
+      {/* Inline Recorder */}
+      <InlineRecorder
+        text={text}
+        title="Leitura Guiada"
+        exerciseId={exerciseId}
+        lessonId={lessonId}
+        moduleId={moduleId}
+        className="mt-4"
+      />
     </div>
   );
 };
