@@ -1,10 +1,12 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { Play, Pause, RotateCcw, Volume2, Loader2, Check } from 'lucide-react';
+import { Play, Pause, RotateCcw, Volume2, Loader2, Check, Bot, Mic } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { toast } from 'sonner';
 import { calculateWordTimings, findWordAtTime, type WordTiming } from '@/lib/audioSyncUtils';
 import InlineRecorder from '@/components/recording/InlineRecorder';
+import { useUserRecordings } from '@/hooks/useUserRecordings';
+import { AudioSource } from '@/components/exercises/AudioSourceSelector';
 
 interface ReadingExerciseProps {
   text: string;
@@ -29,13 +31,30 @@ const ReadingExercise: React.FC<ReadingExerciseProps> = ({
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [highlightedWordIndex, setHighlightedWordIndex] = useState(-1);
-  const [effectiveAudioUrl, setEffectiveAudioUrl] = useState<string | null>(audioUrl || null);
+  const [aiAudioUrl, setAiAudioUrl] = useState<string | null>(audioUrl || null);
   const [isCached, setIsCached] = useState(false);
   const [wordTimings, setWordTimings] = useState<WordTiming[]>([]);
+  const [audioSource, setAudioSource] = useState<AudioSource>('ai');
+  const [selectedRecordingUrl, setSelectedRecordingUrl] = useState<string | null>(null);
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const textContainerRef = useRef<HTMLDivElement>(null);
   const wordRefs = useRef<(HTMLSpanElement | null)[]>([]);
+
+  // Fetch user recordings for this context
+  const { recordings, refetch: refetchRecordings } = useUserRecordings({
+    exerciseId,
+    lessonId,
+    moduleId
+  });
+
+  // Determine effective audio URL based on source
+  const effectiveAudioUrl = useMemo(() => {
+    if (audioSource === 'personal' && selectedRecordingUrl) {
+      return selectedRecordingUrl;
+    }
+    return aiAudioUrl;
+  }, [audioSource, selectedRecordingUrl, aiAudioUrl]);
 
   const words = useMemo(() => text.split(/\s+/).filter(w => w.length > 0), [text]);
 
@@ -96,12 +115,19 @@ const ReadingExercise: React.FC<ReadingExerciseProps> = ({
     };
   }, [effectiveAudioUrl]);
 
-  // Update effectiveAudioUrl if audioUrl prop changes
+  // Update aiAudioUrl if audioUrl prop changes
   useEffect(() => {
     if (audioUrl) {
-      setEffectiveAudioUrl(audioUrl);
+      setAiAudioUrl(audioUrl);
     }
   }, [audioUrl]);
+
+  // Set first recording as selected when recordings load
+  useEffect(() => {
+    if (recordings && recordings.length > 0 && !selectedRecordingUrl) {
+      setSelectedRecordingUrl(recordings[0].audio_url);
+    }
+  }, [recordings, selectedRecordingUrl]);
 
   const handleTimeUpdate = () => {
     if (audioRef.current) {
@@ -143,8 +169,9 @@ const ReadingExercise: React.FC<ReadingExerciseProps> = ({
       const data = await response.json();
       
       if (data.audioUrl) {
-        setEffectiveAudioUrl(data.audioUrl);
+        setAiAudioUrl(data.audioUrl);
         setIsCached(data.cached);
+        setAudioSource('ai');
         toast.success(data.cached ? 'Áudio carregado do cache!' : 'Áudio gerado com sucesso!');
       } else {
         throw new Error('URL do áudio não retornada');
@@ -224,6 +251,42 @@ const ReadingExercise: React.FC<ReadingExerciseProps> = ({
         </p>
       </div>
 
+      {/* Audio Source Toggle */}
+      {(aiAudioUrl || (recordings && recordings.length > 0)) && (
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-sm text-muted-foreground">Ouvir:</span>
+          <div className="flex rounded-lg border border-border overflow-hidden">
+            <button
+              onClick={() => setAudioSource('ai')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm transition-colors ${
+                audioSource === 'ai' 
+                  ? 'bg-primary text-primary-foreground' 
+                  : 'bg-background hover:bg-muted text-muted-foreground'
+              }`}
+              disabled={!aiAudioUrl}
+            >
+              <Bot className="w-3.5 h-3.5" />
+              <span>IA</span>
+            </button>
+            <button
+              onClick={() => setAudioSource('personal')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm transition-colors ${
+                audioSource === 'personal' 
+                  ? 'bg-green-600 text-white' 
+                  : 'bg-background hover:bg-muted text-muted-foreground'
+              }`}
+              disabled={!recordings || recordings.length === 0}
+            >
+              <Mic className="w-3.5 h-3.5" />
+              <span>Minha Voz</span>
+              {recordings && recordings.length > 0 && (
+                <span className="ml-1 text-xs opacity-75">({recordings.length})</span>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Audio Controls */}
       {effectiveAudioUrl ? (
         <div className="bg-muted/50 rounded-xl p-4">
@@ -263,12 +326,18 @@ const ReadingExercise: React.FC<ReadingExerciseProps> = ({
             </Button>
             
             <div className="flex items-center gap-1">
-              <Volume2 className="w-5 h-5 text-muted-foreground" />
-              {isCached && (
-                <span className="text-xs text-muted-foreground flex items-center gap-1">
-                  <Check className="w-3 h-3 text-green-500" />
-                  Cache
-                </span>
+              {audioSource === 'ai' ? (
+                <>
+                  <Volume2 className="w-5 h-5 text-muted-foreground" />
+                  {isCached && (
+                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Check className="w-3 h-3 text-green-500" />
+                      Cache
+                    </span>
+                  )}
+                </>
+              ) : (
+                <Mic className="w-5 h-5 text-green-500" />
               )}
             </div>
           </div>
@@ -307,6 +376,7 @@ const ReadingExercise: React.FC<ReadingExerciseProps> = ({
         exerciseId={exerciseId}
         lessonId={lessonId}
         moduleId={moduleId}
+        onSaved={() => refetchRecordings()}
         className="mt-4"
       />
     </div>
