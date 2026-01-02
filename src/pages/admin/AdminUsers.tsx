@@ -15,13 +15,22 @@ import {
   Calendar,
   MoreVertical,
   Users,
-  Crown
+  Crown,
+  UserPlus,
+  Trash2,
+  Settings,
+  BookOpen,
+  Eye,
+  EyeOff,
+  Lock
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   DropdownMenu,
@@ -41,6 +50,14 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Table,
   TableBody,
   TableCell,
@@ -48,6 +65,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface UserProfile {
   id: string;
@@ -56,25 +78,45 @@ interface UserProfile {
   avatar_url: string | null;
   created_at: string;
   isAdmin: boolean;
+  modulePermissions: string[];
 }
 
-interface AdminEmail {
-  email: string;
+interface Module {
+  id: string;
+  title: string;
+  type: string;
+  level: string | null;
 }
 
 export default function AdminUsers() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState<UserProfile[]>([]);
+  const [modules, setModules] = useState<Module[]>([]);
   const [adminEmails, setAdminEmails] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState("");
   const [filterRole, setFilterRole] = useState<string>("all");
+  
+  // Dialogs
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [permissionsDialogOpen, setPermissionsDialogOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean;
-    type: 'promote' | 'demote';
+    type: 'promote' | 'demote' | 'delete';
     user: UserProfile | null;
   }>({ open: false, type: 'promote', user: null });
+  
+  // Form states
+  const [inviteForm, setInviteForm] = useState({
+    email: '',
+    fullName: '',
+    password: '',
+    moduleIds: [] as string[]
+  });
+  const [showPassword, setShowPassword] = useState(false);
+  const [selectedModuleIds, setSelectedModuleIds] = useState<string[]>([]);
   const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
@@ -102,26 +144,156 @@ export default function AdminUsers() {
 
       if (adminsError) throw adminsError;
 
-      const adminEmailSet = new Set((admins || []).map((a: AdminEmail) => a.email.toLowerCase()));
+      // Buscar todos os módulos (para o admin)
+      const { data: modulesData, error: modulesError } = await supabase
+        .from('modules')
+        .select('id, title, type, level')
+        .order('display_order');
+
+      if (modulesError) throw modulesError;
+      setModules(modulesData || []);
+
+      // Buscar todas as permissões de módulos
+      const { data: permissions, error: permError } = await supabase
+        .from('user_module_permissions')
+        .select('user_id, module_id');
+
+      if (permError) throw permError;
+
+      // Criar mapa de permissões por usuário
+      const permissionsMap = new Map<string, string[]>();
+      (permissions || []).forEach((p: { user_id: string; module_id: string }) => {
+        if (!permissionsMap.has(p.user_id)) {
+          permissionsMap.set(p.user_id, []);
+        }
+        permissionsMap.get(p.user_id)!.push(p.module_id);
+      });
+
+      const adminEmailSet = new Set((admins || []).map((a: { email: string }) => a.email.toLowerCase()));
       setAdminEmails(adminEmailSet);
 
-      // Marcar usuários como admin
-      const usersWithAdminStatus = (profiles || []).map(profile => ({
+      // Marcar usuários com status e permissões
+      const usersWithStatus = (profiles || []).map(profile => ({
         ...profile,
-        isAdmin: profile.email ? adminEmailSet.has(profile.email.toLowerCase()) : false
+        isAdmin: profile.email ? adminEmailSet.has(profile.email.toLowerCase()) : false,
+        modulePermissions: permissionsMap.get(profile.id) || []
       }));
 
-      setUsers(usersWithAdminStatus);
+      setUsers(usersWithStatus);
     } catch (error) {
-      console.error('Erro ao carregar usuários:', error);
-      toast.error('Erro ao carregar usuários');
+      console.error('Erro ao carregar dados:', error);
+      toast.error('Erro ao carregar dados');
     } finally {
       setLoading(false);
     }
   };
 
-  const handlePromoteToAdmin = async (user: UserProfile) => {
-    if (!user.email) {
+  const handleInviteUser = async () => {
+    if (!inviteForm.email || !inviteForm.password) {
+      toast.error('Email e senha são obrigatórios');
+      return;
+    }
+
+    if (inviteForm.password.length < 6) {
+      toast.error('Senha deve ter no mínimo 6 caracteres');
+      return;
+    }
+
+    setProcessing(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const response = await supabase.functions.invoke('create-user', {
+        body: {
+          email: inviteForm.email,
+          password: inviteForm.password,
+          fullName: inviteForm.fullName,
+          moduleIds: inviteForm.moduleIds
+        },
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`
+        }
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || 'Erro ao criar usuário');
+      }
+
+      toast.success(`Usuário ${inviteForm.email} criado com sucesso!`);
+      setInviteDialogOpen(false);
+      setInviteForm({ email: '', fullName: '', password: '', moduleIds: [] });
+      fetchData();
+    } catch (error: any) {
+      console.error('Erro ao criar usuário:', error);
+      toast.error(error.message || 'Erro ao criar usuário');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleUpdatePermissions = async () => {
+    if (!selectedUser) return;
+
+    setProcessing(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const response = await supabase.functions.invoke('update-user-permissions', {
+        body: {
+          userId: selectedUser.id,
+          moduleIds: selectedModuleIds
+        },
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`
+        }
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || 'Erro ao atualizar permissões');
+      }
+
+      toast.success('Permissões atualizadas com sucesso!');
+      setPermissionsDialogOpen(false);
+      setSelectedUser(null);
+      setSelectedModuleIds([]);
+      fetchData();
+    } catch (error: any) {
+      console.error('Erro ao atualizar permissões:', error);
+      toast.error(error.message || 'Erro ao atualizar permissões');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleDeleteUser = async (userToDelete: UserProfile) => {
+    setProcessing(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const response = await supabase.functions.invoke('delete-user', {
+        body: { userId: userToDelete.id },
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`
+        }
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || 'Erro ao excluir usuário');
+      }
+
+      toast.success(`Usuário ${userToDelete.full_name || userToDelete.email} excluído!`);
+      setConfirmDialog({ open: false, type: 'delete', user: null });
+      fetchData();
+    } catch (error: any) {
+      console.error('Erro ao excluir usuário:', error);
+      toast.error(error.message || 'Erro ao excluir usuário');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handlePromoteToAdmin = async (userToPromote: UserProfile) => {
+    if (!userToPromote.email) {
       toast.error('Usuário não possui email cadastrado');
       return;
     }
@@ -130,17 +302,16 @@ export default function AdminUsers() {
     try {
       const { error } = await supabase
         .from('admin_emails')
-        .insert({ email: user.email });
+        .insert({ email: userToPromote.email });
 
       if (error) throw error;
 
-      // Atualizar estado local
-      setAdminEmails(prev => new Set([...prev, user.email!.toLowerCase()]));
+      setAdminEmails(prev => new Set([...prev, userToPromote.email!.toLowerCase()]));
       setUsers(prev => prev.map(u => 
-        u.id === user.id ? { ...u, isAdmin: true } : u
+        u.id === userToPromote.id ? { ...u, isAdmin: true } : u
       ));
 
-      toast.success(`${user.full_name || user.email} agora é administrador!`);
+      toast.success(`${userToPromote.full_name || userToPromote.email} agora é administrador!`);
     } catch (error: any) {
       console.error('Erro ao promover usuário:', error);
       if (error.code === '23505') {
@@ -154,8 +325,8 @@ export default function AdminUsers() {
     }
   };
 
-  const handleDemoteAdmin = async (user: UserProfile) => {
-    if (!user.email) {
+  const handleDemoteAdmin = async (userToDemote: UserProfile) => {
+    if (!userToDemote.email) {
       toast.error('Usuário não possui email cadastrado');
       return;
     }
@@ -165,21 +336,20 @@ export default function AdminUsers() {
       const { error } = await supabase
         .from('admin_emails')
         .delete()
-        .eq('email', user.email);
+        .eq('email', userToDemote.email);
 
       if (error) throw error;
 
-      // Atualizar estado local
       setAdminEmails(prev => {
         const newSet = new Set(prev);
-        newSet.delete(user.email!.toLowerCase());
+        newSet.delete(userToDemote.email!.toLowerCase());
         return newSet;
       });
       setUsers(prev => prev.map(u => 
-        u.id === user.id ? { ...u, isAdmin: false } : u
+        u.id === userToDemote.id ? { ...u, isAdmin: false } : u
       ));
 
-      toast.success(`${user.full_name || user.email} removido dos administradores`);
+      toast.success(`${userToDemote.full_name || userToDemote.email} removido dos administradores`);
     } catch (error) {
       console.error('Erro ao remover admin:', error);
       toast.error('Erro ao remover administrador');
@@ -189,16 +359,46 @@ export default function AdminUsers() {
     }
   };
 
+  const openPermissionsDialog = (userProfile: UserProfile) => {
+    setSelectedUser(userProfile);
+    setSelectedModuleIds(userProfile.modulePermissions);
+    setPermissionsDialogOpen(true);
+  };
+
+  const toggleModuleInForm = (moduleId: string) => {
+    setInviteForm(prev => ({
+      ...prev,
+      moduleIds: prev.moduleIds.includes(moduleId)
+        ? prev.moduleIds.filter(id => id !== moduleId)
+        : [...prev.moduleIds, moduleId]
+    }));
+  };
+
+  const toggleModuleInPermissions = (moduleId: string) => {
+    setSelectedModuleIds(prev => 
+      prev.includes(moduleId)
+        ? prev.filter(id => id !== moduleId)
+        : [...prev, moduleId]
+    );
+  };
+
+  const getModuleTitles = (moduleIds: string[]) => {
+    return moduleIds.map(id => {
+      const mod = modules.find(m => m.id === id);
+      return mod?.title || 'Módulo desconhecido';
+    });
+  };
+
   // Filtrar usuários
-  const filteredUsers = users.filter(user => {
+  const filteredUsers = users.filter(u => {
     const matchesSearch = 
-      (user.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) || false) ||
-      (user.email?.toLowerCase().includes(searchQuery.toLowerCase()) || false);
+      (u.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) || false) ||
+      (u.email?.toLowerCase().includes(searchQuery.toLowerCase()) || false);
 
     const matchesRole = 
       filterRole === 'all' ||
-      (filterRole === 'admin' && user.isAdmin) ||
-      (filterRole === 'student' && !user.isAdmin);
+      (filterRole === 'admin' && u.isAdmin) ||
+      (filterRole === 'student' && !u.isAdmin);
 
     return matchesSearch && matchesRole;
   });
@@ -237,11 +437,17 @@ export default function AdminUsers() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Gerenciamento de Usuários</h1>
-        <p className="text-muted-foreground mt-1">
-          Visualize e gerencie os usuários da plataforma
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Gerenciamento de Usuários</h1>
+          <p className="text-muted-foreground mt-1">
+            Crie, edite e gerencie os usuários da plataforma
+          </p>
+        </div>
+        <Button onClick={() => setInviteDialogOpen(true)} className="gap-2">
+          <UserPlus className="h-4 w-4" />
+          Convidar Usuário
+        </Button>
       </div>
 
       {/* Stats Cards */}
@@ -323,6 +529,7 @@ export default function AdminUsers() {
                 <TableHead>Usuário</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Papel</TableHead>
+                <TableHead>Módulos</TableHead>
                 <TableHead>Cadastro</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
@@ -330,24 +537,24 @@ export default function AdminUsers() {
             <TableBody>
               {filteredUsers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                     Nenhum usuário encontrado
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredUsers.map((user) => (
-                  <TableRow key={user.id}>
+                filteredUsers.map((u) => (
+                  <TableRow key={u.id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Avatar className="h-9 w-9">
-                          <AvatarImage src={user.avatar_url || undefined} />
+                          <AvatarImage src={u.avatar_url || undefined} />
                           <AvatarFallback className="bg-primary/10 text-primary text-sm">
-                            {getInitials(user.full_name, user.email)}
+                            {getInitials(u.full_name, u.email)}
                           </AvatarFallback>
                         </Avatar>
                         <div>
                           <p className="font-medium">
-                            {user.full_name || 'Sem nome'}
+                            {u.full_name || 'Sem nome'}
                           </p>
                         </div>
                       </div>
@@ -355,11 +562,11 @@ export default function AdminUsers() {
                     <TableCell>
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <Mail className="h-4 w-4" />
-                        <span className="text-sm">{user.email || 'N/A'}</span>
+                        <span className="text-sm">{u.email || 'N/A'}</span>
                       </div>
                     </TableCell>
                     <TableCell>
-                      {user.isAdmin ? (
+                      {u.isAdmin ? (
                         <Badge className="bg-primary/10 text-primary border-primary/20">
                           <Shield className="h-3 w-3 mr-1" />
                           Admin
@@ -371,9 +578,33 @@ export default function AdminUsers() {
                       )}
                     </TableCell>
                     <TableCell>
+                      {u.isAdmin ? (
+                        <span className="text-sm text-muted-foreground">Acesso total</span>
+                      ) : u.modulePermissions.length > 0 ? (
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <Badge variant="outline" className="cursor-help">
+                              <BookOpen className="h-3 w-3 mr-1" />
+                              {u.modulePermissions.length} módulo{u.modulePermissions.length > 1 ? 's' : ''}
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs">
+                            <p className="font-semibold mb-1">Módulos:</p>
+                            <ul className="text-sm space-y-0.5">
+                              {getModuleTitles(u.modulePermissions).map((title, idx) => (
+                                <li key={idx}>• {title}</li>
+                              ))}
+                            </ul>
+                          </TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        <span className="text-sm text-destructive">Sem acesso</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
                       <div className="flex items-center gap-2 text-muted-foreground text-sm">
                         <Calendar className="h-4 w-4" />
-                        {formatDate(user.created_at)}
+                        {formatDate(u.created_at)}
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
@@ -384,13 +615,14 @@ export default function AdminUsers() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          {user.isAdmin ? (
+                          <DropdownMenuItem onClick={() => openPermissionsDialog(u)}>
+                            <Settings className="h-4 w-4 mr-2" />
+                            Gerenciar Módulos
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          {u.isAdmin ? (
                             <DropdownMenuItem
-                              onClick={() => setConfirmDialog({ 
-                                open: true, 
-                                type: 'demote', 
-                                user 
-                              })}
+                              onClick={() => setConfirmDialog({ open: true, type: 'demote', user: u })}
                               className="text-destructive focus:text-destructive"
                             >
                               <ShieldOff className="h-4 w-4 mr-2" />
@@ -398,16 +630,21 @@ export default function AdminUsers() {
                             </DropdownMenuItem>
                           ) : (
                             <DropdownMenuItem
-                              onClick={() => setConfirmDialog({ 
-                                open: true, 
-                                type: 'promote', 
-                                user 
-                              })}
+                              onClick={() => setConfirmDialog({ open: true, type: 'promote', user: u })}
                             >
                               <Shield className="h-4 w-4 mr-2" />
                               Promover a Admin
                             </DropdownMenuItem>
                           )}
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => setConfirmDialog({ open: true, type: 'delete', user: u })}
+                            className="text-destructive focus:text-destructive"
+                            disabled={u.id === user?.id}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Excluir Usuário
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -419,6 +656,171 @@ export default function AdminUsers() {
         </CardContent>
       </Card>
 
+      {/* Invite User Dialog */}
+      <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Convidar Novo Usuário</DialogTitle>
+            <DialogDescription>
+              Crie uma conta para um novo usuário e defina quais módulos ele poderá acessar.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="invite-email">Email *</Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="invite-email"
+                  type="email"
+                  placeholder="usuario@email.com"
+                  value={inviteForm.email}
+                  onChange={(e) => setInviteForm(prev => ({ ...prev, email: e.target.value }))}
+                  className="pl-9"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="invite-name">Nome Completo</Label>
+              <Input
+                id="invite-name"
+                placeholder="Nome do usuário"
+                value={inviteForm.fullName}
+                onChange={(e) => setInviteForm(prev => ({ ...prev, fullName: e.target.value }))}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="invite-password">Senha Inicial *</Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="invite-password"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Mínimo 6 caracteres"
+                  value={inviteForm.password}
+                  onChange={(e) => setInviteForm(prev => ({ ...prev, password: e.target.value }))}
+                  className="pl-9 pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Módulos Permitidos</Label>
+              <p className="text-sm text-muted-foreground mb-2">
+                Selecione os módulos que este usuário poderá acessar
+              </p>
+              <div className="border rounded-lg p-3 space-y-2 max-h-48 overflow-y-auto">
+                {modules.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-2">
+                    Nenhum módulo disponível
+                  </p>
+                ) : (
+                  modules.map(mod => (
+                    <div key={mod.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`invite-mod-${mod.id}`}
+                        checked={inviteForm.moduleIds.includes(mod.id)}
+                        onCheckedChange={() => toggleModuleInForm(mod.id)}
+                      />
+                      <Label 
+                        htmlFor={`invite-mod-${mod.id}`} 
+                        className="flex-1 cursor-pointer text-sm font-normal"
+                      >
+                        {mod.title}
+                        <span className="text-muted-foreground ml-2">
+                          ({mod.type === 'proficiency' ? mod.level : 'Temático'})
+                        </span>
+                      </Label>
+                    </div>
+                  ))
+                )}
+              </div>
+              {inviteForm.moduleIds.length > 0 && (
+                <p className="text-sm text-muted-foreground">
+                  {inviteForm.moduleIds.length} módulo{inviteForm.moduleIds.length > 1 ? 's' : ''} selecionado{inviteForm.moduleIds.length > 1 ? 's' : ''}
+                </p>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setInviteDialogOpen(false)} disabled={processing}>
+              Cancelar
+            </Button>
+            <Button onClick={handleInviteUser} disabled={processing}>
+              {processing && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Criar Usuário
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Permissions Dialog */}
+      <Dialog open={permissionsDialogOpen} onOpenChange={setPermissionsDialogOpen}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Gerenciar Módulos</DialogTitle>
+            <DialogDescription>
+              Edite os módulos que {selectedUser?.full_name || selectedUser?.email} pode acessar.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <div className="border rounded-lg p-3 space-y-2 max-h-64 overflow-y-auto">
+              {modules.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-2">
+                  Nenhum módulo disponível
+                </p>
+              ) : (
+                modules.map(mod => (
+                  <div key={mod.id} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`perm-mod-${mod.id}`}
+                      checked={selectedModuleIds.includes(mod.id)}
+                      onCheckedChange={() => toggleModuleInPermissions(mod.id)}
+                    />
+                    <Label 
+                      htmlFor={`perm-mod-${mod.id}`} 
+                      className="flex-1 cursor-pointer text-sm font-normal"
+                    >
+                      {mod.title}
+                      <span className="text-muted-foreground ml-2">
+                        ({mod.type === 'proficiency' ? mod.level : 'Temático'})
+                      </span>
+                    </Label>
+                  </div>
+                ))
+              )}
+            </div>
+            {selectedModuleIds.length > 0 && (
+              <p className="text-sm text-muted-foreground mt-2">
+                {selectedModuleIds.length} módulo{selectedModuleIds.length > 1 ? 's' : ''} selecionado{selectedModuleIds.length > 1 ? 's' : ''}
+              </p>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPermissionsDialogOpen(false)} disabled={processing}>
+              Cancelar
+            </Button>
+            <Button onClick={handleUpdatePermissions} disabled={processing}>
+              {processing && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Salvar Permissões
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Confirm Dialog */}
       <AlertDialog 
         open={confirmDialog.open} 
@@ -427,14 +829,19 @@ export default function AdminUsers() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {confirmDialog.type === 'promote' 
-                ? 'Promover a Administrador' 
-                : 'Remover Administrador'}
+              {confirmDialog.type === 'promote' && 'Promover a Administrador'}
+              {confirmDialog.type === 'demote' && 'Remover Administrador'}
+              {confirmDialog.type === 'delete' && 'Excluir Usuário'}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {confirmDialog.type === 'promote' 
-                ? `Tem certeza que deseja promover ${confirmDialog.user?.full_name || confirmDialog.user?.email} a administrador? Ele terá acesso total ao painel administrativo.`
-                : `Tem certeza que deseja remover ${confirmDialog.user?.full_name || confirmDialog.user?.email} dos administradores? Ele perderá acesso ao painel administrativo.`
+              {confirmDialog.type === 'promote' && 
+                `Tem certeza que deseja promover ${confirmDialog.user?.full_name || confirmDialog.user?.email} a administrador? Ele terá acesso total ao painel administrativo.`
+              }
+              {confirmDialog.type === 'demote' && 
+                `Tem certeza que deseja remover ${confirmDialog.user?.full_name || confirmDialog.user?.email} dos administradores? Ele perderá acesso ao painel administrativo.`
+              }
+              {confirmDialog.type === 'delete' && 
+                `Tem certeza que deseja EXCLUIR ${confirmDialog.user?.full_name || confirmDialog.user?.email}? Esta ação é IRREVERSÍVEL e todos os dados do usuário serão perdidos.`
               }
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -445,18 +852,20 @@ export default function AdminUsers() {
                 if (confirmDialog.user) {
                   if (confirmDialog.type === 'promote') {
                     handlePromoteToAdmin(confirmDialog.user);
-                  } else {
+                  } else if (confirmDialog.type === 'demote') {
                     handleDemoteAdmin(confirmDialog.user);
+                  } else if (confirmDialog.type === 'delete') {
+                    handleDeleteUser(confirmDialog.user);
                   }
                 }
               }}
               disabled={processing}
-              className={confirmDialog.type === 'demote' ? 'bg-destructive hover:bg-destructive/90' : ''}
+              className={confirmDialog.type !== 'promote' ? 'bg-destructive hover:bg-destructive/90' : ''}
             >
-              {processing ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : null}
-              {confirmDialog.type === 'promote' ? 'Promover' : 'Remover'}
+              {processing && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              {confirmDialog.type === 'promote' && 'Promover'}
+              {confirmDialog.type === 'demote' && 'Remover'}
+              {confirmDialog.type === 'delete' && 'Excluir'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

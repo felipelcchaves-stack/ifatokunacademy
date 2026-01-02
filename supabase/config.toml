@@ -3,6 +3,12 @@ project_id = "radloafdvakhjlapgrbp"
 [functions.create-user]
 verify_jwt = false
 
+[functions.delete-user]
+verify_jwt = false
+
+[functions.update-user-permissions]
+verify_jwt = false
+
 [functions.generate-module-banner]
 verify_jwt = false
 

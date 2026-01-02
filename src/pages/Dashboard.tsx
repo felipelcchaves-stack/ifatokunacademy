@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, Clock, Award, TrendingUp, Loader2, Brain, Zap, Sparkles } from 'lucide-react';
+import { BookOpen, Clock, Award, TrendingUp, Loader2, Brain, Zap, Sparkles, Lock } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import ModuleSlider from '@/components/modules/ModuleSlider';
@@ -23,6 +23,7 @@ import { useSpacedRepetition } from '@/hooks/useSpacedRepetition';
 import { useStreak } from '@/hooks/useStreak';
 import { useSequentialProgress } from '@/hooks/useSequentialProgress';
 import { useDashboardData } from '@/hooks/useDashboardData';
+import { useModulePermissions } from '@/hooks/useModulePermissions';
 
 const Dashboard: React.FC = () => {
   const { user, profile } = useAuth();
@@ -33,6 +34,7 @@ const Dashboard: React.FC = () => {
   
   const { dueCount } = useSpacedRepetition();
   const { streak, loading: streakLoading } = useStreak();
+  const { hasAccess, loading: permissionsLoading, isAdmin } = useModulePermissions();
 
   const displayName = profile?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || 'Estudante';
 
@@ -59,7 +61,10 @@ const Dashboard: React.FC = () => {
 
   const { lockedModules, unlockRequirements } = getLockedModules();
 
-  const modulesWithProgress = modules.map(m => ({
+  // Filtrar módulos por permissão (admin vê todos)
+  const accessibleModules = modules.filter(m => hasAccess(m.id));
+
+  const modulesWithProgress = accessibleModules.map(m => ({
     ...m,
     progress: userProgress[m.id] || 0,
   }));
@@ -71,7 +76,7 @@ const Dashboard: React.FC = () => {
     ? Math.round(modulesWithProgress.reduce((acc, m) => acc + (m.progress || 0), 0) / modulesWithProgress.length)
     : 0;
 
-  if (loading) {
+  if (loading || permissionsLoading) {
     return (
       <ContentProtection>
         <div className="min-h-screen bg-background">
