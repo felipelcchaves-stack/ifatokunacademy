@@ -34,7 +34,7 @@ const studentLinks = [
   { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
   { label: 'Revisar', to: '/spaced-review', icon: Brain },
   { label: 'Desafios', to: '/challenge', icon: Trophy },
-  { label: 'Estatísticas', to: '/spaced-review-stats', icon: BarChart3 },
+  { label: 'Estatísticas', to: '/review/stats', icon: BarChart3 },
 ];
 
 const Header: React.FC = () => {

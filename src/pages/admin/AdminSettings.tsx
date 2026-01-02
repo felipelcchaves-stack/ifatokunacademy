@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { clearPlatformSettingsCache } from "@/hooks/usePlatformSettings";
 import { 
   Settings, 
   Bell, 
@@ -115,6 +116,11 @@ export default function AdminSettings() {
 
       if (error) throw error;
       toast.success('Configuração salva com sucesso!');
+      
+      // Clear cache so platform name updates immediately across the app
+      if (key === 'general') {
+        clearPlatformSettingsCache();
+      }
     } catch (error) {
       console.error('Erro ao salvar configuração:', error);
       toast.error('Erro ao salvar configuração');
