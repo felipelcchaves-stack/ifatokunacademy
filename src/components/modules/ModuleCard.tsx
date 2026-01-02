@@ -1,9 +1,10 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Play, BookOpen, Clock, ChevronRight, Lock, Sparkles } from 'lucide-react';
+import { Play, BookOpen, Clock, ChevronRight, Lock, Sparkles, AlertCircle } from 'lucide-react';
 import { Module } from '@/data/mockData';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
 interface ModuleCardProps {
@@ -44,6 +45,10 @@ const ModuleCard: React.FC<ModuleCardProps> = ({
       default: return 'bg-forest-500/90';
     }
   };
+
+  // Determine if this is a thematic module with specific lock reason
+  const isThematicLocked = isLocked && module.type === 'thematic';
+  const lockMessage = unlockRequirement || 'Bloqueado';
 
   if (variant === 'compact') {
     return (
@@ -194,33 +199,50 @@ const ModuleCard: React.FC<ModuleCardProps> = ({
             </div>
           )}
 
-          <Button 
-            className={cn(
-              "w-full font-semibold h-12 text-base transition-all duration-300",
-              isLocked 
-                ? "bg-muted text-muted-foreground cursor-not-allowed" 
-                : "bg-gradient-to-r from-forest-600 to-forest-700 hover:from-forest-700 hover:to-forest-800 text-white shadow-lg hover:shadow-xl"
-            )}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleClick();
-            }}
-            disabled={isLocked}
-          >
-            {isLocked ? (
-              <>
-                <Lock className="w-4 h-4 mr-2" />
-                Bloqueado
-              </>
-            ) : module.progress > 0 ? (
-              <>
-                <Play className="w-4 h-4 mr-2" />
-                Continuar
-              </>
-            ) : (
-              'Começar'
-            )}
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  className={cn(
+                    "w-full font-semibold h-12 text-base transition-all duration-300",
+                    isLocked 
+                      ? isThematicLocked 
+                        ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 cursor-not-allowed border border-amber-200 dark:border-amber-800"
+                        : "bg-muted text-muted-foreground cursor-not-allowed" 
+                      : "bg-gradient-to-r from-forest-600 to-forest-700 hover:from-forest-700 hover:to-forest-800 text-white shadow-lg hover:shadow-xl"
+                  )}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleClick();
+                  }}
+                  disabled={isLocked}
+                >
+                  {isLocked ? (
+                    <>
+                      {isThematicLocked ? (
+                        <AlertCircle className="w-4 h-4 mr-2" />
+                      ) : (
+                        <Lock className="w-4 h-4 mr-2" />
+                      )}
+                      Bloqueado
+                    </>
+                  ) : module.progress > 0 ? (
+                    <>
+                      <Play className="w-4 h-4 mr-2" />
+                      Continuar
+                    </>
+                  ) : (
+                    'Começar'
+                  )}
+                </Button>
+              </TooltipTrigger>
+              {isLocked && unlockRequirement && (
+                <TooltipContent side="top" className="max-w-xs text-center">
+                  <p>{unlockRequirement}</p>
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </div>
     );
@@ -322,30 +344,47 @@ const ModuleCard: React.FC<ModuleCardProps> = ({
           </div>
         )}
 
-        <Button 
-          className={cn(
-            "w-full font-semibold transition-all duration-300",
-            isLocked 
-              ? "bg-muted text-muted-foreground cursor-not-allowed" 
-              : "bg-gradient-to-r from-forest-600 to-forest-700 hover:from-forest-700 hover:to-forest-800 text-white shadow-lg hover:shadow-xl"
-          )}
-          onClick={handleClick}
-          disabled={isLocked}
-        >
-          {isLocked ? (
-            <>
-              <Lock className="w-4 h-4 mr-2" />
-              Bloqueado
-            </>
-          ) : module.progress > 0 ? (
-            <>
-              <Play className="w-4 h-4 mr-2" />
-              Continuar
-            </>
-          ) : (
-            'Começar'
-          )}
-        </Button>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                className={cn(
+                  "w-full font-semibold transition-all duration-300",
+                  isLocked 
+                    ? isThematicLocked 
+                      ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 cursor-not-allowed border border-amber-200 dark:border-amber-800"
+                      : "bg-muted text-muted-foreground cursor-not-allowed" 
+                    : "bg-gradient-to-r from-forest-600 to-forest-700 hover:from-forest-700 hover:to-forest-800 text-white shadow-lg hover:shadow-xl"
+                )}
+                onClick={handleClick}
+                disabled={isLocked}
+              >
+                {isLocked ? (
+                  <>
+                    {isThematicLocked ? (
+                      <AlertCircle className="w-4 h-4 mr-2" />
+                    ) : (
+                      <Lock className="w-4 h-4 mr-2" />
+                    )}
+                    Bloqueado
+                  </>
+                ) : module.progress > 0 ? (
+                  <>
+                    <Play className="w-4 h-4 mr-2" />
+                    Continuar
+                  </>
+                ) : (
+                  'Começar'
+                )}
+              </Button>
+            </TooltipTrigger>
+            {isLocked && unlockRequirement && (
+              <TooltipContent side="top" className="max-w-xs text-center">
+                <p>{unlockRequirement}</p>
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider>
       </div>
     </div>
   );
