@@ -11,6 +11,9 @@ import { ChallengeResults } from '@/components/challenge/ChallengeResults';
 import { useChallenge } from '@/hooks/useChallenge';
 import { useSpacedRepetition } from '@/hooks/useSpacedRepetition';
 import { useExperience } from '@/hooks/useExperience';
+import { useAchievementTriggers } from '@/hooks/useAchievementTriggers';
+import { showAchievementUnlockToast } from '@/components/achievements/AchievementUnlockToast';
+import { useAchievements } from '@/hooks/useAchievements';
 import { Trophy, Zap, Play, Loader2 } from 'lucide-react';
 
 type ChallengePhase = 'ready' | 'playing' | 'finished';
@@ -20,6 +23,8 @@ const ChallengeMode: React.FC = () => {
   const { bestRecord, saveRecord, calculatePoints, CHALLENGE_DURATION, loading: recordsLoading } = useChallenge();
   const { allItems, loading: itemsLoading } = useSpacedRepetition();
   const { addXP } = useExperience();
+  const { onChallengeComplete, onStudySessionStart } = useAchievementTriggers();
+  const { checkAllAchievements } = useAchievements();
 
   const [phase, setPhase] = useState<ChallengePhase>('ready');
   const [timeRemaining, setTimeRemaining] = useState(CHALLENGE_DURATION);
@@ -29,6 +34,7 @@ const ChallengeMode: React.FC = () => {
   const [currentItemIndex, setCurrentItemIndex] = useState(0);
   const [shuffledItems, setShuffledItems] = useState<typeof allItems>([]);
   const [xpGained, setXpGained] = useState(0);
+  const [startTime, setStartTime] = useState<number>(0);
 
   // Shuffle items when starting
   const shuffleItems = useCallback(() => {
@@ -53,10 +59,11 @@ const ChallengeMode: React.FC = () => {
     return () => clearInterval(interval);
   }, [phase]);
 
-  // Save record when finished
+  // Save record and check achievements when finished
   useEffect(() => {
     if (phase === 'finished' && itemsAnswered > 0) {
       const timeUsed = CHALLENGE_DURATION - timeRemaining;
+      const timeMs = (Date.now() - startTime);
       saveRecord(score, itemsAnswered, correctCount, timeUsed);
       
       // Calculate XP: base + bonus for performance
@@ -68,6 +75,15 @@ const ChallengeMode: React.FC = () => {
       if (totalXP > 0) {
         addXP(totalXP, 'challenge_item');
       }
+
+      // Trigger achievement check for challenge completion
+      onChallengeComplete(score, correctCount, timeMs).then(async () => {
+        // Also check all achievements to catch any new unlocks
+        const newAchievements = await checkAllAchievements();
+        newAchievements.forEach(achievement => {
+          showAchievementUnlockToast(achievement);
+        });
+      });
     }
   }, [phase]);
 
@@ -79,7 +95,11 @@ const ChallengeMode: React.FC = () => {
     setCorrectCount(0);
     setCurrentItemIndex(0);
     setXpGained(0);
+    setStartTime(Date.now());
     setPhase('playing');
+    
+    // Check time-based achievements
+    onStudySessionStart();
   };
 
   const handleAnswer = (correct: boolean, responseTimeMs: number) => {

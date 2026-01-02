@@ -15,6 +15,9 @@ import QuizExercise from '@/components/exercises/QuizExercise';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAchievementTriggers } from '@/hooks/useAchievementTriggers';
+import { useAchievements } from '@/hooks/useAchievements';
+import { showAchievementUnlockToast } from '@/components/achievements/AchievementUnlockToast';
 
 interface Exercise {
   id: string;
@@ -38,10 +41,13 @@ const LessonView: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
+  const { onExerciseComplete, onStudySessionStart } = useAchievementTriggers();
+  const { checkAllAchievements } = useAchievements();
   
   const [lesson, setLesson] = useState<Lesson | null>(null);
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sessionStarted, setSessionStarted] = useState(false);
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
   const [completedExercises, setCompletedExercises] = useState<Set<string>>(new Set());
 
@@ -128,6 +134,12 @@ const LessonView: React.FC = () => {
 
   const handleExerciseComplete = async (score?: number) => {
     if (currentExercise && user) {
+      // Check time-based achievements on first exercise
+      if (!sessionStarted) {
+        setSessionStarted(true);
+        onStudySessionStart();
+      }
+
       // Save progress to database
       await supabase.from('user_progress').upsert({
         user_id: user.id,
@@ -139,6 +151,16 @@ const LessonView: React.FC = () => {
       }, { onConflict: 'user_id,exercise_id' });
 
       setCompletedExercises(prev => new Set([...prev, currentExercise.id]));
+      
+      // Trigger achievement check for exercise completion
+      await onExerciseComplete(currentExercise.type, score || 0);
+      
+      // Check all achievements for any new unlocks
+      const newAchievements = await checkAllAchievements();
+      newAchievements.forEach(achievement => {
+        showAchievementUnlockToast(achievement);
+      });
+
       toast({
         title: 'Muito bem!',
         description: 'Exercício concluído com sucesso.',
