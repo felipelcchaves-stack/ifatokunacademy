@@ -12,7 +12,9 @@ import {
   Eye,
   EyeOff,
   Image,
-  Wand2
+  Wand2,
+  RefreshCw,
+  ImageOff
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -80,6 +82,7 @@ const AdminModules: React.FC = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingModule, setEditingModule] = useState<Module | null>(null);
+  const [regeneratingBanner, setRegeneratingBanner] = useState<string | null>(null);
   const [newModule, setNewModule] = useState({
     title: '',
     description: '',
@@ -266,6 +269,57 @@ const AdminModules: React.FC = () => {
     module.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     module.description?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const handleQuickRegenerate = async (module: Module) => {
+    setRegeneratingBanner(module.id);
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) {
+        toast({
+          title: 'Sessão expirada',
+          description: 'Faça login novamente para continuar.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke('generate-module-banner', {
+        body: {
+          moduleId: module.id,
+          title: module.title,
+          description: module.description,
+        },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (error) throw new Error(error.message);
+      if (data?.error) throw new Error(data.error);
+
+      if (data?.imageUrl) {
+        setModules(modules.map(m => 
+          m.id === module.id ? { ...m, image_url: data.imageUrl } : m
+        ));
+        
+        toast({
+          title: 'Banner regenerado!',
+          description: `Nova imagem gerada para "${module.title}".`,
+        });
+      }
+    } catch (error: any) {
+      console.error('Error regenerating banner:', error);
+      toast({
+        title: 'Erro ao regenerar banner',
+        description: error.message || 'Erro desconhecido',
+        variant: 'destructive',
+      });
+    } finally {
+      setRegeneratingBanner(null);
+    }
+  };
 
   if (loading) {
     return (
@@ -487,6 +541,13 @@ const AdminModules: React.FC = () => {
               >
                 {/* Header */}
                 <div className={`h-24 bg-gradient-to-br ${module.color || 'from-amber-500 to-orange-600'} relative pattern-adinkra`}>
+                  {module.image_url ? (
+                    <img 
+                      src={module.image_url} 
+                      alt={module.title}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : null}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
                   <div className="absolute bottom-3 left-4 right-4 flex items-end justify-between">
                     <div className="flex items-center gap-2">
@@ -502,6 +563,12 @@ const AdminModules: React.FC = () => {
                       ) : (
                         <span className="px-2 py-1 bg-gray-500/80 backdrop-blur-sm rounded text-xs font-medium text-white">
                           Rascunho
+                        </span>
+                      )}
+                      {!module.image_url && (
+                        <span className="px-2 py-1 bg-orange-500/80 backdrop-blur-sm rounded text-xs font-medium text-white flex items-center gap-1">
+                          <ImageOff className="w-3 h-3" />
+                          Sem banner
                         </span>
                       )}
                     </div>
@@ -539,6 +606,22 @@ const AdminModules: React.FC = () => {
                             <>
                               <Eye className="w-4 h-4 mr-2" />
                               Publicar
+                            </>
+                          )}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => handleQuickRegenerate(module)}
+                          disabled={regeneratingBanner === module.id}
+                        >
+                          {regeneratingBanner === module.id ? (
+                            <>
+                              <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                              Gerando...
+                            </>
+                          ) : (
+                            <>
+                              <Wand2 className="w-4 h-4 mr-2" />
+                              {module.image_url ? 'Regenerar Banner' : 'Gerar Banner'}
                             </>
                           )}
                         </DropdownMenuItem>
