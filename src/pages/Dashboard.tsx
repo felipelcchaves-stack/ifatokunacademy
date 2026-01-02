@@ -3,11 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { BookOpen, Clock, Award, TrendingUp, Play, Loader2, Lock, Brain, Calendar, Flame, Trophy } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
-import ModuleCard from '@/components/modules/ModuleCard';
 import ModuleSlider from '@/components/modules/ModuleSlider';
 import ContentProtection from '@/components/ContentProtection';
 import StreakDisplay from '@/components/streak/StreakDisplay';
 import { AchievementsDisplay } from '@/components/achievements/AchievementsDisplay';
+import { XPDisplay } from '@/components/engagement/XPDisplay';
+import { DailyGoalProgress } from '@/components/engagement/DailyGoalProgress';
+import { SacredQuote } from '@/components/engagement/SacredQuote';
+import { ActivityHeatmap } from '@/components/engagement/ActivityHeatmap';
+import { StreakRiskAlert } from '@/components/engagement/StreakRiskAlert';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
@@ -218,6 +222,17 @@ const Dashboard: React.FC = () => {
         
         <main className="pt-24 pb-16">
           <div className="container mx-auto px-4">
+            {/* Sacred Quote & XP Display */}
+            <div className="grid md:grid-cols-2 gap-6 mb-8">
+              <SacredQuote context="greeting" />
+              <XPDisplay />
+            </div>
+
+            {/* Streak Risk Alert */}
+            <div className="mb-6">
+              <StreakRiskAlert />
+            </div>
+
             {/* Welcome Section */}
             <div className="mb-8">
               <h1 className="font-serif text-3xl md:text-4xl font-bold text-foreground mb-2">
@@ -295,50 +310,43 @@ const Dashboard: React.FC = () => {
               </div>
             )}
 
-            {/* Streak and Review Section */}
+            {/* Streak, Daily Goal and Review Section */}
             <div className="grid md:grid-cols-3 gap-6 mb-12">
               {/* Streak Card */}
-              <div className="md:col-span-1">
-                <StreakDisplay streak={streak} />
-              </div>
+              <StreakDisplay streak={streak} />
+              
+              {/* Daily Goal */}
+              <DailyGoalProgress />
               
               {/* Spaced Repetition Review */}
-              <div className="md:col-span-2">
-                <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 rounded-2xl p-6 h-full border border-amber-200 dark:border-amber-800">
-                  <div className="flex flex-col gap-4 h-full justify-center">
-                    <div className="flex items-center gap-4">
-                      <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center flex-shrink-0">
-                        <Brain className="w-7 h-7 text-white" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <Calendar className="w-4 h-4 text-amber-600" />
-                          <span className="text-xs font-medium text-amber-600 uppercase tracking-wider">
-                            Revisão Espaçada
-                          </span>
-                        </div>
-                        <h3 className="font-serif text-xl font-semibold text-foreground">
-                          {dueCount > 0 
-                            ? `${dueCount} ${dueCount === 1 ? 'item' : 'itens'} para revisar`
-                            : 'Nenhum item pendente'}
-                        </h3>
-                      </div>
+              <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 rounded-2xl p-6 border border-amber-200 dark:border-amber-800">
+                <div className="flex flex-col gap-4 h-full justify-center">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
+                      <Brain className="w-6 h-6 text-white" />
                     </div>
-                    <p className="text-muted-foreground text-sm">
-                      {dueCount > 0 
-                        ? 'Revise agora para consolidar sua memória de longo prazo.'
-                        : 'Continue estudando para adicionar itens à sua lista de revisão.'}
-                    </p>
-                    <Button 
-                      className="gradient-gold text-secondary font-semibold shadow-gold w-fit"
-                      onClick={() => navigate('/review')}
-                    >
-                      <Brain className="w-4 h-4 mr-2" />
-                      {dueCount > 0 ? 'Iniciar Revisão' : 'Ver Revisões'}
-                    </Button>
+                    <div>
+                      <span className="text-xs font-medium text-amber-600">Revisão Espaçada</span>
+                      <h3 className="font-semibold text-foreground">
+                        {dueCount > 0 ? `${dueCount} itens` : 'Nenhum pendente'}
+                      </h3>
+                    </div>
                   </div>
+                  <Button 
+                    size="sm"
+                    className="gradient-gold text-secondary font-semibold"
+                    onClick={() => navigate('/review')}
+                  >
+                    <Brain className="w-4 h-4 mr-2" />
+                    {dueCount > 0 ? 'Revisar' : 'Ver Revisões'}
+                  </Button>
                 </div>
               </div>
+            </div>
+
+            {/* Activity Heatmap */}
+            <div className="mb-12">
+              <ActivityHeatmap />
             </div>
 
             {/* Achievements Section */}

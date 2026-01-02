@@ -32,6 +32,88 @@ export type Database = {
         }
         Relationships: []
       }
+      challenge_records: {
+        Row: {
+          correct_count: number
+          created_at: string
+          id: string
+          items_answered: number
+          score: number
+          time_seconds: number
+          user_id: string
+        }
+        Insert: {
+          correct_count?: number
+          created_at?: string
+          id?: string
+          items_answered?: number
+          score?: number
+          time_seconds?: number
+          user_id: string
+        }
+        Update: {
+          correct_count?: number
+          created_at?: string
+          id?: string
+          items_answered?: number
+          score?: number
+          time_seconds?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "challenge_records_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      daily_goals: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          current_value: number
+          date: string
+          goal_type: string
+          id: string
+          target_value: number
+          user_id: string
+          xp_reward: number
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          current_value?: number
+          date?: string
+          goal_type?: string
+          id?: string
+          target_value?: number
+          user_id: string
+          xp_reward?: number
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          current_value?: number
+          date?: string
+          goal_type?: string
+          id?: string
+          target_value?: number
+          user_id?: string
+          xp_reward?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_goals_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exercise_media: {
         Row: {
           created_at: string
@@ -388,6 +470,47 @@ export type Database = {
             foreignKeyName: "user_achievements_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_experience: {
+        Row: {
+          created_at: string
+          current_level: number
+          id: string
+          level_name: string
+          total_xp: number
+          updated_at: string
+          user_id: string
+          xp_multiplier: number
+        }
+        Insert: {
+          created_at?: string
+          current_level?: number
+          id?: string
+          level_name?: string
+          total_xp?: number
+          updated_at?: string
+          user_id: string
+          xp_multiplier?: number
+        }
+        Update: {
+          created_at?: string
+          current_level?: number
+          id?: string
+          level_name?: string
+          total_xp?: number
+          updated_at?: string
+          user_id?: string
+          xp_multiplier?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_experience_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
