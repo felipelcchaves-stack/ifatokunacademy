@@ -90,7 +90,20 @@ serve(async (req) => {
     if (!response.ok) {
       const errorText = await response.text();
       console.error('ElevenLabs API error:', response.status, errorText);
-      throw new Error(`ElevenLabs API error: ${response.status}`);
+      
+      // Parse error details for better handling
+      try {
+        const errorJson = JSON.parse(errorText);
+        if (errorJson.detail?.status === 'quota_exceeded') {
+          throw new Error(`quota_exceeded: ${errorJson.detail.message}`);
+        } else if (errorJson.detail?.status === 'detected_unusual_activity') {
+          throw new Error(`unusual_activity: ${errorJson.detail.message}`);
+        }
+      } catch (parseError) {
+        // If parsing fails, use original error
+      }
+      
+      throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
     }
 
     const audioBuffer = await response.arrayBuffer();
@@ -145,8 +158,28 @@ serve(async (req) => {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('TTS error:', errorMessage);
+    
+    // Determine error type and provide friendly message
+    let userMessage = 'Erro ao gerar áudio. Tente novamente mais tarde.';
+    let errorCode = 'UNKNOWN_ERROR';
+    
+    if (errorMessage.includes('quota_exceeded')) {
+      userMessage = 'Limite de créditos atingido. O áudio estará disponível em breve.';
+      errorCode = 'QUOTA_EXCEEDED';
+    } else if (errorMessage.includes('unusual_activity') || errorMessage.includes('Free Tier')) {
+      userMessage = 'Serviço temporariamente indisponível. Tente novamente mais tarde.';
+      errorCode = 'SERVICE_UNAVAILABLE';
+    } else if (errorMessage.includes('API key')) {
+      userMessage = 'Erro de configuração do serviço de áudio.';
+      errorCode = 'CONFIG_ERROR';
+    }
+    
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ 
+        error: userMessage, 
+        errorCode,
+        details: errorMessage 
+      }),
       {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
