@@ -20,6 +20,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useSpacedRepetition } from '@/hooks/useSpacedRepetition';
 import { useStreak } from '@/hooks/useStreak';
+import { useSequentialProgress } from '@/hooks/useSequentialProgress';
 
 interface Module {
   id: string;
@@ -40,8 +41,6 @@ interface ModuleCompletion {
   module_id: string;
   quiz_score: number;
 }
-
-const LEVEL_ORDER = ['akapo', 'awo', 'oluwo'];
 
 const Dashboard: React.FC = () => {
   const { user, profile } = useAuth();
@@ -133,37 +132,28 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  // Use new sequential progress logic
+  const { calculateLockedModules } = useSequentialProgress();
+  
   const getLockedModules = () => {
-    const locked = new Set<string>();
-    const requirements: Record<string, string> = {};
-
-    const profModules = modules.filter(m => m.type === 'proficiency');
+    // Convert completions to the format expected by the hook
+    const formattedCompletions = completions.map(c => ({
+      moduleId: c.module_id,
+      quizScore: c.quiz_score,
+    }));
     
-    profModules.forEach(mod => {
-      const levelIndex = LEVEL_ORDER.indexOf(mod.level?.toLowerCase() || '');
-      
-      if (levelIndex > 0) {
-        const previousLevel = LEVEL_ORDER[levelIndex - 1];
-        const previousModules = profModules.filter(
-          m => m.level?.toLowerCase() === previousLevel
-        );
-
-        const allPreviousCompleted = previousModules.every(pm => 
-          completions.some(c => c.module_id === pm.id && c.quiz_score >= 90)
-        );
-
-        if (!allPreviousCompleted) {
-          locked.add(mod.id);
-          const levelName = previousLevel.charAt(0).toUpperCase() + previousLevel.slice(1);
-          requirements[mod.id] = `Complete o nível ${levelName} com 90% no quiz para desbloquear`;
-        }
-      }
-    });
-
-    return { locked, requirements };
+    // Convert modules to the format expected by the hook
+    const formattedModules = modules.map(m => ({
+      id: m.id,
+      type: m.type,
+      level: m.level,
+      display_order: m.display_order,
+    }));
+    
+    return calculateLockedModules(formattedModules, formattedCompletions);
   };
 
-  const { locked: lockedModules, requirements: unlockRequirements } = getLockedModules();
+  const { lockedModules, unlockRequirements } = getLockedModules();
 
   const modulesWithProgress = modules.map(m => ({
     ...m,
