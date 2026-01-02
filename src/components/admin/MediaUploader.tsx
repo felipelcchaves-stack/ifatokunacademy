@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, forwardRef } from 'react';
 import { Upload, X, Image, FileAudio, FileVideo, File, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -23,7 +23,7 @@ interface MediaMetadata {
   url: string;
 }
 
-const MediaUploader: React.FC<MediaUploaderProps> = ({
+const MediaUploader = forwardRef<HTMLDivElement, MediaUploaderProps>(({
   exerciseId,
   lessonId,
   moduleId,
@@ -32,7 +32,7 @@ const MediaUploader: React.FC<MediaUploaderProps> = ({
   maxSizeMB = 50,
   label = 'Fazer Upload',
   currentUrl,
-}) => {
+}, ref) => {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -177,7 +177,7 @@ const MediaUploader: React.FC<MediaUploaderProps> = ({
   };
 
   return (
-    <div className="space-y-3">
+    <div ref={ref} className="space-y-3">
       <input
         ref={fileInputRef}
         type="file"
@@ -247,6 +247,8 @@ const MediaUploader: React.FC<MediaUploaderProps> = ({
       )}
     </div>
   );
-};
+});
+
+MediaUploader.displayName = 'MediaUploader';
 
 export default MediaUploader;
