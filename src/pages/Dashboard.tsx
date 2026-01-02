@@ -1,4 +1,5 @@
 import React from 'react';
+import { BookOpen as GuideIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { BookOpen, Clock, Award, TrendingUp, Loader2, Brain, Zap, Sparkles, FlaskConical } from 'lucide-react';
 import Header from '@/components/layout/Header';
@@ -234,13 +235,23 @@ const Dashboard: React.FC = () => {
                         </p>
                       </div>
                     </div>
-                    <Button 
-                      className="bg-gradient-to-r from-cyan-500 to-teal-600 hover:from-cyan-600 hover:to-teal-700 text-white font-bold shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all duration-200 shrink-0"
-                      onClick={() => navigate('/test-memorization')}
-                    >
-                      <FlaskConical className="w-4 h-4 mr-2" />
-                      Testar Modos
-                    </Button>
+                    <div className="flex gap-2 shrink-0">
+                      <Button 
+                        variant="outline"
+                        className="border-cyan-300 text-cyan-700 hover:bg-cyan-50"
+                        onClick={() => navigate('/memorization-guide')}
+                      >
+                        <GuideIcon className="w-4 h-4 mr-2" />
+                        Ver Guia
+                      </Button>
+                      <Button 
+                        className="bg-gradient-to-r from-cyan-500 to-teal-600 hover:from-cyan-600 hover:to-teal-700 text-white font-bold shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all duration-200"
+                        onClick={() => navigate('/test-memorization')}
+                      >
+                        <FlaskConical className="w-4 h-4 mr-2" />
+                        Testar Modos
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
