@@ -10,7 +10,8 @@ import {
   Send,
   Trophy,
   XCircle,
-  AlertCircle
+  AlertCircle,
+  BarChart3
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -108,16 +109,26 @@ const SpacedReview: React.FC = () => {
         <main className="flex-1 container mx-auto px-4 py-8">
           <div className="max-w-3xl mx-auto">
             {/* Header */}
-            <div className="mb-8">
-              <div className="flex items-center gap-3 mb-2">
-                <Brain className="w-8 h-8 text-primary" />
-                <h1 className="font-serif text-3xl font-bold text-foreground">
-                  Revisão Espaçada
-                </h1>
+            <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-3 mb-2">
+                  <Brain className="w-8 h-8 text-primary" />
+                  <h1 className="font-serif text-3xl font-bold text-foreground">
+                    Revisão Espaçada
+                  </h1>
+                </div>
+                <p className="text-muted-foreground">
+                  Revise os itens que precisam de reforço para consolidar sua memória.
+                </p>
               </div>
-              <p className="text-muted-foreground">
-                Revise os itens que precisam de reforço para consolidar sua memória.
-              </p>
+              <Button 
+                variant="outline" 
+                onClick={() => navigate('/review/stats')}
+                className="self-start md:self-auto"
+              >
+                <BarChart3 className="w-4 h-4 mr-2" />
+                Ver Estatísticas
+              </Button>
             </div>
 
             {/* Stats Cards */}

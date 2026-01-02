@@ -18,6 +18,7 @@ import ModuleView from "./pages/ModuleView";
 import ModuleQuiz from "./pages/ModuleQuiz";
 import LessonView from "./pages/LessonView";
 import SpacedReview from "./pages/SpacedReview";
+import SpacedReviewStats from "./pages/SpacedReviewStats";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminModules from "./pages/admin/AdminModules";
 import AdminLessons from "./pages/admin/AdminLessons";
@@ -73,6 +74,11 @@ const App = () => (
               <Route path="/review" element={
                 <ProtectedRoute>
                   <SpacedReview />
+                </ProtectedRoute>
+              } />
+              <Route path="/review/stats" element={
+                <ProtectedRoute>
+                  <SpacedReviewStats />
                 </ProtectedRoute>
               } />
               
