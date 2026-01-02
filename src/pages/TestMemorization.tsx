@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import MemorizationExercise from '@/components/exercises/MemorizationExercise';
@@ -23,17 +23,28 @@ const TestMemorization: React.FC = () => {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="bg-card border-b border-border p-4">
-        <div className="max-w-4xl mx-auto flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Voltar
-          </Button>
-          <div>
-            <h1 className="font-serif text-xl font-semibold">Teste de Memorização</h1>
-            <p className="text-sm text-muted-foreground">
-              Testando novos modos inclusivos com texto longo
-            </p>
+        <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Voltar
+            </Button>
+            <div>
+              <h1 className="font-serif text-xl font-semibold">Teste de Memorização</h1>
+              <p className="text-sm text-muted-foreground">
+                Testando novos modos inclusivos com texto longo
+              </p>
+            </div>
           </div>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => navigate('/memorization-guide')}
+            className="gap-2"
+          >
+            <BookOpen className="w-4 h-4" />
+            Ver Guia
+          </Button>
         </div>
       </div>
 
