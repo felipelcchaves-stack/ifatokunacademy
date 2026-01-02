@@ -11,8 +11,10 @@ import {
   GripVertical,
   Clock,
   Eye,
-  EyeOff
+  EyeOff,
+  Sparkles
 } from 'lucide-react';
+import PedagogicalExerciseGenerator from '@/components/admin/PedagogicalExerciseGenerator';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -30,6 +32,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
@@ -73,7 +85,15 @@ const AdminLessons: React.FC = () => {
     description: '',
     duration_minutes: 30,
     is_published: false,
+    contextText: '',
+    fullText: '',
   });
+
+  // State for post-creation flow
+  const [createdLessonData, setCreatedLessonData] = useState<{id: string; title: string} | null>(null);
+  const [showGenerateConfirm, setShowGenerateConfirm] = useState(false);
+  const [isPedagogicalGeneratorOpen, setIsPedagogicalGeneratorOpen] = useState(false);
+  const [pendingTexts, setPendingTexts] = useState({ context: '', full: '' });
 
   useEffect(() => {
     if (moduleId) {
@@ -136,12 +156,25 @@ const AdminLessons: React.FC = () => {
 
       setLessons([...lessons, data]);
       setIsCreateDialogOpen(false);
-      setNewLesson({ title: '', description: '', duration_minutes: 30, is_published: false });
       
-      toast({
-        title: 'Lição criada!',
-        description: `A lição "${newLesson.title}" foi criada com sucesso.`,
-      });
+      // Check if both texts are provided
+      const hasContextText = newLesson.contextText.trim().length > 0;
+      const hasFullText = newLesson.fullText.trim().length > 0;
+      
+      if (hasContextText && hasFullText) {
+        // Store data and show confirmation
+        setCreatedLessonData({ id: data.id, title: data.title });
+        setPendingTexts({ context: newLesson.contextText, full: newLesson.fullText });
+        setShowGenerateConfirm(true);
+      } else {
+        toast({
+          title: 'Lição criada!',
+          description: `A lição "${newLesson.title}" foi criada com sucesso.`,
+        });
+      }
+      
+      // Reset form
+      setNewLesson({ title: '', description: '', duration_minutes: 30, is_published: false, contextText: '', fullText: '' });
     } catch (error: any) {
       toast({
         title: 'Erro ao criar lição',
@@ -149,6 +182,33 @@ const AdminLessons: React.FC = () => {
         variant: 'destructive',
       });
     }
+  };
+
+  const handleOpenGenerator = () => {
+    setShowGenerateConfirm(false);
+    setIsPedagogicalGeneratorOpen(true);
+  };
+
+  const handleSkipGenerator = () => {
+    setShowGenerateConfirm(false);
+    if (createdLessonData) {
+      toast({
+        title: 'Lição criada!',
+        description: `A lição "${createdLessonData.title}" foi criada. Você pode gerar os exercícios depois.`,
+      });
+    }
+    setCreatedLessonData(null);
+    setPendingTexts({ context: '', full: '' });
+  };
+
+  const handleGeneratorSuccess = () => {
+    setIsPedagogicalGeneratorOpen(false);
+    setCreatedLessonData(null);
+    setPendingTexts({ context: '', full: '' });
+    toast({
+      title: 'Lição e exercícios criados!',
+      description: 'Sua lição foi criada com os 11 exercícios pedagógicos.',
+    });
   };
 
   const handleUpdateLesson = async () => {
@@ -288,19 +348,19 @@ const AdminLessons: React.FC = () => {
                 Nova Lição
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-lg">
+            <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle className="font-serif">Criar Nova Lição</DialogTitle>
                 <DialogDescription>
-                  Preencha as informações da nova lição
+                  Preencha as informações e os textos base para gerar automaticamente os exercícios pedagógicos.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="title">Título da Lição</Label>
+                  <Label htmlFor="title">Título da Lição *</Label>
                   <Input
                     id="title"
-                    placeholder="Ex: Introdução aos Orixás"
+                    placeholder="Ex: Ogbe Meji - Verso 1"
                     value={newLesson.title}
                     onChange={(e) => setNewLesson({ ...newLesson, title: e.target.value })}
                   />
@@ -312,8 +372,46 @@ const AdminLessons: React.FC = () => {
                     placeholder="Descreva o conteúdo da lição..."
                     value={newLesson.description}
                     onChange={(e) => setNewLesson({ ...newLesson, description: e.target.value })}
+                    className="min-h-[60px]"
                   />
                 </div>
+
+                {/* Context Text */}
+                <div className="space-y-2 p-3 bg-blue-500/5 rounded-lg border border-blue-500/20">
+                  <Label htmlFor="contextText" className="text-blue-400 flex items-center gap-2">
+                    <Sparkles className="w-4 h-4" />
+                    Texto Resumido (Contexto) - Fase 1
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Este texto será usado para gerar os 6 exercícios da Fase 1 (contexto e preparação).
+                  </p>
+                  <Textarea
+                    id="contextText"
+                    placeholder="Cole aqui o texto resumido/contexto..."
+                    value={newLesson.contextText}
+                    onChange={(e) => setNewLesson({ ...newLesson, contextText: e.target.value })}
+                    className="min-h-[100px] font-mono text-sm"
+                  />
+                </div>
+
+                {/* Full Text */}
+                <div className="space-y-2 p-3 bg-purple-500/5 rounded-lg border border-purple-500/20">
+                  <Label htmlFor="fullText" className="text-purple-400 flex items-center gap-2">
+                    <Sparkles className="w-4 h-4" />
+                    Texto Completo (Verso) - Fase 2
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Este texto será usado para gerar os 5 exercícios da Fase 2 (memorização profunda).
+                  </p>
+                  <Textarea
+                    id="fullText"
+                    placeholder="Cole aqui o texto completo/verso..."
+                    value={newLesson.fullText}
+                    onChange={(e) => setNewLesson({ ...newLesson, fullText: e.target.value })}
+                    className="min-h-[100px] font-mono text-sm"
+                  />
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="duration">Duração (minutos)</Label>
@@ -338,6 +436,17 @@ const AdminLessons: React.FC = () => {
                     </div>
                   </div>
                 </div>
+
+                {/* Info about auto-generation */}
+                {(newLesson.contextText.trim() && newLesson.fullText.trim()) && (
+                  <div className="flex items-start gap-2 p-3 rounded-lg bg-primary/10 border border-primary/20 text-sm">
+                    <Sparkles className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                    <p className="text-muted-foreground">
+                      <span className="font-medium text-foreground">Geração automática disponível!</span>{' '}
+                      Após criar a lição, você poderá gerar automaticamente os 11 exercícios do método pedagógico.
+                    </p>
+                  </div>
+                )}
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
@@ -541,6 +650,44 @@ const AdminLessons: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Generate Confirmation Dialog */}
+      <AlertDialog open={showGenerateConfirm} onOpenChange={setShowGenerateConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-primary" />
+              Lição criada com sucesso!
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Detectamos que você preencheu os textos de contexto e verso. 
+              Deseja gerar automaticamente os <span className="font-semibold text-foreground">11 exercícios do método pedagógico</span>?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleSkipGenerator}>
+              Fazer Depois
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleOpenGenerator} className="gradient-gold text-secondary">
+              <Sparkles className="w-4 h-4 mr-2" />
+              Gerar Exercícios
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Pedagogical Exercise Generator */}
+      {createdLessonData && (
+        <PedagogicalExerciseGenerator
+          lessonId={createdLessonData.id}
+          lessonTitle={createdLessonData.title}
+          open={isPedagogicalGeneratorOpen}
+          onOpenChange={setIsPedagogicalGeneratorOpen}
+          onExercisesGenerated={handleGeneratorSuccess}
+          defaultContextText={pendingTexts.context}
+          defaultFullText={pendingTexts.full}
+        />
+      )}
     </div>
   );
 };
