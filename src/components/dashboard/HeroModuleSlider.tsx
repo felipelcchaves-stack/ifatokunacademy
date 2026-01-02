@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Play, BookOpen, Clock, Lock } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Play, BookOpen, Clock, Lock, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { useNavigate } from 'react-router-dom';
@@ -96,6 +96,15 @@ const HeroModuleSlider: React.FC<HeroModuleSliderProps> = ({
     }
   };
 
+  const getLevelBadgeColor = (level: string | null) => {
+    switch (level?.toLowerCase()) {
+      case 'akapo': return 'bg-forest-500/90';
+      case 'awo': return 'bg-sacred-500/90';
+      case 'oluwo': return 'bg-purple-600/90';
+      default: return 'bg-forest-500/90';
+    }
+  };
+
   return (
     <div className="relative w-full">
       {/* Navigation Arrows */}
@@ -133,15 +142,19 @@ const HeroModuleSlider: React.FC<HeroModuleSliderProps> = ({
           return (
             <div 
               key={module.id}
-              className={`flex-shrink-0 snap-center transition-all duration-500 ${
+              className={cn(
+                "flex-shrink-0 snap-center transition-all duration-500",
                 isActive 
                   ? 'scale-100 opacity-100' 
                   : 'scale-95 opacity-70 hover:opacity-90'
-              }`}
+              )}
               style={{ width: '380px' }}
               onClick={() => scrollToIndex(index)}
             >
-              <div className={`relative ${isActive ? 'ring-2 ring-forest-500 ring-offset-4 ring-offset-background rounded-2xl' : ''}`}>
+              <div className={cn(
+                "relative",
+                isActive && "ring-2 ring-sacred-400 ring-offset-4 ring-offset-background rounded-2xl"
+              )}>
                 {isActive && (
                   <div className="absolute -inset-1 bg-gradient-to-r from-forest-400 to-sacred-500 rounded-2xl blur opacity-30 animate-pulse-forest" />
                 )}
@@ -149,51 +162,76 @@ const HeroModuleSlider: React.FC<HeroModuleSliderProps> = ({
                   {/* Hero Module Card */}
                   <div 
                     className={cn(
-                      "group bg-card rounded-2xl overflow-hidden shadow-elevated transition-all duration-300 border border-border h-full",
+                      "group bg-card rounded-2xl overflow-hidden shadow-elevated transition-all duration-300 h-full",
+                      module.image_url 
+                        ? "border border-sacred-300/40 hover:border-sacred-400/60 hover:shadow-sacred" 
+                        : "border border-border hover:border-primary/30",
                       isLocked 
                         ? "opacity-70 cursor-not-allowed" 
-                        : "hover:shadow-xl hover:border-forest-400/50 cursor-pointer"
+                        : "hover:shadow-xl cursor-pointer"
                     )}
                     onClick={(e) => {
                       e.stopPropagation();
                       handleModuleClick(module.id, isLocked);
                     }}
                   >
-                    {/* Image/Gradient Header */}
+                    {/* Image/Gradient Header - Expanded */}
                     <div className={cn(
-                      "h-48 relative overflow-hidden bg-gradient-to-br",
+                      "aspect-[16/9] relative overflow-hidden bg-gradient-to-br",
                       !module.image_url && getLevelGradient(module.level)
                     )}>
                       {module.image_url ? (
                         <img 
                           src={module.image_url} 
                           alt={module.title} 
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                         />
                       ) : (
-                        <div className="absolute inset-0 pattern-adinkra opacity-30" />
+                        <>
+                          <div className="absolute inset-0 pattern-adinkra opacity-30" />
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="w-16 h-16 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center">
+                              <Sparkles className="w-8 h-8 text-white/70" />
+                            </div>
+                          </div>
+                        </>
                       )}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+                      
+                      {/* Refined Overlay */}
+                      <div className="absolute inset-0 module-card-overlay" />
+                      
+                      {/* Badge - Top Right */}
+                      <div className="absolute top-3 right-3">
+                        <span className={cn(
+                          "inline-block px-3 py-1.5 backdrop-blur-md rounded-full text-xs font-semibold text-white border border-white/20 shadow-lg",
+                          getLevelBadgeColor(module.level)
+                        )}>
+                          {module.type === 'proficiency' ? `Nível ${module.level}` : module.theme}
+                        </span>
+                      </div>
                       
                       {isLocked && (
-                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                          <div className="bg-white/10 backdrop-blur-sm rounded-full p-5">
+                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center backdrop-blur-[2px]">
+                          <div className="bg-white/10 backdrop-blur-sm rounded-full p-5 border border-white/20">
                             <Lock className="w-10 h-10 text-white" />
                           </div>
                         </div>
                       )}
                       
-                      <div className="absolute bottom-4 left-5 right-5">
-                        <span className="inline-block px-3 py-1.5 bg-forest-500/80 backdrop-blur-sm rounded-full text-xs font-semibold text-white mb-3">
-                          {module.type === 'proficiency' ? `Nível ${module.level}` : module.theme}
-                        </span>
-                        <h3 className="font-serif text-2xl font-bold text-white">{module.title}</h3>
+                      {/* Title - Bottom with backdrop blur */}
+                      <div className="absolute bottom-0 inset-x-0 p-5">
+                        <h3 className="font-serif text-2xl font-bold text-white drop-shadow-lg">
+                          {module.title}
+                        </h3>
                       </div>
                     </div>
 
-                    {/* Content */}
-                    <div className="p-6">
-                      <p className="text-sm text-muted-foreground line-clamp-2 mb-5 min-h-[40px]">
+                    {/* Content with decorative separator */}
+                    <div className="p-6 relative">
+                      {/* Decorative golden line */}
+                      <div className="absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-sacred-400/50 to-transparent" />
+                      
+                      <p className="text-sm text-muted-foreground line-clamp-2 mb-5 min-h-[40px] pt-2">
                         {isLocked && unlockRequirements[module.id] 
                           ? unlockRequirements[module.id] 
                           : module.description || 'Continue sua jornada de aprendizado.'}
@@ -222,10 +260,10 @@ const HeroModuleSlider: React.FC<HeroModuleSliderProps> = ({
 
                       <Button 
                         className={cn(
-                          "w-full font-semibold h-12 text-base",
+                          "w-full font-semibold h-12 text-base transition-all duration-300",
                           isLocked 
                             ? "bg-muted text-muted-foreground cursor-not-allowed" 
-                            : "bg-gradient-to-r from-forest-600 to-forest-700 hover:from-forest-700 hover:to-forest-800 text-white shadow-lg"
+                            : "bg-gradient-to-r from-forest-600 to-forest-700 hover:from-forest-700 hover:to-forest-800 text-white shadow-lg hover:shadow-xl"
                         )}
                         onClick={(e) => {
                           e.stopPropagation();
@@ -262,11 +300,12 @@ const HeroModuleSlider: React.FC<HeroModuleSliderProps> = ({
           <button
             key={index}
             onClick={() => scrollToIndex(index)}
-            className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
+            className={cn(
+              "h-2.5 rounded-full transition-all duration-300",
               index === currentIndex 
-                ? 'bg-forest-600 w-8' 
-                : 'bg-forest-300 hover:bg-forest-400'
-            }`}
+                ? 'bg-sacred-500 w-8' 
+                : 'bg-forest-300 hover:bg-forest-400 w-2.5'
+            )}
             aria-label={`Ir para módulo ${index + 1}`}
           />
         ))}
