@@ -18,6 +18,7 @@ interface Module {
   level: string | null;
   theme: string | null;
   color: string | null;
+  image_url: string | null;
 }
 
 interface Lesson {
@@ -186,52 +187,71 @@ const ModuleView: React.FC = () => {
         <Header />
         
         <main className="pt-24 pb-16">
-          {/* Hero */}
-          <div className={`bg-gradient-to-br ${module.color || 'from-amber-500 to-orange-600'} pattern-adinkra relative`}>
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-            <div className="container mx-auto px-4 py-16 relative z-10">
-              <Button
-                variant="ghost"
-                className="text-white/80 hover:text-white hover:bg-white/10 mb-6"
-                onClick={() => navigate('/dashboard')}
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Voltar
-              </Button>
-
-              <div className="max-w-3xl">
-                <span className="inline-block px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-sm font-medium text-white mb-4">
-                  {module.type === 'proficiency' 
-                    ? `Nível ${module.level?.charAt(0).toUpperCase()}${module.level?.slice(1)}` 
-                    : module.theme}
-                </span>
-                <h1 className="font-serif text-4xl md:text-5xl font-bold text-white mb-4">
-                  {module.title}
-                </h1>
-                <p className="text-lg text-white/80 mb-6">
-                  {module.description}
-                </p>
-
-                <div className="flex flex-wrap items-center gap-6 text-white/80">
-                  <div className="flex items-center gap-2">
-                    <BookOpen className="w-5 h-5" />
-                    <span>{lessons.length} lições</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-5 h-5" />
-                    <span>~{lessons.reduce((acc, l) => acc + (l.duration_minutes || 30), 0)} minutos</span>
-                  </div>
+          {/* Hero with Banner */}
+          <div className="relative">
+            {module.image_url ? (
+              <>
+                <div className="h-80 md:h-96 relative overflow-hidden">
+                  <img 
+                    src={module.image_url} 
+                    alt={module.title}
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20" />
                 </div>
+              </>
+            ) : (
+              <div className={`h-80 md:h-96 bg-gradient-to-br ${module.color || 'from-amber-500 to-orange-600'} pattern-adinkra relative`}>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+              </div>
+            )}
+            
+            {/* Content positioned over banner */}
+            <div className="absolute inset-0 flex flex-col justify-end">
+              <div className="container mx-auto px-4 py-8">
+                <Button
+                  variant="ghost"
+                  className="text-white/80 hover:text-white hover:bg-white/10 mb-6"
+                  onClick={() => navigate('/dashboard')}
+                >
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Voltar
+                </Button>
 
-                {progress > 0 && (
-                  <div className="mt-6 max-w-sm">
-                    <div className="flex justify-between text-sm text-white/80 mb-2">
-                      <span>Seu progresso</span>
-                      <span>{progress}%</span>
+                <div className="max-w-3xl">
+                  <span className="inline-block px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-sm font-medium text-white mb-4">
+                    {module.type === 'proficiency' 
+                      ? `Nível ${module.level?.charAt(0).toUpperCase()}${module.level?.slice(1)}` 
+                      : module.theme}
+                  </span>
+                  <h1 className="font-serif text-4xl md:text-5xl font-bold text-white mb-4">
+                    {module.title}
+                  </h1>
+                  <p className="text-lg text-white/80 mb-6">
+                    {module.description}
+                  </p>
+
+                  <div className="flex flex-wrap items-center gap-6 text-white/80">
+                    <div className="flex items-center gap-2">
+                      <BookOpen className="w-5 h-5" />
+                      <span>{lessons.length} lições</span>
                     </div>
-                    <Progress value={progress} className="h-2 bg-white/20" />
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-5 h-5" />
+                      <span>~{lessons.reduce((acc, l) => acc + (l.duration_minutes || 30), 0)} minutos</span>
+                    </div>
                   </div>
-                )}
+
+                  {progress > 0 && (
+                    <div className="mt-6 max-w-sm">
+                      <div className="flex justify-between text-sm text-white/80 mb-2">
+                        <span>Seu progresso</span>
+                        <span>{progress}%</span>
+                      </div>
+                      <Progress value={progress} className="h-2 bg-white/20" />
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>

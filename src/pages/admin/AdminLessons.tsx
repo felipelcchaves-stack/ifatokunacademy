@@ -241,7 +241,7 @@ const AdminLessons: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-muted/30 flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-[400px]">
         <div className="animate-pulse text-muted-foreground">Carregando...</div>
       </div>
     );
@@ -249,7 +249,7 @@ const AdminLessons: React.FC = () => {
 
   if (!module) {
     return (
-      <div className="min-h-screen bg-muted/30 flex flex-col items-center justify-center gap-4">
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
         <p className="text-muted-foreground">Módulo não encontrado</p>
         <Button onClick={() => navigate('/admin/modules')}>Voltar aos Módulos</Button>
       </div>
@@ -257,26 +257,7 @@ const AdminLessons: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-muted/30" data-allow-context-menu data-allow-copy>
-      {/* Sidebar */}
-      <aside className="fixed left-0 top-0 bottom-0 w-64 bg-sidebar border-r border-sidebar-border z-50">
-        <div className="flex flex-col h-full">
-          <div className="p-6 border-b border-sidebar-border">
-            <Link to="/" className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full gradient-gold flex items-center justify-center shadow-gold">
-                <span className="font-serif text-lg font-bold text-secondary">O</span>
-              </div>
-              <div>
-                <h1 className="font-serif font-semibold text-sidebar-foreground">Admin</h1>
-                <p className="text-xs text-sidebar-foreground/60">Offe Orunmila</p>
-              </div>
-            </Link>
-          </div>
-        </div>
-      </aside>
-
-      {/* Main Content */}
-      <main className="ml-64 p-8">
+    <div data-allow-context-menu data-allow-copy>
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
           <Link to="/admin" className="hover:text-foreground">Admin</Link>
@@ -491,7 +472,7 @@ const AdminLessons: React.FC = () => {
             ))}
           </div>
         )}
-      </main>
+      
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
