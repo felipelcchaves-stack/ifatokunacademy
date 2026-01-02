@@ -10,7 +10,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { Progress } from '@/components/ui/progress';
 import { useAuth } from '@/contexts/AuthContext';
+import { useExperience } from '@/hooks/useExperience';
 import { cn } from '@/lib/utils';
 
 // Links para visitantes (não logados)
@@ -31,10 +39,13 @@ const studentLinks = [
 const Header: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, profile, isAuthenticated, isAdmin, signOut } = useAuth();
+  const { experience, getProgressToNextLevel, getXPForNextLevel } = useExperience();
   const navigate = useNavigate();
   const location = useLocation();
 
   const displayName = profile?.full_name || user?.email?.split('@')[0] || 'Usuário';
+  const levelProgress = getProgressToNextLevel();
+  const xpForNext = getXPForNextLevel();
 
   const getInitials = (name: string) => {
     return name
@@ -113,12 +124,39 @@ const Header: React.FC = () => {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="gap-2 h-auto py-1.5">
-                    <Avatar className="w-8 h-8">
-                      <AvatarImage src={profile?.avatar_url || undefined} />
-                      <AvatarFallback className="text-xs bg-primary/20 text-primary">
-                        {getInitials(displayName)}
-                      </AvatarFallback>
-                    </Avatar>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="relative">
+                            <Avatar className="w-8 h-8 ring-2 ring-primary/30">
+                              <AvatarImage src={profile?.avatar_url || undefined} />
+                              <AvatarFallback className="text-xs bg-primary/20 text-primary">
+                                {getInitials(displayName)}
+                              </AvatarFallback>
+                            </Avatar>
+                            {/* Level badge */}
+                            {experience && (
+                              <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-[10px] font-bold text-primary-foreground shadow-sm">
+                                {experience.current_level}
+                              </div>
+                            )}
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="w-56 p-3">
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-semibold">{experience?.level_name || 'Kékeré'}</span>
+                              <span className="text-xs text-muted-foreground">Nível {experience?.current_level || 1}</span>
+                            </div>
+                            <Progress value={levelProgress} className="h-2" />
+                            <div className="flex items-center justify-between text-xs text-muted-foreground">
+                              <span>{experience?.total_xp || 0} XP</span>
+                              <span>Próximo: {xpForNext} XP</span>
+                            </div>
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                     <span className="text-sm font-medium">{displayName}</span>
                   </Button>
                 </DropdownMenuTrigger>
