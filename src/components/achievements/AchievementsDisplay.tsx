@@ -1,12 +1,18 @@
+import React, { useEffect } from 'react';
 import { useAchievements, Achievement } from '@/hooks/useAchievements';
 import { AchievementBadge } from './AchievementBadge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Trophy, Flame, Calendar } from 'lucide-react';
+import { Trophy, Flame, Calendar, Brain, BookOpen, Target } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export const AchievementsDisplay = () => {
-  const { achievements, loading, isUnlocked, getUnlockDate } = useAchievements();
+  const { achievements, loading, isUnlocked, getUnlockDate, checkAllAchievements } = useAchievements();
+
+  // Check achievements on mount
+  useEffect(() => {
+    checkAllAchievements();
+  }, []);
 
   if (loading) {
     return (
@@ -30,6 +36,9 @@ export const AchievementsDisplay = () => {
 
   const streakAchievements = achievements.filter(a => a.type === 'streak');
   const reviewAchievements = achievements.filter(a => a.type === 'reviews');
+  const itemsAchievements = achievements.filter(a => a.type === 'items');
+  const modulesAchievements = achievements.filter(a => a.type === 'modules');
+  const accuracyAchievements = achievements.filter(a => a.type === 'accuracy');
 
   const unlockedCount = achievements.filter(a => isUnlocked(a.key)).length;
 
@@ -48,14 +57,26 @@ export const AchievementsDisplay = () => {
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="streak" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-4">
-            <TabsTrigger value="streak" className="flex items-center gap-2">
-              <Flame className="h-4 w-4" />
-              Sequência
+          <TabsList className="grid w-full grid-cols-5 mb-4">
+            <TabsTrigger value="streak" className="flex items-center gap-1 text-xs sm:text-sm">
+              <Flame className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Sequência</span>
             </TabsTrigger>
-            <TabsTrigger value="reviews" className="flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              Dias Totais
+            <TabsTrigger value="reviews" className="flex items-center gap-1 text-xs sm:text-sm">
+              <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Dias</span>
+            </TabsTrigger>
+            <TabsTrigger value="items" className="flex items-center gap-1 text-xs sm:text-sm">
+              <Brain className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Itens</span>
+            </TabsTrigger>
+            <TabsTrigger value="modules" className="flex items-center gap-1 text-xs sm:text-sm">
+              <BookOpen className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Módulos</span>
+            </TabsTrigger>
+            <TabsTrigger value="accuracy" className="flex items-center gap-1 text-xs sm:text-sm">
+              <Target className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Precisão</span>
             </TabsTrigger>
           </TabsList>
           
@@ -75,6 +96,45 @@ export const AchievementsDisplay = () => {
           <TabsContent value="reviews">
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
               {reviewAchievements.map((achievement) => (
+                <AchievementBadge
+                  key={achievement.key}
+                  achievement={achievement}
+                  unlocked={isUnlocked(achievement.key)}
+                  unlockDate={getUnlockDate(achievement.key)}
+                />
+              ))}
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="items">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+              {itemsAchievements.map((achievement) => (
+                <AchievementBadge
+                  key={achievement.key}
+                  achievement={achievement}
+                  unlocked={isUnlocked(achievement.key)}
+                  unlockDate={getUnlockDate(achievement.key)}
+                />
+              ))}
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="modules">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+              {modulesAchievements.map((achievement) => (
+                <AchievementBadge
+                  key={achievement.key}
+                  achievement={achievement}
+                  unlocked={isUnlocked(achievement.key)}
+                  unlockDate={getUnlockDate(achievement.key)}
+                />
+              ))}
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="accuracy">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+              {accuracyAchievements.map((achievement) => (
                 <AchievementBadge
                   key={achievement.key}
                   achievement={achievement}

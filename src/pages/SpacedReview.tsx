@@ -80,7 +80,10 @@ const SpacedReview: React.FC = () => {
         });
 
         // Check for new achievements
-        const newAchievements = await checkAndUnlockAchievements(newStreak, newTotalDays);
+        const newAchievements = await checkAndUnlockAchievements({
+          currentStreak: newStreak,
+          totalDays: newTotalDays,
+        });
         newAchievements.forEach(achievement => {
           showAchievementUnlockToast(achievement);
         });
