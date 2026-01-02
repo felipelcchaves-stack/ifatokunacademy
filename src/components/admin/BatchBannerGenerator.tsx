@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Wand2, Loader2, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Wand2, Loader2, CheckCircle, XCircle, AlertCircle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import {
@@ -41,16 +41,34 @@ const BatchBannerGenerator: React.FC<BatchBannerGeneratorProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [results, setResults] = useState<GenerationResult[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [currentIndex, setCurrentIndex] = useState(-1);
+  const abortRef = useRef(false);
 
   // Filter modules without images
   const modulesWithoutImages = modules.filter(m => !m.image_url);
 
-  const handleStartBatchGeneration = async () => {
-    if (modulesWithoutImages.length === 0) {
+  // Reset state when dialog opens
+  useEffect(() => {
+    if (isOpen) {
+      setResults([]);
+      setCurrentIndex(-1);
+      setIsGenerating(false);
+      abortRef.current = false;
+    }
+  }, [isOpen]);
+
+  // Get failed and success counts from final results
+  const failedModules = results.filter(r => r.status === 'error');
+  const successCount = results.filter(r => r.status === 'success').length;
+  const hasCompleted = results.length > 0 && !isGenerating && currentIndex === -1;
+
+  const handleStartBatchGeneration = async (modulesToProcess?: Module[]) => {
+    const targetModules = modulesToProcess || modulesWithoutImages;
+    
+    if (targetModules.length === 0) {
       toast({
-        title: 'Nenhum módulo sem banner',
-        description: 'Todos os módulos já possuem imagens.',
+        title: 'Nenhum módulo para processar',
+        description: 'Todos os módulos já possuem imagens ou não há falhas para retentar.',
       });
       return;
     }
@@ -68,19 +86,28 @@ const BatchBannerGenerator: React.FC<BatchBannerGeneratorProps> = ({
     }
 
     setIsGenerating(true);
-    setCurrentIndex(0);
+    abortRef.current = false;
 
     // Initialize results
-    const initialResults: GenerationResult[] = modulesWithoutImages.map(m => ({
+    const initialResults: GenerationResult[] = targetModules.map(m => ({
       moduleId: m.id,
       moduleTitle: m.title,
       status: 'pending',
     }));
     setResults(initialResults);
 
+    let completedSuccess = 0;
+    let completedError = 0;
+
     // Generate banners sequentially (to avoid rate limits)
-    for (let i = 0; i < modulesWithoutImages.length; i++) {
-      const module = modulesWithoutImages[i];
+    for (let i = 0; i < targetModules.length; i++) {
+      // Check if cancelled
+      if (abortRef.current) {
+        console.log('Batch generation cancelled by user');
+        break;
+      }
+
+      const module = targetModules[i];
       setCurrentIndex(i);
 
       // Update status to generating
@@ -92,6 +119,11 @@ const BatchBannerGenerator: React.FC<BatchBannerGeneratorProps> = ({
         // Add delay between requests to avoid rate limits
         if (i > 0) {
           await new Promise(resolve => setTimeout(resolve, 3000));
+        }
+
+        // Check again if cancelled during delay
+        if (abortRef.current) {
+          break;
         }
 
         const { data, error } = await supabase.functions.invoke('generate-module-banner', {
@@ -117,6 +149,7 @@ const BatchBannerGenerator: React.FC<BatchBannerGeneratorProps> = ({
         setResults(prev => prev.map((r, idx) => 
           idx === i ? { ...r, status: 'success' } : r
         ));
+        completedSuccess++;
 
       } catch (error: any) {
         console.error(`Error generating banner for ${module.title}:`, error);
@@ -125,6 +158,7 @@ const BatchBannerGenerator: React.FC<BatchBannerGeneratorProps> = ({
         setResults(prev => prev.map((r, idx) => 
           idx === i ? { ...r, status: 'error', error: error.message } : r
         ));
+        completedError++;
 
         // If rate limited, stop and notify
         if (error.message?.includes('Rate limit') || error.message?.includes('429')) {
@@ -139,17 +173,46 @@ const BatchBannerGenerator: React.FC<BatchBannerGeneratorProps> = ({
     }
 
     setIsGenerating(false);
-    onBannersGenerated();
+    setCurrentIndex(-1);
 
-    const successCount = results.filter(r => r.status === 'success').length + 1; // +1 for current
-    toast({
-      title: 'Geração em lote concluída',
-      description: `${successCount} banners gerados com sucesso.`,
-    });
+    // Only call onBannersGenerated if we had any success
+    if (completedSuccess > 0) {
+      onBannersGenerated();
+    }
+
+    // Show appropriate toast
+    if (abortRef.current) {
+      toast({
+        title: 'Geração cancelada',
+        description: `${completedSuccess} banner(s) gerado(s) antes do cancelamento.`,
+      });
+    } else if (completedError === 0) {
+      toast({
+        title: 'Geração concluída!',
+        description: `${completedSuccess} banner(s) gerado(s) com sucesso.`,
+      });
+    } else {
+      toast({
+        title: 'Geração parcialmente concluída',
+        description: `${completedSuccess} sucesso, ${completedError} falha(s). Você pode tentar novamente.`,
+        variant: 'destructive',
+      });
+    }
   };
 
-  const progress = modulesWithoutImages.length > 0 
-    ? ((currentIndex + 1) / modulesWithoutImages.length) * 100 
+  const handleRetryFailed = () => {
+    // Get the original module objects for failed ones
+    const failedModuleIds = failedModules.map(f => f.moduleId);
+    const modulesToRetry = modules.filter(m => failedModuleIds.includes(m.id));
+    handleStartBatchGeneration(modulesToRetry);
+  };
+
+  const handleCancel = () => {
+    abortRef.current = true;
+  };
+
+  const progress = results.length > 0 
+    ? ((results.filter(r => r.status === 'success' || r.status === 'error').length) / results.length) * 100 
     : 0;
 
   const getStatusIcon = (status: GenerationResult['status']) => {
@@ -190,7 +253,7 @@ const BatchBannerGenerator: React.FC<BatchBannerGeneratorProps> = ({
         </DialogHeader>
 
         <div className="py-4 space-y-4">
-          {modulesWithoutImages.length === 0 ? (
+          {modulesWithoutImages.length === 0 && !hasCompleted ? (
             <div className="text-center py-6">
               <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3" />
               <p className="text-muted-foreground">
@@ -199,84 +262,130 @@ const BatchBannerGenerator: React.FC<BatchBannerGeneratorProps> = ({
             </div>
           ) : (
             <>
-              <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
-                <AlertCircle className="w-4 h-4 text-amber-500" />
-                <p className="text-sm text-muted-foreground">
-                  {modulesWithoutImages.length} módulo(s) sem banner serão processados
-                </p>
-              </div>
-
-              {isGenerating && (
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Progresso</span>
-                    <span>{currentIndex + 1} de {modulesWithoutImages.length}</span>
+              {!isGenerating && results.length === 0 && (
+                <>
+                  <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
+                    <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                    <p className="text-sm text-muted-foreground">
+                      {modulesWithoutImages.length} módulo(s) sem banner serão processados. 
+                      Mantenha esta janela aberta.
+                    </p>
                   </div>
-                  <Progress value={progress} className="h-2" />
-                </div>
+
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">Módulos a processar:</p>
+                    <div className="max-h-48 overflow-y-auto space-y-1">
+                      {modulesWithoutImages.map((module) => (
+                        <div 
+                          key={module.id}
+                          className="flex items-center gap-2 p-2 rounded bg-muted/50 text-sm"
+                        >
+                          <div className="w-2 h-2 rounded-full bg-amber-500" />
+                          <span className="truncate">{module.title}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
               )}
 
-              {results.length > 0 && (
-                <div className="max-h-48 overflow-y-auto space-y-2">
-                  {results.map((result) => (
-                    <div 
-                      key={result.moduleId}
-                      className="flex items-center gap-3 p-2 rounded-lg bg-muted/50"
-                    >
-                      {getStatusIcon(result.status)}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{result.moduleTitle}</p>
-                        {result.error && (
-                          <p className="text-xs text-destructive truncate">{result.error}</p>
+              {(isGenerating || results.length > 0) && (
+                <>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>Progresso</span>
+                      <span>
+                        {results.filter(r => r.status === 'success' || r.status === 'error').length} de {results.length}
+                      </span>
+                    </div>
+                    <Progress value={progress} className="h-2" />
+                    
+                    {hasCompleted && (
+                      <div className="flex gap-4 text-sm mt-2">
+                        <span className="text-green-600 dark:text-green-400">
+                          ✓ {successCount} sucesso
+                        </span>
+                        {failedModules.length > 0 && (
+                          <span className="text-red-600 dark:text-red-400">
+                            ✗ {failedModules.length} falha(s)
+                          </span>
                         )}
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    )}
+                  </div>
 
-              {!isGenerating && results.length === 0 && (
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">Módulos a processar:</p>
-                  <div className="max-h-48 overflow-y-auto space-y-1">
-                    {modulesWithoutImages.map((module) => (
+                  <div className="max-h-48 overflow-y-auto space-y-2">
+                    {results.map((result, index) => (
                       <div 
-                        key={module.id}
-                        className="flex items-center gap-2 p-2 rounded bg-muted/50 text-sm"
+                        key={result.moduleId}
+                        className={`flex items-center gap-3 p-2 rounded-lg transition-colors ${
+                          result.status === 'generating' 
+                            ? 'bg-primary/10 border border-primary/30' 
+                            : result.status === 'error'
+                            ? 'bg-red-500/10 border border-red-500/20'
+                            : result.status === 'success'
+                            ? 'bg-green-500/10 border border-green-500/20'
+                            : 'bg-muted/50'
+                        }`}
                       >
-                        <div className="w-2 h-2 rounded-full bg-amber-500" />
-                        <span className="truncate">{module.title}</span>
+                        {getStatusIcon(result.status)}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{result.moduleTitle}</p>
+                          {result.error && (
+                            <p className="text-xs text-destructive truncate">{result.error}</p>
+                          )}
+                        </div>
+                        <span className="text-xs text-muted-foreground flex-shrink-0">
+                          {index + 1}/{results.length}
+                        </span>
                       </div>
                     ))}
                   </div>
-                </div>
+                </>
               )}
             </>
           )}
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setIsOpen(false)} disabled={isGenerating}>
-            {isGenerating ? 'Aguarde...' : 'Fechar'}
-          </Button>
-          {modulesWithoutImages.length > 0 && (
-            <Button 
-              className="gradient-gold text-secondary"
-              onClick={handleStartBatchGeneration}
-              disabled={isGenerating}
-            >
-              {isGenerating ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Gerando...
-                </>
-              ) : (
-                <>
+        <DialogFooter className="gap-2 sm:gap-2">
+          {isGenerating ? (
+            <>
+              <Button 
+                variant="destructive" 
+                onClick={handleCancel}
+                className="gap-2"
+              >
+                <XCircle className="w-4 h-4" />
+                Cancelar
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="outline" onClick={() => setIsOpen(false)}>
+                Fechar
+              </Button>
+              
+              {hasCompleted && failedModules.length > 0 && (
+                <Button 
+                  variant="outline" 
+                  onClick={handleRetryFailed}
+                  className="gap-2"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Tentar Novamente ({failedModules.length})
+                </Button>
+              )}
+              
+              {!hasCompleted && modulesWithoutImages.length > 0 && (
+                <Button 
+                  className="gradient-gold text-secondary"
+                  onClick={() => handleStartBatchGeneration()}
+                >
                   <Wand2 className="w-4 h-4 mr-2" />
                   Iniciar Geração
-                </>
+                </Button>
               )}
-            </Button>
+            </>
           )}
         </DialogFooter>
       </DialogContent>

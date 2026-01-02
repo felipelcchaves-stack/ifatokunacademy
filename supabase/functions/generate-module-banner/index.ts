@@ -6,6 +6,13 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 2000;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 serve(async (req) => {
   console.log("generate-module-banner: Request received");
   
@@ -85,9 +92,16 @@ serve(async (req) => {
 
     console.log("generate-module-banner: Generating banner for module:", moduleId);
 
-    // Build contextual prompt based on module info
-    const moduleDescription = description || title;
-    const prompt = `Create a sacred African spiritual art banner image for an educational module titled "${title}". 
+    // Generate image with retry logic
+    let imageData: string | null = null;
+    let lastError: string | null = null;
+
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      console.log(`generate-module-banner: Attempt ${attempt}/${MAX_RETRIES}`);
+
+      // Build contextual prompt based on module info - be more explicit on retries
+      const moduleDescription = description || title;
+      const basePrompt = `Create a sacred African spiritual art banner image for an educational module titled "${title}". 
 The module is about: ${moduleDescription}.
 
 Style requirements:
@@ -101,56 +115,104 @@ Style requirements:
 - No text or letters in the image
 - Ultra high resolution`;
 
-    console.log("generate-module-banner: Calling AI Gateway");
+      // On retries, be more explicit that we want an image, not a description
+      const prompt = attempt === 1 
+        ? basePrompt 
+        : `${basePrompt}\n\nIMPORTANT: Generate the actual visual image now. Do not describe or explain - create the image directly.`;
 
-    // Call Lovable AI Gateway for image generation
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash-image-preview",
-        messages: [
-          {
-            role: "user",
-            content: prompt,
+      try {
+        console.log("generate-module-banner: Calling AI Gateway");
+
+        const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "Content-Type": "application/json",
           },
-        ],
-        modalities: ["image", "text"],
-      }),
-    });
+          body: JSON.stringify({
+            model: "google/gemini-2.5-flash-image-preview",
+            messages: [
+              {
+                role: "user",
+                content: prompt,
+              },
+            ],
+            modalities: ["image", "text"],
+          }),
+        });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("AI Gateway error:", response.status, errorText);
-      
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Rate limit exceeded. Please try again later." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`generate-module-banner: AI Gateway error (attempt ${attempt}):`, response.status, errorText);
+          
+          if (response.status === 429) {
+            lastError = "Rate limit exceeded. Please try again later.";
+            // On rate limit, wait longer before retry
+            if (attempt < MAX_RETRIES) {
+              console.log(`generate-module-banner: Rate limited, waiting ${RETRY_DELAY_MS * 2}ms...`);
+              await sleep(RETRY_DELAY_MS * 2);
+              continue;
+            }
+          } else if (response.status === 402) {
+            lastError = "Payment required. Please add credits to continue.";
+            // Don't retry on payment issues
+            break;
+          } else {
+            lastError = `AI Gateway error: ${response.status}`;
+          }
+          
+          if (attempt < MAX_RETRIES) {
+            await sleep(RETRY_DELAY_MS);
+            continue;
+          }
+          
+          return new Response(
+            JSON.stringify({ error: lastError }),
+            { status: response.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const aiData = await response.json();
+        console.log("generate-module-banner: AI response received");
+
+        // Extract image from response
+        const generatedImage = aiData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+        
+        if (!generatedImage) {
+          console.error(`generate-module-banner: No image in AI response (attempt ${attempt}):`, JSON.stringify(aiData).substring(0, 500));
+          lastError = "AI did not generate an image";
+          
+          if (attempt < MAX_RETRIES) {
+            console.log(`generate-module-banner: No image, retrying in ${RETRY_DELAY_MS}ms...`);
+            await sleep(RETRY_DELAY_MS);
+            continue;
+          }
+          
+          throw new Error("No image generated from AI after all retries");
+        }
+
+        // Success!
+        imageData = generatedImage;
+        console.log("generate-module-banner: Image generated successfully on attempt", attempt);
+        break;
+
+      } catch (fetchError) {
+        console.error(`generate-module-banner: Fetch error on attempt ${attempt}:`, fetchError);
+        lastError = fetchError instanceof Error ? fetchError.message : "Unknown fetch error";
+        
+        if (attempt < MAX_RETRIES) {
+          await sleep(RETRY_DELAY_MS);
+          continue;
+        }
+        throw fetchError;
       }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "Payment required. Please add credits to continue." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      
-      throw new Error(`AI Gateway error: ${response.status}`);
     }
 
-    const aiData = await response.json();
-    console.log("generate-module-banner: AI response received");
-
-    // Extract image from response
-    const imageData = aiData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-    
     if (!imageData) {
-      console.error("No image in AI response:", JSON.stringify(aiData));
-      throw new Error("No image generated from AI");
+      return new Response(
+        JSON.stringify({ error: lastError || "Failed to generate image after all retries" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // Convert base64 to blob
