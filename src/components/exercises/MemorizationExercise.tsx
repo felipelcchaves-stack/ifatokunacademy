@@ -7,10 +7,15 @@ import {
   RotateCcw, 
   CheckCircle,
   Lightbulb,
-  Brain
+  Brain,
+  Send,
+  XCircle,
+  AlertCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { Textarea } from '@/components/ui/textarea';
+import { calculateSimilarity, getTextRemainder, getTextStart } from '@/lib/textSimilarity';
 
 interface MemorizationItem {
   text: string;
@@ -23,23 +28,32 @@ interface MemorizationExerciseProps {
   onComplete?: () => void;
 }
 
+const SIMILARITY_THRESHOLD = 80; // Mínimo de 80% de acurácia para considerar correto
+const START_WORD_COUNT = 4; // Quantidade de palavras iniciais mostradas
+
 const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({ items, onComplete }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showContent, setShowContent] = useState(false);
   const [showHint, setShowHint] = useState(false);
   const [masteredItems, setMasteredItems] = useState<Set<number>>(new Set());
   const [mode, setMode] = useState<'learn' | 'review'>('learn');
+  
+  // Estados para validação por digitação
+  const [userInput, setUserInput] = useState('');
+  const [validationResult, setValidationResult] = useState<{
+    similarity: number;
+    isCorrect: boolean;
+    showResult: boolean;
+  } | null>(null);
+  const [attempts, setAttempts] = useState(0);
 
   const currentItem = items[currentIndex];
   const progress = (masteredItems.size / items.length) * 100;
   const isCompleted = masteredItems.size === items.length;
-
-  // Extrai o início do texto (primeiras palavras) para mostrar como pista
-  const getTextStart = (text: string, wordCount: number = 3): string => {
-    const words = text.split(/\s+/);
-    if (words.length <= wordCount) return text;
-    return words.slice(0, wordCount).join(' ') + '...';
-  };
+  
+  // Texto esperado (restante após as primeiras palavras)
+  const expectedText = currentItem ? getTextRemainder(currentItem.text, START_WORD_COUNT) : '';
+  const textStart = currentItem ? getTextStart(currentItem.text, START_WORD_COUNT) : '';
 
   useEffect(() => {
     if (isCompleted && mode === 'learn') {
@@ -47,29 +61,63 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({ items, onCo
     }
   }, [isCompleted, mode, onComplete]);
 
+  const resetItemState = useCallback(() => {
+    setShowContent(false);
+    setShowHint(false);
+    setUserInput('');
+    setValidationResult(null);
+    setAttempts(0);
+  }, []);
+
   const handleNext = useCallback(() => {
     if (currentIndex < items.length - 1) {
       setCurrentIndex(currentIndex + 1);
-      setShowContent(false);
-      setShowHint(false);
     } else {
-      // Loop back to start
       setCurrentIndex(0);
-      setShowContent(false);
-      setShowHint(false);
     }
-  }, [currentIndex, items.length]);
+    resetItemState();
+  }, [currentIndex, items.length, resetItemState]);
 
   const handlePrev = () => {
     if (currentIndex > 0) {
       setCurrentIndex(currentIndex - 1);
-      setShowContent(false);
-      setShowHint(false);
+      resetItemState();
     }
   };
 
-  const handleReveal = () => {
+  const handleValidate = () => {
+    if (!userInput.trim()) return;
+    
+    const similarity = calculateSimilarity(expectedText, userInput);
+    const isCorrect = similarity >= SIMILARITY_THRESHOLD;
+    
+    setValidationResult({
+      similarity,
+      isCorrect,
+      showResult: true
+    });
+    
+    setAttempts(prev => prev + 1);
+    
+    if (isCorrect) {
+      setMasteredItems(prev => new Set([...prev, currentIndex]));
+      setShowContent(true);
+    }
+  };
+
+  const handleRevealWithoutValidation = () => {
+    // Permite revelar sem validar, mas não marca como dominado
     setShowContent(true);
+    setValidationResult({
+      similarity: 0,
+      isCorrect: false,
+      showResult: false
+    });
+  };
+
+  const handleTryAgain = () => {
+    setUserInput('');
+    setValidationResult(null);
   };
 
   const handleToggleHint = () => {
@@ -92,8 +140,7 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({ items, onCo
 
   const handleReset = () => {
     setCurrentIndex(0);
-    setShowContent(false);
-    setShowHint(false);
+    resetItemState();
     setMasteredItems(new Set());
     setMode('learn');
   };
@@ -101,19 +148,25 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({ items, onCo
   const handleStartReview = () => {
     setMode('review');
     setCurrentIndex(0);
-    setShowContent(false);
-    setShowHint(false);
+    resetItemState();
   };
 
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowRight' || e.key === ' ') {
+      // Não interferir quando está digitando no textarea
+      if (e.target instanceof HTMLTextAreaElement) {
+        if (e.key === 'Enter' && e.ctrlKey) {
+          e.preventDefault();
+          handleValidate();
+        }
+        return;
+      }
+      
+      if (e.key === 'ArrowRight') {
         e.preventDefault();
         if (showContent) {
           handleNext();
-        } else {
-          handleReveal();
         }
       } else if (e.key === 'ArrowLeft') {
         handlePrev();
@@ -124,7 +177,7 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({ items, onCo
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showContent, handleNext]);
+  }, [showContent, handleNext, handleValidate]);
 
   if (items.length === 0) {
     return (
@@ -161,10 +214,12 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({ items, onCo
       <div className="p-8">
         <div 
           className={`
-            min-h-[250px] rounded-xl border-2 border-dashed border-border p-6
+            min-h-[300px] rounded-xl border-2 border-dashed border-border p-6
             flex flex-col items-center justify-center text-center
             transition-all duration-300
             ${showContent ? 'bg-primary/5 border-primary/30' : 'bg-muted/30'}
+            ${validationResult?.isCorrect ? 'bg-green-50 border-green-300' : ''}
+            ${validationResult?.showResult && !validationResult?.isCorrect ? 'bg-amber-50 border-amber-300' : ''}
           `}
         >
           {currentItem.imageUrl && (
@@ -178,20 +233,15 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({ items, onCo
           {!showContent ? (
             <>
               {/* Mostra o início do texto como pista */}
-              <div className="mb-6">
+              <div className="mb-4 w-full">
                 <p className="text-xs uppercase tracking-wider text-muted-foreground mb-2">
                   Complete o verso:
                 </p>
                 <p className="font-serif text-2xl text-primary font-medium">
-                  {getTextStart(currentItem.text, 4)}
+                  {textStart}
                 </p>
               </div>
 
-              <EyeOff className="w-8 h-8 text-muted-foreground mb-3" />
-              <p className="text-sm text-muted-foreground mb-4">
-                Tente lembrar o restante antes de revelar
-              </p>
-              
               {/* Hint */}
               {currentItem.hint && (
                 <div className="mb-4">
@@ -209,16 +259,89 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({ items, onCo
                 </div>
               )}
 
-              <Button 
-                onClick={handleReveal}
-                className="gradient-gold text-secondary shadow-gold"
-              >
-                <Eye className="w-4 h-4 mr-2" />
-                Revelar Completo
-              </Button>
+              {/* Validation Result */}
+              {validationResult?.showResult && !validationResult.isCorrect && (
+                <div className="mb-4 w-full">
+                  <div className="flex items-center justify-center gap-2 text-amber-600 mb-2">
+                    <AlertCircle className="w-5 h-5" />
+                    <span className="font-medium">
+                      {validationResult.similarity}% de acurácia - Tente novamente!
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Mínimo necessário: {SIMILARITY_THRESHOLD}%
+                  </p>
+                </div>
+              )}
+
+              {/* Input Area */}
+              <div className="w-full max-w-lg">
+                <Textarea
+                  value={userInput}
+                  onChange={(e) => setUserInput(e.target.value)}
+                  placeholder="Digite o restante do verso..."
+                  className="min-h-[100px] text-center font-serif text-lg resize-none"
+                  disabled={validationResult?.showResult}
+                />
+                
+                <div className="flex gap-2 mt-4 justify-center">
+                  {!validationResult?.showResult ? (
+                    <>
+                      <Button 
+                        onClick={handleValidate}
+                        disabled={!userInput.trim()}
+                        className="gradient-gold text-secondary shadow-gold"
+                      >
+                        <Send className="w-4 h-4 mr-2" />
+                        Verificar
+                      </Button>
+                      <Button 
+                        variant="ghost"
+                        onClick={handleRevealWithoutValidation}
+                        className="text-muted-foreground"
+                      >
+                        <Eye className="w-4 h-4 mr-2" />
+                        Revelar
+                      </Button>
+                    </>
+                  ) : (
+                    <Button 
+                      onClick={handleTryAgain}
+                      variant="outline"
+                    >
+                      <RotateCcw className="w-4 h-4 mr-2" />
+                      Tentar Novamente
+                    </Button>
+                  )}
+                </div>
+
+                {attempts > 0 && !validationResult?.isCorrect && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Tentativas: {attempts}
+                  </p>
+                )}
+              </div>
             </>
           ) : (
             <>
+              {validationResult?.isCorrect && (
+                <div className="mb-4 flex items-center gap-2 text-green-600">
+                  <CheckCircle className="w-6 h-6" />
+                  <span className="font-medium text-lg">
+                    Excelente! {validationResult.similarity}% de acurácia
+                  </span>
+                </div>
+              )}
+
+              {!validationResult?.isCorrect && showContent && (
+                <div className="mb-4 flex items-center gap-2 text-amber-600">
+                  <XCircle className="w-6 h-6" />
+                  <span className="font-medium">
+                    Resposta revelada (não contabilizado)
+                  </span>
+                </div>
+              )}
+
               <p className="font-serif text-xl text-foreground leading-relaxed whitespace-pre-wrap">
                 {currentItem.text}
               </p>
@@ -246,12 +369,21 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({ items, onCo
               <RotateCcw className="w-4 h-4 mr-2" />
               Preciso Praticar
             </Button>
+            {!masteredItems.has(currentIndex) && (
+              <Button 
+                onClick={handleMarkMastered}
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+              >
+                <CheckCircle className="w-4 h-4 mr-2" />
+                Marcar como Dominado
+              </Button>
+            )}
             <Button 
-              onClick={handleMarkMastered}
-              className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+              onClick={handleNext}
+              className="flex-1 gradient-gold text-secondary"
             >
-              <CheckCircle className="w-4 h-4 mr-2" />
-              Já Sei!
+              Próximo
+              <ChevronRight className="w-4 h-4 ml-2" />
             </Button>
           </div>
         ) : (
@@ -268,7 +400,7 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({ items, onCo
               variant="ghost" 
               onClick={handleNext}
             >
-              Próximo
+              Pular
               <ChevronRight className="w-4 h-4 ml-2" />
             </Button>
           </div>
@@ -303,8 +435,8 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({ items, onCo
       {/* Keyboard hints */}
       <div className="px-4 py-2 border-t border-border text-center">
         <p className="text-xs text-muted-foreground">
-          Use as teclas <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">←</kbd> <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">→</kbd> para navegar, 
-          <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs ml-1">Espaço</kbd> para revelar
+          <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">Ctrl+Enter</kbd> para verificar, 
+          <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs ml-1">←</kbd> <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">→</kbd> para navegar
         </p>
       </div>
     </div>
