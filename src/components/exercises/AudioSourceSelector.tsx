@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { 
   Select, 
   SelectContent, 
+  SelectGroup,
   SelectItem, 
+  SelectLabel,
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
@@ -20,6 +22,20 @@ import { cn } from '@/lib/utils';
 
 export type AudioSource = 'ai' | 'personal';
 
+interface UserRecording {
+  id: string;
+  title: string;
+  text_content: string;
+  audio_url: string;
+  duration_seconds: number | null;
+  exercise_id: string | null;
+  lesson_id: string | null;
+  module_id: string | null;
+  created_at: string;
+  module_title?: string | null;
+  lesson_title?: string | null;
+}
+
 interface AudioSourceSelectorProps {
   text: string;
   exerciseId?: string;
@@ -27,6 +43,24 @@ interface AudioSourceSelectorProps {
   moduleId?: string;
   onPlay: (audioUrl: string) => void;
   className?: string;
+}
+
+// Helper to format recording label with context
+function getRecordingLabel(rec: UserRecording): string {
+  const date = new Date(rec.created_at);
+  const dateStr = date.toLocaleDateString('pt-BR', { 
+    day: '2-digit', 
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+  
+  // Preview of text content (max 25 chars)
+  const textPreview = rec.text_content.length > 25 
+    ? rec.text_content.substring(0, 25).trim() + '...'
+    : rec.text_content;
+  
+  return `${textPreview} (${dateStr})`;
 }
 
 export function AudioSourceSelector({
@@ -52,22 +86,25 @@ export function AudioSourceSelector({
   // Also get all user recordings for fallback
   const { recordings: allRecordings } = useUserRecordings();
 
-  // Combine context-specific and all recordings, removing duplicates
-  const availableRecordings = React.useMemo(() => {
-    const contextRecordings = recordings || [];
-    const allRecs = allRecordings || [];
+  // Group recordings by context: current lesson, current module, others
+  const groupedRecordings = useMemo(() => {
+    const all = allRecordings || [];
     
-    const ids = new Set(contextRecordings.map(r => r.id));
-    const unique = [...contextRecordings];
+    const fromLesson = all.filter(r => r.lesson_id === lessonId && lessonId);
+    const fromModule = all.filter(r => 
+      r.module_id === moduleId && 
+      r.lesson_id !== lessonId && 
+      moduleId
+    );
+    const others = all.filter(r => 
+      r.module_id !== moduleId && 
+      r.lesson_id !== lessonId
+    );
     
-    allRecs.forEach(r => {
-      if (!ids.has(r.id)) {
-        unique.push(r);
-      }
-    });
-    
-    return unique;
-  }, [recordings, allRecordings]);
+    return { fromLesson, fromModule, others };
+  }, [allRecordings, lessonId, moduleId]);
+
+  const totalRecordings = (allRecordings || []).length;
 
   const handlePlayAI = async () => {
     setIsLoading(true);
@@ -96,7 +133,7 @@ export function AudioSourceSelector({
   };
 
   const handlePlayPersonal = () => {
-    const recording = availableRecordings.find(r => r.id === selectedRecordingId);
+    const recording = allRecordings?.find(r => r.id === selectedRecordingId);
     if (recording) {
       onPlay(recording.audio_url);
     } else {
@@ -116,7 +153,7 @@ export function AudioSourceSelector({
     }
   };
 
-  const hasPersonalRecordings = availableRecordings.length > 0;
+  const hasPersonalRecordings = totalRecordings > 0;
 
   return (
     <div className={cn("flex items-center gap-2", className)}>
@@ -138,7 +175,7 @@ export function AudioSourceSelector({
             <ChevronDown className="h-3 w-3" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-72 p-3" align="start">
+        <PopoverContent className="w-80 p-3" align="start">
           <div className="space-y-3">
             <div className="text-sm font-medium">Fonte de Áudio</div>
             
@@ -179,7 +216,7 @@ export function AudioSourceSelector({
               </div>
               <p className="text-xs text-muted-foreground mt-1">
                 {hasPersonalRecordings 
-                  ? `${availableRecordings.length} gravação(ões) disponível(is)`
+                  ? `${totalRecordings} gravação(ões) disponível(is)`
                   : "Nenhuma gravação encontrada"}
               </p>
               
@@ -189,17 +226,63 @@ export function AudioSourceSelector({
                     value={selectedRecordingId}
                     onValueChange={setSelectedRecordingId}
                   >
-                    <SelectTrigger className="w-full h-8 text-xs">
-                      <SelectValue placeholder="Selecionar gravação" />
+                    <SelectTrigger className="w-full h-9 text-xs">
+                      <SelectValue placeholder="Selecionar gravação..." />
                     </SelectTrigger>
-                    <SelectContent>
-                      {availableRecordings.map(rec => (
-                        <SelectItem key={rec.id} value={rec.id}>
-                          <div className="truncate max-w-[180px]">
-                            {rec.title}
-                          </div>
-                        </SelectItem>
-                      ))}
+                    <SelectContent className="max-h-60">
+                      {/* Recordings from current lesson */}
+                      {groupedRecordings.fromLesson.length > 0 && (
+                        <SelectGroup>
+                          <SelectLabel className="text-xs font-semibold text-green-600">
+                            📚 Desta Lição
+                          </SelectLabel>
+                          {groupedRecordings.fromLesson.map(rec => (
+                            <SelectItem key={rec.id} value={rec.id} className="text-xs">
+                              <div className="truncate max-w-[220px]">
+                                {getRecordingLabel(rec)}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      )}
+                      
+                      {/* Recordings from current module */}
+                      {groupedRecordings.fromModule.length > 0 && (
+                        <SelectGroup>
+                          <SelectLabel className="text-xs font-semibold text-blue-600">
+                            📦 Deste Módulo
+                          </SelectLabel>
+                          {groupedRecordings.fromModule.map(rec => (
+                            <SelectItem key={rec.id} value={rec.id} className="text-xs">
+                              <div className="truncate max-w-[220px]">
+                                {rec.lesson_title && (
+                                  <span className="text-muted-foreground">[{rec.lesson_title}] </span>
+                                )}
+                                {getRecordingLabel(rec)}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      )}
+                      
+                      {/* Other recordings */}
+                      {groupedRecordings.others.length > 0 && (
+                        <SelectGroup>
+                          <SelectLabel className="text-xs font-semibold text-muted-foreground">
+                            📂 Outras Gravações
+                          </SelectLabel>
+                          {groupedRecordings.others.map(rec => (
+                            <SelectItem key={rec.id} value={rec.id} className="text-xs">
+                              <div className="truncate max-w-[220px]">
+                                {rec.module_title && (
+                                  <span className="text-muted-foreground">[{rec.module_title}] </span>
+                                )}
+                                {getRecordingLabel(rec)}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
