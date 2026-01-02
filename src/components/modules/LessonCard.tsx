@@ -1,7 +1,8 @@
 import React, { forwardRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clock, CheckCircle, Lock, Play } from 'lucide-react';
+import { Clock, CheckCircle, Lock, Play, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 
 interface Lesson {
   id: string;
@@ -20,10 +21,13 @@ interface LessonCardProps {
   moduleId: string;
   isLocked: boolean;
   progress?: number;
+  phase1Complete?: boolean;
+  phase1Total?: number;
+  phase1Completed?: number;
 }
 
 const LessonCard = forwardRef<HTMLDivElement, LessonCardProps>(
-  ({ lesson, index, moduleId, isLocked, progress = 0 }, ref) => {
+  ({ lesson, index, moduleId, isLocked, progress = 0, phase1Complete = false, phase1Total = 0, phase1Completed = 0 }, ref) => {
     const navigate = useNavigate();
 
     const formatDuration = (minutes: number | null) => {
@@ -90,11 +94,32 @@ const LessonCard = forwardRef<HTMLDivElement, LessonCardProps>(
         {lesson.exercises_count && lesson.exercises_count > 0 && (
           <div className="mt-4 pt-4 border-t border-border">
             <div className="flex items-center justify-between">
-              <p className="text-sm text-muted-foreground">
-                {lesson.exercises_count} exercício{lesson.exercises_count > 1 ? 's' : ''}
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm text-muted-foreground">
+                  {lesson.exercises_count} exercício{lesson.exercises_count > 1 ? 's' : ''}
+                </p>
+                
+                {/* Phase badges */}
+                {phase1Complete && !lesson.completed && (
+                  <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                    <CheckCircle2 className="w-3 h-3 mr-1" />
+                    Fase 1 ✓
+                  </Badge>
+                )}
+                {phase1Complete && !lesson.completed && (
+                  <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200">
+                    Fase 2 pendente
+                  </Badge>
+                )}
+              </div>
+              
               {progress > 0 && progress < 100 && (
                 <div className="flex items-center gap-2">
+                  {phase1Total > 0 && (
+                    <span className="text-xs text-muted-foreground">
+                      Fase 1: {phase1Completed}/{phase1Total}
+                    </span>
+                  )}
                   <div className="w-24 h-1.5 bg-muted rounded-full overflow-hidden">
                     <div 
                       className="h-full bg-primary rounded-full transition-all"
