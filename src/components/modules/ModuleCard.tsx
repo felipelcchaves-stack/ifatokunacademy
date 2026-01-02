@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 
 interface ModuleCardProps {
   module: Module;
-  variant?: 'default' | 'compact';
+  variant?: 'default' | 'compact' | 'hero';
   isLocked?: boolean;
   unlockRequirement?: string;
 }
@@ -75,6 +75,111 @@ const ModuleCard: React.FC<ModuleCardProps> = ({
     );
   }
 
+  // Hero variant - larger card for slider
+  if (variant === 'hero') {
+    return (
+      <div className={cn(
+        "group bg-card rounded-2xl overflow-hidden shadow-elevated transition-all duration-300 border border-border h-full",
+        isLocked 
+          ? "opacity-70 cursor-not-allowed" 
+          : "hover:shadow-xl hover:border-forest-400/50 cursor-pointer"
+      )}
+      onClick={handleClick}
+      >
+        {/* Image/Gradient Header - Taller for hero */}
+        <div className={cn(
+          "h-48 relative overflow-hidden",
+          !module.image && `bg-gradient-to-br ${module.color || 'from-forest-600 to-forest-800'}`
+        )}>
+          {module.image ? (
+            <img 
+              src={module.image} 
+              alt={module.title} 
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="absolute inset-0 pattern-adinkra opacity-30" />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+          
+          {isLocked && (
+            <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+              <div className="bg-white/10 backdrop-blur-sm rounded-full p-5">
+                <Lock className="w-10 h-10 text-white" />
+              </div>
+            </div>
+          )}
+          
+          <div className="absolute bottom-4 left-5 right-5">
+            <span className="inline-block px-3 py-1.5 bg-forest-500/80 backdrop-blur-sm rounded-full text-xs font-semibold text-white mb-3">
+              {module.type === 'proficiency' ? `Nível ${module.level}` : module.theme}
+            </span>
+            <h3 className="font-serif text-2xl font-bold text-white">{module.title}</h3>
+          </div>
+        </div>
+
+        {/* Content - More spacious for hero */}
+        <div className="p-6">
+          <p className="text-sm text-muted-foreground line-clamp-2 mb-5 min-h-[40px]">
+            {isLocked && unlockRequirement 
+              ? unlockRequirement 
+              : module.description}
+          </p>
+
+          <div className="flex items-center gap-5 text-sm text-muted-foreground mb-5">
+            <div className="flex items-center gap-1.5">
+              <BookOpen className="w-4 h-4 text-forest-600" />
+              <span>{module.totalLessons} lições</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Clock className="w-4 h-4 text-forest-600" />
+              <span>~{module.totalLessons * 30} min</span>
+            </div>
+          </div>
+
+          {!isLocked && module.progress > 0 && (
+            <div className="mb-5">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-xs text-muted-foreground font-medium">Progresso</span>
+                <span className="text-sm font-bold text-forest-600">{module.progress}%</span>
+              </div>
+              <Progress value={module.progress} className="h-3" />
+            </div>
+          )}
+
+          <Button 
+            className={cn(
+              "w-full font-semibold h-12 text-base",
+              isLocked 
+                ? "bg-muted text-muted-foreground cursor-not-allowed" 
+                : "bg-gradient-to-r from-forest-600 to-forest-700 hover:from-forest-700 hover:to-forest-800 text-white shadow-lg"
+            )}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleClick();
+            }}
+            disabled={isLocked}
+          >
+            {isLocked ? (
+              <>
+                <Lock className="w-4 h-4 mr-2" />
+                Bloqueado
+              </>
+            ) : module.progress > 0 ? (
+              <>
+                <Play className="w-4 h-4 mr-2" />
+                Continuar
+              </>
+            ) : (
+              'Começar'
+            )}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Default variant
   return (
     <div className={cn(
       "group bg-card rounded-2xl overflow-hidden shadow-soft transition-all duration-300 border border-border",
