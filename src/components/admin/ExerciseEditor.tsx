@@ -710,7 +710,31 @@ const ExerciseEditor: React.FC<ExerciseEditorProps> = ({ exercise, onSave, onCan
           </Button>
           <Button 
             className="gradient-gold text-secondary shadow-gold"
-            onClick={() => onSave(editedExercise)}
+            onClick={() => {
+              // Normalizar dados de fill-columns antes de salvar
+              let exerciseToSave = editedExercise;
+              if (editedExercise.type === 'fill-columns' && editedExercise.content.rows) {
+                const normalizedRows = editedExercise.content.rows.map((row: any) => {
+                  // Se já é array de strings, manter
+                  if (Array.isArray(row) && (row.length === 0 || typeof row[0] === 'string')) {
+                    return row;
+                  }
+                  // Se é objeto com cells, converter
+                  if (row && row.cells && Array.isArray(row.cells)) {
+                    return row.cells.map((cell: any) => cell.text || cell || '');
+                  }
+                  return row;
+                });
+                exerciseToSave = {
+                  ...editedExercise,
+                  content: {
+                    ...editedExercise.content,
+                    rows: normalizedRows,
+                  },
+                };
+              }
+              onSave(exerciseToSave);
+            }}
           >
             <Save className="w-4 h-4 mr-2" />
             Salvar
