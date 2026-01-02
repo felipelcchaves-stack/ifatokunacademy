@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Play, Pause, RotateCcw, Volume2, Loader2 } from 'lucide-react';
+import { Play, Pause, RotateCcw, Volume2, Loader2, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { toast } from 'sonner';
@@ -15,11 +15,11 @@ const ReadingExercise: React.FC<ReadingExerciseProps> = ({ text, audioUrl, onCom
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
   const [highlightedWordIndex, setHighlightedWordIndex] = useState(-1);
-  const [generatedAudioUrl, setGeneratedAudioUrl] = useState<string | null>(null);
+  const [effectiveAudioUrl, setEffectiveAudioUrl] = useState<string | null>(audioUrl || null);
+  const [isCached, setIsCached] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const words = text.split(' ');
-  const effectiveAudioUrl = audioUrl || generatedAudioUrl;
 
   useEffect(() => {
     if (effectiveAudioUrl) {
@@ -37,21 +37,18 @@ const ReadingExercise: React.FC<ReadingExerciseProps> = ({ text, audioUrl, onCom
     };
   }, [effectiveAudioUrl]);
 
-  // Cleanup generated audio URL on unmount
+  // Update effectiveAudioUrl if audioUrl prop changes
   useEffect(() => {
-    return () => {
-      if (generatedAudioUrl) {
-        URL.revokeObjectURL(generatedAudioUrl);
-      }
-    };
-  }, [generatedAudioUrl]);
+    if (audioUrl) {
+      setEffectiveAudioUrl(audioUrl);
+    }
+  }, [audioUrl]);
 
   const handleTimeUpdate = () => {
     if (audioRef.current) {
       const currentProgress = (audioRef.current.currentTime / audioRef.current.duration) * 100;
       setProgress(currentProgress);
       
-      // Simulate word highlighting based on progress
       const wordIndex = Math.floor((currentProgress / 100) * words.length);
       setHighlightedWordIndex(wordIndex);
     }
@@ -84,10 +81,15 @@ const ReadingExercise: React.FC<ReadingExerciseProps> = ({ text, audioUrl, onCom
         throw new Error(error.error || 'Falha ao gerar áudio');
       }
 
-      const audioBlob = await response.blob();
-      const url = URL.createObjectURL(audioBlob);
-      setGeneratedAudioUrl(url);
-      toast.success('Áudio gerado com sucesso!');
+      const data = await response.json();
+      
+      if (data.audioUrl) {
+        setEffectiveAudioUrl(data.audioUrl);
+        setIsCached(data.cached);
+        toast.success(data.cached ? 'Áudio carregado do cache!' : 'Áudio gerado com sucesso!');
+      } else {
+        throw new Error('URL do áudio não retornada');
+      }
     } catch (error) {
       console.error('Error generating audio:', error);
       toast.error('Erro ao gerar áudio. Tente novamente.');
@@ -171,7 +173,15 @@ const ReadingExercise: React.FC<ReadingExerciseProps> = ({ text, audioUrl, onCom
               <RotateCcw className="w-5 h-5" />
             </Button>
             
-            <Volume2 className="w-5 h-5 text-muted-foreground" />
+            <div className="flex items-center gap-1">
+              <Volume2 className="w-5 h-5 text-muted-foreground" />
+              {isCached && (
+                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Check className="w-3 h-3 text-green-500" />
+                  Cache
+                </span>
+              )}
+            </div>
           </div>
         </div>
       ) : (
