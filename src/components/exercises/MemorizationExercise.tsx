@@ -14,7 +14,13 @@ import {
   GitBranch,
   TrendingUp,
   Settings2,
-  Volume2
+  Volume2,
+  Sparkles,
+  Hand,
+  Music,
+  Blocks,
+  Headphones,
+  Accessibility
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -31,7 +37,14 @@ import {
 } from '@/lib/textChunking';
 import ChunkProgress from './ChunkProgress';
 import MemorizationHints from './MemorizationHints';
+import TapComplete from './TapComplete';
+import KaraokeMode from './KaraokeMode';
+import VisualBuilder from './VisualBuilder';
+import MicrolearningMode from './MicrolearningMode';
+import ListenRepeatMode from './ListenRepeatMode';
+import AccessibilitySettings from './AccessibilitySettings';
 import { useSpacedRepetition } from '@/hooks/useSpacedRepetition';
+import { useAccessibilityPreferences } from '@/hooks/useAccessibilityPreferences';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
@@ -50,7 +63,7 @@ interface MemorizationExerciseProps {
   onComplete?: () => void;
 }
 
-type StudyMode = 'classic' | 'scaffold' | 'chunk' | 'chain';
+type StudyMode = 'classic' | 'scaffold' | 'chunk' | 'chain' | 'microlearning' | 'tap' | 'karaoke' | 'visual' | 'listen';
 
 const LONG_TEXT_THRESHOLD = 30; // palavras
 const START_WORD_COUNT = 4;
@@ -102,6 +115,7 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
 
   const { addItem } = useSpacedRepetition(exerciseId);
   const { toast } = useToast();
+  const { preferences } = useAccessibilityPreferences();
 
   const currentItem = items[currentIndex];
   const progress = (masteredItems.size / items.length) * 100;
@@ -584,14 +598,184 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
               <div>
                 <span className="font-semibold">Modo Clássico</span>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Complete o texto a partir das primeiras palavras. Mais desafiador para textos longos.
+                  Complete o texto a partir das primeiras palavras.
                 </p>
               </div>
             </button>
           </div>
+
+          {/* Inclusive Modes Section */}
+          <div className="mt-6 pt-4 border-t border-border">
+            <div className="flex items-center gap-2 mb-4">
+              <Accessibility className="w-4 h-4 text-primary" />
+              <h4 className="font-medium text-sm text-foreground">Modos para Foco e Acessibilidade</h4>
+            </div>
+            
+            <div className="grid gap-3 sm:grid-cols-2">
+              {/* Microlearning Mode */}
+              <button
+                onClick={() => handleModeSelect('microlearning')}
+                className="flex items-start gap-3 p-3 rounded-lg border-2 border-border text-left transition-all hover:border-primary/50 hover:bg-primary/5"
+              >
+                <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center shrink-0">
+                  <Sparkles className="w-4 h-4 text-orange-600" />
+                </div>
+                <div>
+                  <span className="font-medium text-sm">Microlearning</span>
+                  <p className="text-xs text-muted-foreground">3-5 palavras por vez, pausas forçadas</p>
+                </div>
+              </button>
+
+              {/* Tap Mode */}
+              <button
+                onClick={() => handleModeSelect('tap')}
+                className="flex items-start gap-3 p-3 rounded-lg border-2 border-border text-left transition-all hover:border-primary/50 hover:bg-primary/5"
+              >
+                <div className="w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center shrink-0">
+                  <Hand className="w-4 h-4 text-teal-600" />
+                </div>
+                <div>
+                  <span className="font-medium text-sm">Toque e Complete</span>
+                  <p className="text-xs text-muted-foreground">Sem digitação, toque nas palavras</p>
+                </div>
+              </button>
+
+              {/* Karaoke Mode */}
+              <button
+                onClick={() => handleModeSelect('karaoke')}
+                className="flex items-start gap-3 p-3 rounded-lg border-2 border-border text-left transition-all hover:border-primary/50 hover:bg-primary/5"
+              >
+                <div className="w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center shrink-0">
+                  <Music className="w-4 h-4 text-pink-600" />
+                </div>
+                <div>
+                  <span className="font-medium text-sm">Karaokê Visual</span>
+                  <p className="text-xs text-muted-foreground">Acompanhe palavra por palavra</p>
+                </div>
+              </button>
+
+              {/* Visual Builder Mode */}
+              <button
+                onClick={() => handleModeSelect('visual')}
+                className="flex items-start gap-3 p-3 rounded-lg border-2 border-border text-left transition-all hover:border-primary/50 hover:bg-primary/5"
+              >
+                <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center shrink-0">
+                  <Blocks className="w-4 h-4 text-indigo-600" />
+                </div>
+                <div>
+                  <span className="font-medium text-sm">Construção Visual</span>
+                  <p className="text-xs text-muted-foreground">Monte o texto com blocos</p>
+                </div>
+              </button>
+
+              {/* Listen & Repeat Mode */}
+              <button
+                onClick={() => handleModeSelect('listen')}
+                className="flex items-start gap-3 p-3 rounded-lg border-2 border-border text-left transition-all hover:border-primary/50 hover:bg-primary/5 sm:col-span-2"
+              >
+                <div className="w-8 h-8 rounded-full bg-cyan-100 flex items-center justify-center shrink-0">
+                  <Headphones className="w-4 h-4 text-cyan-600" />
+                </div>
+                <div>
+                  <span className="font-medium text-sm">Escuta e Repete</span>
+                  <p className="text-xs text-muted-foreground">Áudio primeiro, grave sua voz</p>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {/* Accessibility Settings */}
+          <div className="mt-4 pt-4 border-t border-border flex justify-center">
+            <AccessibilitySettings />
+          </div>
         </div>
       </div>
     );
+  }
+
+  // Render inclusive modes directly
+  if (studyMode === 'microlearning') {
+    return (
+      <div className="bg-card rounded-xl border border-border shadow-soft p-6">
+        <MicrolearningMode
+          text={currentItem.text}
+          onComplete={(correct) => {
+            if (correct) {
+              setMasteredItems(prev => new Set([...prev, currentIndex]));
+            }
+            handleNext();
+          }}
+          pauseDuration={preferences.pauseBetweenChunks}
+        />
+      </div>
+    );
+  }
+
+  if (studyMode === 'tap') {
+    return (
+      <div className="bg-card rounded-xl border border-border shadow-soft p-6">
+        <TapComplete
+          text={currentItem.text}
+          onComplete={(correct) => {
+            if (correct) {
+              setMasteredItems(prev => new Set([...prev, currentIndex]));
+            }
+            handleNext();
+          }}
+          onPlayAudio={handlePlayAudio}
+          audioLoading={audioLoading}
+        />
+      </div>
+    );
+  }
+
+  if (studyMode === 'karaoke') {
+    return (
+      <div className="bg-card rounded-xl border border-border shadow-soft p-6">
+        <KaraokeMode
+          text={currentItem.text}
+          onComplete={() => {
+            setMasteredItems(prev => new Set([...prev, currentIndex]));
+            handleNext();
+          }}
+        />
+      </div>
+    );
+  }
+
+  if (studyMode === 'visual') {
+    return (
+      <div className="bg-card rounded-xl border border-border shadow-soft p-6">
+        <VisualBuilder
+          text={currentItem.text}
+          onComplete={(correct) => {
+            if (correct) {
+              setMasteredItems(prev => new Set([...prev, currentIndex]));
+            }
+            handleNext();
+          }}
+          onPlayAudio={handlePlayAudio}
+          audioLoading={audioLoading}
+        />
+      </div>
+    );
+  }
+
+  if (studyMode === 'listen') {
+    return (
+      <div className="bg-card rounded-xl border border-border shadow-soft p-6">
+        <ListenRepeatMode
+          text={currentItem.text}
+          onComplete={(correct) => {
+            if (correct) {
+              setMasteredItems(prev => new Set([...prev, currentIndex]));
+            }
+            handleNext();
+          }}
+        />
+      </div>
+    );
+  }
   }
 
   // Get progress info based on mode
