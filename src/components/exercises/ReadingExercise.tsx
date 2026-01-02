@@ -1,7 +1,8 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Play, Pause, RotateCcw, Volume2 } from 'lucide-react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { Play, Pause, RotateCcw, Volume2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
+import { toast } from 'sonner';
 
 interface ReadingExerciseProps {
   text: string;
@@ -11,15 +12,18 @@ interface ReadingExerciseProps {
 
 const ReadingExercise: React.FC<ReadingExerciseProps> = ({ text, audioUrl, onComplete }) => {
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
   const [highlightedWordIndex, setHighlightedWordIndex] = useState(-1);
+  const [generatedAudioUrl, setGeneratedAudioUrl] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const words = text.split(' ');
+  const effectiveAudioUrl = audioUrl || generatedAudioUrl;
 
   useEffect(() => {
-    if (audioUrl) {
-      audioRef.current = new Audio(audioUrl);
+    if (effectiveAudioUrl) {
+      audioRef.current = new Audio(effectiveAudioUrl);
       audioRef.current.addEventListener('timeupdate', handleTimeUpdate);
       audioRef.current.addEventListener('ended', handleEnded);
     }
@@ -31,7 +35,16 @@ const ReadingExercise: React.FC<ReadingExerciseProps> = ({ text, audioUrl, onCom
         audioRef.current.removeEventListener('ended', handleEnded);
       }
     };
-  }, [audioUrl]);
+  }, [effectiveAudioUrl]);
+
+  // Cleanup generated audio URL on unmount
+  useEffect(() => {
+    return () => {
+      if (generatedAudioUrl) {
+        URL.revokeObjectURL(generatedAudioUrl);
+      }
+    };
+  }, [generatedAudioUrl]);
 
   const handleTimeUpdate = () => {
     if (audioRef.current) {
@@ -49,6 +62,39 @@ const ReadingExercise: React.FC<ReadingExerciseProps> = ({ text, audioUrl, onCom
     setHighlightedWordIndex(-1);
     onComplete?.();
   };
+
+  const generateAudio = useCallback(async () => {
+    setIsGenerating(true);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({ text }),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Falha ao gerar áudio');
+      }
+
+      const audioBlob = await response.blob();
+      const url = URL.createObjectURL(audioBlob);
+      setGeneratedAudioUrl(url);
+      toast.success('Áudio gerado com sucesso!');
+    } catch (error) {
+      console.error('Error generating audio:', error);
+      toast.error('Erro ao gerar áudio. Tente novamente.');
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [text]);
 
   const togglePlay = () => {
     if (audioRef.current) {
@@ -90,7 +136,7 @@ const ReadingExercise: React.FC<ReadingExerciseProps> = ({ text, audioUrl, onCom
       </div>
 
       {/* Audio Controls */}
-      {audioUrl ? (
+      {effectiveAudioUrl ? (
         <div className="bg-muted/50 rounded-xl p-4">
           <div className="flex items-center gap-4">
             <Button
@@ -129,10 +175,29 @@ const ReadingExercise: React.FC<ReadingExerciseProps> = ({ text, audioUrl, onCom
           </div>
         </div>
       ) : (
-        <div className="bg-muted/50 rounded-xl p-4 text-center">
-          <p className="text-sm text-muted-foreground">
-            Áudio será disponibilizado em breve via integração ElevenLabs
-          </p>
+        <div className="bg-muted/50 rounded-xl p-4">
+          <div className="flex flex-col items-center gap-3">
+            <p className="text-sm text-muted-foreground text-center">
+              Clique para ouvir a pronúncia correta em Yorubá
+            </p>
+            <Button
+              onClick={generateAudio}
+              disabled={isGenerating}
+              className="gap-2"
+            >
+              {isGenerating ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Gerando áudio...
+                </>
+              ) : (
+                <>
+                  <Volume2 className="w-4 h-4" />
+                  Gerar Áudio
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       )}
     </div>
