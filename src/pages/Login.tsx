@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
+import loginBg from '@/assets/login-bg.jpg';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -145,12 +146,20 @@ const Login: React.FC = () => {
           </div>
         </div>
 
-        <div className="hidden lg:flex flex-1 gradient-hero pattern-adinkra items-center justify-center p-12">
-          <div className="max-w-lg text-center text-white">
-            <h2 className="font-serif text-4xl font-bold mb-6">
+        <div 
+          className="hidden lg:flex flex-1 relative items-center justify-center p-12"
+          style={{
+            backgroundImage: `url(${loginBg})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+          }}
+        >
+          <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/40 to-black/60" />
+          <div className="relative max-w-lg text-center text-white z-10">
+            <h2 className="font-serif text-4xl font-bold mb-6 drop-shadow-lg">
               "A segurança é a fortaleza do sábio."
             </h2>
-            <p className="text-white/70 text-lg">
+            <p className="text-white/70 text-lg drop-shadow-md">
               — Provérbio Yorubá
             </p>
           </div>
@@ -253,12 +262,20 @@ const Login: React.FC = () => {
       </div>
 
       {/* Right Side - Decorative */}
-      <div className="hidden lg:flex flex-1 gradient-hero pattern-adinkra items-center justify-center p-12">
-        <div className="max-w-lg text-center text-white">
-          <h2 className="font-serif text-4xl font-bold mb-6">
+      <div 
+        className="hidden lg:flex flex-1 relative items-center justify-center p-12"
+        style={{
+          backgroundImage: `url(${loginBg})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/40 to-black/60" />
+        <div className="relative max-w-lg text-center text-white z-10">
+          <h2 className="font-serif text-4xl font-bold mb-6 drop-shadow-lg">
             "O conhecimento é a chave que abre todas as portas."
           </h2>
-          <p className="text-white/70 text-lg">
+          <p className="text-white/70 text-lg drop-shadow-md">
             — Provérbio Yorubá
           </p>
         </div>
