@@ -45,6 +45,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import MediaUploader from '@/components/admin/MediaUploader';
 import BannerGenerator from '@/components/admin/BannerGenerator';
+import BatchBannerGenerator from '@/components/admin/BatchBannerGenerator';
 
 interface Module {
   id: string;
@@ -309,6 +310,10 @@ const AdminModules: React.FC = () => {
               Crie, edite e organize os módulos da plataforma
             </p>
           </div>
+          <BatchBannerGenerator 
+            modules={modules}
+            onBannersGenerated={fetchModules}
+          />
           <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
             <DialogTrigger asChild>
               <Button className="gradient-gold text-secondary shadow-gold">
