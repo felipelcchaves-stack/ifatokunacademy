@@ -373,4 +373,34 @@
     transform: translateY(-2px);
     box-shadow: var(--shadow-forest);
   }
+
+  /* Reading Exercise - Karaoke Style Highlighting */
+  .reading-word {
+    @apply inline transition-all duration-200 ease-out rounded px-0.5;
+  }
+
+  .reading-word-future {
+    @apply text-foreground;
+  }
+
+  .reading-word-past {
+    @apply text-muted-foreground;
+  }
+
+  .reading-word-current {
+    @apply text-primary font-semibold;
+    background: hsl(var(--primary) / 0.15);
+    animation: word-pulse 0.6s ease-in-out infinite alternate;
+  }
+
+  @keyframes word-pulse {
+    0% {
+      background: hsl(var(--primary) / 0.15);
+      transform: scale(1);
+    }
+    100% {
+      background: hsl(var(--primary) / 0.25);
+      transform: scale(1.02);
+    }
+  }
 }
