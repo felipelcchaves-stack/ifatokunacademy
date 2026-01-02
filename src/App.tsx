@@ -32,6 +32,7 @@ import AdminUsers from "./pages/admin/AdminUsers";
 import AdminInvites from "./pages/admin/AdminInvites";
 import AdminReports from "./pages/admin/AdminReports";
 import UserSettings from "./pages/UserSettings";
+import ModuleRetentionReview from "./pages/ModuleRetentionReview";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -71,6 +72,11 @@ const App = () => (
               <Route path="/module/:moduleId/quiz" element={
                 <ProtectedRoute>
                   <ModuleQuiz />
+                </ProtectedRoute>
+              } />
+              <Route path="/module/:moduleId/retention" element={
+                <ProtectedRoute>
+                  <ModuleRetentionReview />
                 </ProtectedRoute>
               } />
               <Route path="/modules" element={

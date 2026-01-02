@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Play, BookOpen, Clock, ChevronRight, Lock, Sparkles, AlertCircle } from 'lucide-react';
+import { Play, BookOpen, Clock, ChevronRight, Lock, Sparkles, AlertCircle, Brain } from 'lucide-react';
 import { Module } from '@/data/mockData';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -12,6 +12,8 @@ interface ModuleCardProps {
   variant?: 'default' | 'compact' | 'hero';
   isLocked?: boolean;
   unlockRequirement?: string;
+  retentionStatus?: 'fresh' | 'due_soon' | 'overdue' | 'not_started';
+  retentionScore?: number;
 }
 
 const ModuleCard: React.FC<ModuleCardProps> = ({ 
@@ -19,6 +21,8 @@ const ModuleCard: React.FC<ModuleCardProps> = ({
   variant = 'default',
   isLocked = false,
   unlockRequirement,
+  retentionStatus = 'not_started',
+  retentionScore,
 }) => {
   const navigate = useNavigate();
 
@@ -49,6 +53,62 @@ const ModuleCard: React.FC<ModuleCardProps> = ({
   // Determine if this is a thematic module with specific lock reason
   const isThematicLocked = isLocked && module.type === 'thematic';
   const lockMessage = unlockRequirement || 'Bloqueado';
+  
+  // Check if module is completed (has progress = 100)
+  const isCompleted = module.progress === 100;
+
+  // Retention badge component
+  const RetentionBadge = () => {
+    if (!isCompleted || retentionStatus === 'not_started') return null;
+    
+    const getRetentionConfig = () => {
+      switch (retentionStatus) {
+        case 'fresh':
+          return {
+            icon: '💚',
+            text: 'Memória Ativa',
+            className: 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800',
+          };
+        case 'due_soon':
+          return {
+            icon: '💛',
+            text: 'Revisar em Breve',
+            className: 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800',
+          };
+        case 'overdue':
+          return {
+            icon: '❤️',
+            text: 'Risco de Esquecimento',
+            className: 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800',
+          };
+        default:
+          return null;
+      }
+    };
+    
+    const config = getRetentionConfig();
+    if (!config) return null;
+    
+    return (
+      <div 
+        className={cn(
+          "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border cursor-pointer hover:opacity-80 transition-opacity",
+          config.className
+        )}
+        onClick={(e) => {
+          e.stopPropagation();
+          navigate(`/module/${module.id}/retention`);
+        }}
+      >
+        <span>{config.icon}</span>
+        <span>{config.text}</span>
+        {retentionScore !== undefined && (
+          <span className="opacity-70">({retentionScore}%)</span>
+        )}
+        <Brain className="w-3 h-3 ml-0.5" />
+      </div>
+    );
+  };
 
   if (variant === 'compact') {
     return (
@@ -198,6 +258,13 @@ const ModuleCard: React.FC<ModuleCardProps> = ({
               <Progress value={module.progress} className="h-3" />
             </div>
           )}
+          
+          {/* Retention Badge for completed modules */}
+          {isCompleted && retentionStatus !== 'not_started' && (
+            <div className="mb-5">
+              <RetentionBadge />
+            </div>
+          )}
 
           <TooltipProvider>
             <Tooltip>
@@ -341,6 +408,13 @@ const ModuleCard: React.FC<ModuleCardProps> = ({
               <span className="text-xs font-medium text-forest-600">{module.progress}%</span>
             </div>
             <Progress value={module.progress} className="h-2" />
+          </div>
+        )}
+        
+        {/* Retention Badge for completed modules */}
+        {isCompleted && retentionStatus !== 'not_started' && (
+          <div className="mb-4">
+            <RetentionBadge />
           </div>
         )}
 

@@ -23,7 +23,7 @@ interface UseSpacedRepetitionReturn {
   allItems: SpacedRepetitionItem[];
   loading: boolean;
   dueCount: number;
-  addItem: (exerciseId: string, itemIndex: number, itemText: string) => Promise<void>;
+  addItem: (exerciseId: string, itemIndex: number, itemText: string, options?: { lessonId?: string; moduleId?: string; easeFactor?: number }) => Promise<void>;
   recordReview: (itemId: string, wasCorrect: boolean) => Promise<void>;
   removeItem: (itemId: string) => Promise<void>;
   refreshItems: () => Promise<void>;
@@ -125,7 +125,12 @@ export function useSpacedRepetition(exerciseId?: string): UseSpacedRepetitionRet
     fetchItems();
   }, [fetchItems]);
 
-  const addItem = async (exerciseId: string, itemIndex: number, itemText: string) => {
+  const addItem = async (
+    exerciseId: string, 
+    itemIndex: number, 
+    itemText: string,
+    options?: { lessonId?: string; moduleId?: string; easeFactor?: number }
+  ) => {
     if (!user?.id) return;
 
     try {
@@ -138,8 +143,10 @@ export function useSpacedRepetition(exerciseId?: string): UseSpacedRepetitionRet
           item_text: itemText.substring(0, 200), // Truncar para identificação
           next_review_at: new Date().toISOString(),
           interval_days: 1,
-          ease_factor: 2.5,
-          repetitions: 0
+          ease_factor: options?.easeFactor ?? 2.5,
+          repetitions: 0,
+          lesson_id: options?.lessonId || null,
+          module_id: options?.moduleId || null,
         }, {
           onConflict: 'user_id,exercise_id,item_index'
         });

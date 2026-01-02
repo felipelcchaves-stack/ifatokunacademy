@@ -338,6 +338,63 @@ export type Database = {
           },
         ]
       }
+      module_retention_schedule: {
+        Row: {
+          created_at: string | null
+          id: string
+          items_correct: number | null
+          items_reviewed: number | null
+          last_review_at: string | null
+          module_id: string
+          next_review_at: string
+          retention_score: number | null
+          review_count: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          items_correct?: number | null
+          items_reviewed?: number | null
+          last_review_at?: string | null
+          module_id: string
+          next_review_at?: string
+          retention_score?: number | null
+          review_count?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          items_correct?: number | null
+          items_reviewed?: number | null
+          last_review_at?: string | null
+          module_id?: string
+          next_review_at?: string
+          retention_score?: number | null
+          review_count?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "module_retention_schedule_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "module_retention_schedule_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       modules: {
         Row: {
           color: string | null
@@ -450,6 +507,8 @@ export type Database = {
           interval_days: number
           item_index: number
           item_text: string
+          lesson_id: string | null
+          module_id: string | null
           next_review_at: string
           repetitions: number
           total_reviews: number
@@ -465,6 +524,8 @@ export type Database = {
           interval_days?: number
           item_index: number
           item_text: string
+          lesson_id?: string | null
+          module_id?: string | null
           next_review_at?: string
           repetitions?: number
           total_reviews?: number
@@ -480,6 +541,8 @@ export type Database = {
           interval_days?: number
           item_index?: number
           item_text?: string
+          lesson_id?: string | null
+          module_id?: string | null
           next_review_at?: string
           repetitions?: number
           total_reviews?: number
@@ -492,6 +555,20 @@ export type Database = {
             columns: ["exercise_id"]
             isOneToOne: false
             referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "spaced_repetition_items_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "spaced_repetition_items_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
             referencedColumns: ["id"]
           },
           {

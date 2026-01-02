@@ -18,6 +18,7 @@ import { CompactXP } from '@/components/engagement/CompactXP';
 import { HeroStudyTrack } from '@/components/dashboard/HeroStudyTrack';
 import { AnimatedCounter } from '@/components/engagement/AnimatedCounter';
 import { StudyPlanSummaryCard } from '@/components/study-plan/StudyPlanSummaryCard';
+import ModuleRetentionAlert from '@/components/dashboard/ModuleRetentionAlert';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSpacedRepetition } from '@/hooks/useSpacedRepetition';
@@ -150,9 +151,12 @@ const Dashboard: React.FC = () => {
               {/* Study Plan Summary */}
               <StudyPlanSummaryCard />
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {/* Daily Goal */}
                 <DailyGoalProgress />
+                
+                {/* Module Retention Alert */}
+                <ModuleRetentionAlert />
                 
                 {/* Spaced Review */}
                 <div className="group relative bg-card rounded-2xl p-6 border border-border shadow-soft hover:shadow-elevated transition-all duration-300 overflow-hidden">
