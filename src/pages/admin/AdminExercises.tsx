@@ -17,7 +17,8 @@ import {
   CreditCard,
   Video,
   Brain,
-  HelpCircle
+  HelpCircle,
+  Sparkles
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -57,6 +58,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import ExerciseEditor from '@/components/admin/ExerciseEditor';
 import QuizExerciseEditor from '@/components/admin/QuizExerciseEditor';
+import PedagogicalExerciseGenerator from '@/components/admin/PedagogicalExerciseGenerator';
 
 interface Exercise {
   id: string;
@@ -112,6 +114,9 @@ const AdminExercises: React.FC = () => {
   
   // Delete confirmation state
   const [deleteConfirmExercise, setDeleteConfirmExercise] = useState<Exercise | null>(null);
+  
+  // Pedagogical generator state
+  const [isPedagogicalGeneratorOpen, setIsPedagogicalGeneratorOpen] = useState(false);
 
   useEffect(() => {
     if (moduleId && lessonId) {
@@ -491,13 +496,23 @@ const AdminExercises: React.FC = () => {
               Crie e gerencie os exercícios desta lição
             </p>
           </div>
-          <Button 
-            className="gradient-gold text-secondary shadow-gold"
-            onClick={() => setIsCreateDialogOpen(true)}
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Novo Exercício
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline"
+              onClick={() => setIsPedagogicalGeneratorOpen(true)}
+              className="border-primary/50 text-primary hover:bg-primary/10"
+            >
+              <Sparkles className="w-4 h-4 mr-2" />
+              Gerar Método Pedagógico
+            </Button>
+            <Button 
+              className="gradient-gold text-secondary shadow-gold"
+              onClick={() => setIsCreateDialogOpen(true)}
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Novo Exercício
+            </Button>
+          </div>
         </div>
 
         {/* Search */}
@@ -737,6 +752,16 @@ const AdminExercises: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Pedagogical Exercise Generator */}
+      <PedagogicalExerciseGenerator
+        lessonId={lessonId!}
+        lessonTitle={lesson.title}
+        existingExercises={exercises.map(e => ({ id: e.id, title: e.title, type: e.type }))}
+        open={isPedagogicalGeneratorOpen}
+        onOpenChange={setIsPedagogicalGeneratorOpen}
+        onExercisesGenerated={fetchData}
+      />
     </div>
   );
 };
