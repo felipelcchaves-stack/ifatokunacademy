@@ -19,6 +19,7 @@ import ModuleQuiz from "./pages/ModuleQuiz";
 import LessonView from "./pages/LessonView";
 import SpacedReview from "./pages/SpacedReview";
 import SpacedReviewStats from "./pages/SpacedReviewStats";
+import ChallengeMode from "./pages/ChallengeMode";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminModules from "./pages/admin/AdminModules";
 import AdminLessons from "./pages/admin/AdminLessons";
@@ -79,6 +80,11 @@ const App = () => (
               <Route path="/review/stats" element={
                 <ProtectedRoute>
                   <SpacedReviewStats />
+                </ProtectedRoute>
+              } />
+              <Route path="/challenge" element={
+                <ProtectedRoute>
+                  <ChallengeMode />
                 </ProtectedRoute>
               } />
               
