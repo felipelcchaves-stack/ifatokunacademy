@@ -915,9 +915,13 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
                 <div className="mb-4 w-full max-w-md">
                   <MemorizationHints
                     text={expectedText}
+                    exerciseId={exerciseId}
+                    lessonId={lessonId}
+                    moduleId={moduleId}
                     onHintUsed={handleHintUsed}
                     onPlayAudio={handlePlayAudio}
                     audioLoading={audioLoading}
+                    showAudioSourceSelector={true}
                   />
                 </div>
               )}
