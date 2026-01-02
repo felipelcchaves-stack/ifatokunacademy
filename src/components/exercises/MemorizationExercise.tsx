@@ -3,19 +3,21 @@ import {
   ChevronLeft, 
   ChevronRight, 
   Eye, 
-  EyeOff, 
   RotateCcw, 
   CheckCircle,
   Lightbulb,
   Brain,
   Send,
   XCircle,
-  AlertCircle
+  AlertCircle,
+  Calendar
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
 import { calculateSimilarity, getTextRemainder, getTextStart } from '@/lib/textSimilarity';
+import { useSpacedRepetition } from '@/hooks/useSpacedRepetition';
+import { useToast } from '@/hooks/use-toast';
 
 interface MemorizationItem {
   text: string;
@@ -25,13 +27,14 @@ interface MemorizationItem {
 
 interface MemorizationExerciseProps {
   items: MemorizationItem[];
+  exerciseId?: string; // ID do exercício para salvar na repetição espaçada
   onComplete?: () => void;
 }
 
 const SIMILARITY_THRESHOLD = 80; // Mínimo de 80% de acurácia para considerar correto
 const START_WORD_COUNT = 4; // Quantidade de palavras iniciais mostradas
 
-const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({ items, onComplete }) => {
+const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({ items, exerciseId, onComplete }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showContent, setShowContent] = useState(false);
   const [showHint, setShowHint] = useState(false);
@@ -46,6 +49,10 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({ items, onCo
     showResult: boolean;
   } | null>(null);
   const [attempts, setAttempts] = useState(0);
+
+  // Hook de repetição espaçada
+  const { addItem, dueCount } = useSpacedRepetition(exerciseId);
+  const { toast } = useToast();
 
   const currentItem = items[currentIndex];
   const progress = (masteredItems.size / items.length) * 100;
@@ -85,7 +92,23 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({ items, onCo
     }
   };
 
-  const handleValidate = () => {
+  // Adiciona item à lista de repetição espaçada quando erra
+  const addToSpacedRepetition = async (itemIndex: number, itemText: string) => {
+    if (!exerciseId) return;
+    
+    try {
+      await addItem(exerciseId, itemIndex, itemText);
+      toast({
+        title: "Adicionado à revisão",
+        description: "Este item será revisado novamente em breve.",
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error('Error adding to spaced repetition:', error);
+    }
+  };
+
+  const handleValidate = async () => {
     if (!userInput.trim()) return;
     
     const similarity = calculateSimilarity(expectedText, userInput);
@@ -102,6 +125,9 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({ items, onCo
     if (isCorrect) {
       setMasteredItems(prev => new Set([...prev, currentIndex]));
       setShowContent(true);
+    } else {
+      // Adiciona à repetição espaçada quando erra
+      await addToSpacedRepetition(currentIndex, currentItem.text);
     }
   };
 

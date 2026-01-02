@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, Clock, Award, TrendingUp, Play, Loader2, Lock } from 'lucide-react';
+import { BookOpen, Clock, Award, TrendingUp, Play, Loader2, Lock, Brain, Calendar } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import ModuleCard from '@/components/modules/ModuleCard';
@@ -10,6 +10,7 @@ import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useSpacedRepetition } from '@/hooks/useSpacedRepetition';
 
 interface Module {
   id: string;
@@ -40,6 +41,9 @@ const Dashboard: React.FC = () => {
   const [completions, setCompletions] = useState<ModuleCompletion[]>([]);
   const [userProgress, setUserProgress] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
+  
+  // Hook de repetição espaçada
+  const { dueCount } = useSpacedRepetition();
 
   const displayName = profile?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || 'Estudante';
 
@@ -281,6 +285,40 @@ const Dashboard: React.FC = () => {
                           Continuar
                         </Button>
                       </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Spaced Repetition Review */}
+            {dueCount > 0 && (
+              <div className="mb-12">
+                <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 rounded-2xl p-6 md:p-8 border border-amber-200 dark:border-amber-800">
+                  <div className="flex flex-col md:flex-row gap-6 items-start md:items-center">
+                    <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center flex-shrink-0">
+                      <Brain className="w-8 h-8 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Calendar className="w-4 h-4 text-amber-600" />
+                        <span className="text-xs font-medium text-amber-600 uppercase tracking-wider">
+                          Revisão Espaçada
+                        </span>
+                      </div>
+                      <h3 className="font-serif text-xl font-semibold text-foreground mt-1">
+                        {dueCount} {dueCount === 1 ? 'item' : 'itens'} para revisar
+                      </h3>
+                      <p className="text-muted-foreground text-sm mt-1 mb-4">
+                        Revise agora para consolidar sua memória de longo prazo.
+                      </p>
+                      <Button 
+                        className="gradient-gold text-secondary font-semibold shadow-gold"
+                        onClick={() => navigate('/review')}
+                      >
+                        <Brain className="w-4 h-4 mr-2" />
+                        Iniciar Revisão
+                      </Button>
                     </div>
                   </div>
                 </div>

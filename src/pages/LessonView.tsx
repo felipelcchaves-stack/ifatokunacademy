@@ -219,6 +219,7 @@ const LessonView: React.FC = () => {
         return (
           <MemorizationExercise 
             items={items}
+            exerciseId={exercise.id}
             onComplete={() => handleExerciseComplete()}
           />
         );
