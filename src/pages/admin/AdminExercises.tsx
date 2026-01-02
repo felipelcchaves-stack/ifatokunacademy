@@ -95,6 +95,10 @@ const AdminExercises: React.FC = () => {
   const [editingExercise, setEditingExercise] = useState<Exercise | null>(null);
   const [selectedType, setSelectedType] = useState<Exercise['type'] | ''>('');
   const [newExerciseTitle, setNewExerciseTitle] = useState('');
+  
+  // Drag and drop state
+  const [draggedExercise, setDraggedExercise] = useState<Exercise | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (moduleId && lessonId) {
@@ -306,9 +310,100 @@ const AdminExercises: React.FC = () => {
     return exerciseType?.label || type;
   };
 
-  const filteredExercises = exercises.filter(exercise =>
-    exercise.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Drag and drop handlers
+  const handleDragStart = (e: React.DragEvent, exercise: Exercise) => {
+    setDraggedExercise(exercise);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', exercise.id);
+    // Add a slight delay to allow the drag image to be captured
+    setTimeout(() => {
+      const target = e.target as HTMLElement;
+      target.style.opacity = '0.5';
+    }, 0);
+  };
+
+  const handleDragEnd = (e: React.DragEvent) => {
+    const target = e.target as HTMLElement;
+    target.style.opacity = '1';
+    setDraggedExercise(null);
+    setDragOverIndex(null);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverIndex !== index) {
+      setDragOverIndex(index);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    // Only reset if leaving the container entirely
+    const relatedTarget = e.relatedTarget as HTMLElement;
+    if (!relatedTarget || !e.currentTarget.contains(relatedTarget)) {
+      setDragOverIndex(null);
+    }
+  };
+
+  const handleDrop = async (e: React.DragEvent, targetIndex: number) => {
+    e.preventDefault();
+    setDragOverIndex(null);
+    
+    if (!draggedExercise) return;
+    
+    const currentIndex = exercises.findIndex(ex => ex.id === draggedExercise.id);
+    if (currentIndex === targetIndex) return;
+
+    // Reorder locally first for instant feedback
+    const newExercises = [...exercises];
+    const [removed] = newExercises.splice(currentIndex, 1);
+    newExercises.splice(targetIndex, 0, removed);
+    
+    // Update display_order for all affected exercises
+    const updatedExercises = newExercises.map((ex, idx) => ({
+      ...ex,
+      display_order: idx,
+    }));
+    
+    setExercises(updatedExercises);
+    
+    // Persist to database
+    try {
+      const updates = updatedExercises.map((ex, idx) => ({
+        id: ex.id,
+        display_order: idx,
+      }));
+      
+      // Update each exercise's display_order
+      for (const update of updates) {
+        const { error } = await supabase
+          .from('exercises')
+          .update({ display_order: update.display_order })
+          .eq('id', update.id);
+        
+        if (error) throw error;
+      }
+      
+      toast({
+        title: 'Ordem atualizada',
+        description: 'A ordem dos exercícios foi salva.',
+      });
+    } catch (error: any) {
+      // Revert on error
+      fetchData();
+      toast({
+        title: 'Erro ao reordenar',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const filteredExercises = searchQuery
+    ? exercises.filter(exercise =>
+        exercise.title.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : exercises;
 
   if (loading) {
     return (
@@ -421,15 +516,43 @@ const AdminExercises: React.FC = () => {
             )}
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2">
+            {searchQuery && (
+              <p className="text-sm text-muted-foreground mb-4">
+                Arraste e solte desativado durante a busca
+              </p>
+            )}
             {filteredExercises.map((exercise, index) => {
               const Icon = getExerciseIcon(exercise.type);
+              const isDragging = draggedExercise?.id === exercise.id;
+              const isDropTarget = dragOverIndex === index && !isDragging;
+              
               return (
                 <div 
                   key={exercise.id}
-                  className="bg-card rounded-xl border border-border shadow-soft p-4 flex items-center gap-4 group hover:shadow-elevated transition-shadow"
+                  draggable={!searchQuery}
+                  onDragStart={(e) => handleDragStart(e, exercise)}
+                  onDragEnd={handleDragEnd}
+                  onDragOver={(e) => !searchQuery && handleDragOver(e, index)}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => !searchQuery && handleDrop(e, index)}
+                  className={`
+                    bg-card rounded-xl border shadow-soft p-4 flex items-center gap-4 group 
+                    transition-all duration-200
+                    ${isDragging ? 'opacity-50 scale-[0.98]' : 'hover:shadow-elevated'}
+                    ${isDropTarget 
+                      ? 'border-primary border-2 bg-primary/5 translate-y-1' 
+                      : 'border-border'
+                    }
+                    ${!searchQuery ? 'cursor-move' : ''}
+                  `}
                 >
-                  <div className="cursor-grab text-muted-foreground hover:text-foreground">
+                  <div 
+                    className={`
+                      text-muted-foreground transition-colors
+                      ${!searchQuery ? 'cursor-grab active:cursor-grabbing hover:text-foreground' : 'opacity-30'}
+                    `}
+                  >
                     <GripVertical className="w-5 h-5" />
                   </div>
                   
@@ -441,7 +564,7 @@ const AdminExercises: React.FC = () => {
                     <div className="flex items-center gap-2">
                       <h3 className="font-semibold text-foreground truncate">{exercise.title}</h3>
                       {exercise.is_published ? (
-                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
                           Publicado
                         </span>
                       ) : (
