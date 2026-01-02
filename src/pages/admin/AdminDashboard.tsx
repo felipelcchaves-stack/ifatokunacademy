@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -10,25 +10,158 @@ import {
   LogOut,
   ChevronRight,
   Plus,
-  FileText
+  FileText,
+  CheckCircle,
+  Clock
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import { proficiencyModules, thematicModules, mockUsers } from '@/data/mockData';
+import { supabase } from '@/integrations/supabase/client';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
+
+interface ModuleData {
+  id: string;
+  title: string;
+  type: string;
+  is_published: boolean;
+  created_at: string;
+  color: string | null;
+  lesson_count: number;
+}
+
+interface UserData {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+  created_at: string;
+  is_admin: boolean;
+}
+
+interface Stats {
+  totalModules: number;
+  activeUsers: number;
+  totalLessons: number;
+  completionRate: number;
+}
 
 const AdminDashboard: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, profile, signOut, isAdmin } = useAuth();
 
+  const [modules, setModules] = useState<ModuleData[]>([]);
+  const [users, setUsers] = useState<UserData[]>([]);
+  const [stats, setStats] = useState<Stats>({
+    totalModules: 0,
+    activeUsers: 0,
+    totalLessons: 0,
+    completionRate: 0
+  });
+  const [loading, setLoading] = useState(true);
+
   const displayName = profile?.full_name || user?.email?.split('@')[0] || 'Admin';
 
   // Redirect if not admin - handled by ProtectedRoute now
-  React.useEffect(() => {
+  useEffect(() => {
     if (!isAdmin) {
       navigate('/dashboard');
     }
   }, [isAdmin, navigate]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        // Fetch modules with lesson count
+        const { data: modulesData, error: modulesError } = await supabase
+          .from('modules')
+          .select('id, title, type, is_published, created_at, color')
+          .order('created_at', { ascending: false })
+          .limit(4);
+
+        if (modulesError) throw modulesError;
+
+        // Get lesson count for each module
+        const modulesWithCount = await Promise.all(
+          (modulesData || []).map(async (module) => {
+            const { count } = await supabase
+              .from('lessons')
+              .select('*', { count: 'exact', head: true })
+              .eq('module_id', module.id);
+            
+            return {
+              ...module,
+              lesson_count: count || 0
+            };
+          })
+        );
+
+        setModules(modulesWithCount);
+
+        // Fetch profiles/users
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, full_name, email, created_at')
+          .order('created_at', { ascending: false })
+          .limit(5);
+
+        if (profilesError) throw profilesError;
+
+        // Check admin status for each user
+        const usersWithAdmin = await Promise.all(
+          (profilesData || []).map(async (userProfile) => {
+            const { data: isAdminResult } = await supabase
+              .rpc('is_admin', { user_id: userProfile.id });
+            
+            return {
+              ...userProfile,
+              is_admin: isAdminResult || false
+            };
+          })
+        );
+
+        setUsers(usersWithAdmin);
+
+        // Fetch stats
+        const { count: totalModules } = await supabase
+          .from('modules')
+          .select('*', { count: 'exact', head: true });
+
+        const { count: totalUsers } = await supabase
+          .from('profiles')
+          .select('*', { count: 'exact', head: true });
+
+        const { count: totalLessons } = await supabase
+          .from('lessons')
+          .select('*', { count: 'exact', head: true });
+
+        const { count: totalCompletions } = await supabase
+          .from('module_completions')
+          .select('*', { count: 'exact', head: true });
+
+        // Calculate completion rate (completions / (users * modules) * 100)
+        const possibleCompletions = (totalUsers || 0) * (totalModules || 0);
+        const completionRate = possibleCompletions > 0 
+          ? Math.round(((totalCompletions || 0) / possibleCompletions) * 100) 
+          : 0;
+
+        setStats({
+          totalModules: totalModules || 0,
+          activeUsers: totalUsers || 0,
+          totalLessons: totalLessons || 0,
+          completionRate
+        });
+
+      } catch (error) {
+        console.error('Error fetching admin data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   const sidebarItems = [
     { icon: LayoutDashboard, label: 'Visão Geral', path: '/admin' },
@@ -40,11 +173,11 @@ const AdminDashboard: React.FC = () => {
     { icon: Settings, label: 'Configurações', path: '/admin/settings' },
   ];
 
-  const stats = [
-    { label: 'Total de Módulos', value: proficiencyModules.length + thematicModules.length, change: '+2 este mês' },
-    { label: 'Usuários Ativos', value: mockUsers.length, change: '+15 esta semana' },
-    { label: 'Lições Criadas', value: 45, change: '+8 este mês' },
-    { label: 'Taxa de Conclusão', value: '68%', change: '+5% vs. mês anterior' },
+  const statsDisplay = [
+    { label: 'Total de Módulos', value: stats.totalModules.toString(), change: 'Criados no sistema' },
+    { label: 'Usuários Ativos', value: stats.activeUsers.toString(), change: 'Cadastrados' },
+    { label: 'Lições Criadas', value: stats.totalLessons.toString(), change: 'No total' },
+    { label: 'Taxa de Conclusão', value: `${stats.completionRate}%`, change: 'Média geral' },
   ];
 
   const handleLogout = async () => {
@@ -55,6 +188,13 @@ const AdminDashboard: React.FC = () => {
   const isActive = (path: string) => {
     if (path === '/admin') return location.pathname === '/admin';
     return location.pathname.startsWith(path);
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: 'short'
+    });
   };
 
   // If viewing a specific admin page, render the outlet
@@ -151,13 +291,23 @@ const AdminDashboard: React.FC = () => {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {stats.map((stat, index) => (
-            <div key={index} className="bg-card rounded-xl p-6 border border-border shadow-soft">
-              <p className="text-sm text-muted-foreground mb-1">{stat.label}</p>
-              <p className="text-3xl font-bold text-foreground">{stat.value}</p>
-              <p className="text-xs text-primary mt-2">{stat.change}</p>
-            </div>
-          ))}
+          {loading ? (
+            Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="bg-card rounded-xl p-6 border border-border shadow-soft">
+                <Skeleton className="h-4 w-24 mb-2" />
+                <Skeleton className="h-8 w-16 mb-2" />
+                <Skeleton className="h-3 w-20" />
+              </div>
+            ))
+          ) : (
+            statsDisplay.map((stat, index) => (
+              <div key={index} className="bg-card rounded-xl p-6 border border-border shadow-soft">
+                <p className="text-sm text-muted-foreground mb-1">{stat.label}</p>
+                <p className="text-3xl font-bold text-foreground">{stat.value}</p>
+                <p className="text-xs text-primary mt-2">{stat.change}</p>
+              </div>
+            ))
+          )}
         </div>
 
         {/* Quick Actions */}
@@ -171,18 +321,52 @@ const AdminDashboard: React.FC = () => {
               </Button>
             </div>
             <div className="divide-y divide-border">
-              {[...proficiencyModules, ...thematicModules].slice(0, 4).map((module) => (
-                <div key={module.id} className="flex items-center gap-4 p-4 hover:bg-muted/50 transition-colors">
-                  <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${module.color} flex items-center justify-center flex-shrink-0`}>
-                    <BookOpen className="w-5 h-5 text-white" />
+              {loading ? (
+                Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-4 p-4">
+                    <Skeleton className="w-10 h-10 rounded-lg" />
+                    <div className="flex-1">
+                      <Skeleton className="h-4 w-32 mb-2" />
+                      <Skeleton className="h-3 w-20" />
+                    </div>
+                    <Skeleton className="h-8 w-16" />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-foreground truncate">{module.title}</p>
-                    <p className="text-sm text-muted-foreground">{module.totalLessons} lições</p>
-                  </div>
-                  <Button variant="ghost" size="sm">Editar</Button>
+                ))
+              ) : modules.length === 0 ? (
+                <div className="p-8 text-center">
+                  <BookOpen className="w-12 h-12 mx-auto text-muted-foreground/30 mb-3" />
+                  <p className="text-muted-foreground mb-4">Nenhum módulo criado ainda</p>
+                  <Button variant="outline" size="sm" onClick={() => navigate('/admin/modules')}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Criar Módulo
+                  </Button>
                 </div>
-              ))}
+              ) : (
+                modules.map((module) => (
+                  <div key={module.id} className="flex items-center gap-4 p-4 hover:bg-muted/50 transition-colors">
+                    <div 
+                      className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+                      style={{ backgroundColor: module.color || '#8B5CF6' }}
+                    >
+                      <BookOpen className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-foreground truncate">{module.title}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {module.lesson_count} lições • {module.type === 'proficiency' ? 'Proficiência' : 'Temático'}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={module.is_published ? 'default' : 'secondary'} className="text-xs">
+                        {module.is_published ? 'Publicado' : 'Rascunho'}
+                      </Badge>
+                      <Button variant="ghost" size="sm" onClick={() => navigate(`/admin/modules?edit=${module.id}`)}>
+                        Editar
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 
@@ -195,24 +379,49 @@ const AdminDashboard: React.FC = () => {
               </Button>
             </div>
             <div className="divide-y divide-border">
-              {mockUsers.map((user) => (
-                <div key={user.id} className="flex items-center gap-4 p-4 hover:bg-muted/50 transition-colors">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <span className="text-sm font-medium text-primary">
-                      {user.name.charAt(0)}
-                    </span>
+              {loading ? (
+                Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-4 p-4">
+                    <Skeleton className="w-10 h-10 rounded-full" />
+                    <div className="flex-1">
+                      <Skeleton className="h-4 w-32 mb-2" />
+                      <Skeleton className="h-3 w-40" />
+                    </div>
+                    <Skeleton className="h-6 w-16" />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-foreground truncate">{user.name}</p>
-                    <p className="text-sm text-muted-foreground">{user.email}</p>
-                  </div>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    user.role === 'admin' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
-                  }`}>
-                    {user.role === 'admin' ? 'Admin' : 'Estudante'}
-                  </span>
+                ))
+              ) : users.length === 0 ? (
+                <div className="p-8 text-center">
+                  <Users className="w-12 h-12 mx-auto text-muted-foreground/30 mb-3" />
+                  <p className="text-muted-foreground">Nenhum usuário cadastrado ainda</p>
                 </div>
-              ))}
+              ) : (
+                users.map((userItem) => (
+                  <div key={userItem.id} className="flex items-center gap-4 p-4 hover:bg-muted/50 transition-colors">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <span className="text-sm font-medium text-primary">
+                        {(userItem.full_name || userItem.email || '?').charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-foreground truncate">
+                        {userItem.full_name || 'Sem nome'}
+                      </p>
+                      <p className="text-sm text-muted-foreground truncate">{userItem.email}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {userItem.is_admin && (
+                        <Badge variant="outline" className="text-primary border-primary text-xs">
+                          Admin
+                        </Badge>
+                      )}
+                      <span className="text-xs text-muted-foreground">
+                        {formatDate(userItem.created_at)}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -220,32 +429,41 @@ const AdminDashboard: React.FC = () => {
         {/* Integrations Status */}
         <div className="bg-card rounded-xl border border-border shadow-soft p-6">
           <h2 className="font-serif text-lg font-semibold text-foreground mb-6">Status das Integrações</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg">
-              <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center">
-                <span className="text-orange-600 font-bold text-sm">XI</span>
+              <div className="w-10 h-10 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
+              </div>
+              <div>
+                <p className="font-medium text-foreground">Lovable Cloud</p>
+                <p className="text-sm text-green-600 dark:text-green-400">Conectado</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg">
+              <div className="w-10 h-10 rounded-lg bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center">
+                <Clock className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
               </div>
               <div>
                 <p className="font-medium text-foreground">ElevenLabs</p>
-                <p className="text-sm text-muted-foreground">Pendente configuração</p>
+                <p className="text-sm text-yellow-600 dark:text-yellow-400">Pendente</p>
               </div>
             </div>
             <div className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg">
-              <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
-                <span className="text-green-600 font-bold text-sm">PG</span>
+              <div className="w-10 h-10 rounded-lg bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center">
+                <Clock className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
               </div>
               <div>
                 <p className="font-medium text-foreground">Pagar.me</p>
-                <p className="text-sm text-muted-foreground">Pendente configuração</p>
+                <p className="text-sm text-yellow-600 dark:text-yellow-400">Pendente</p>
               </div>
             </div>
             <div className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg">
-              <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                <span className="text-blue-600 font-bold text-sm">CG</span>
+              <div className="w-10 h-10 rounded-lg bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center">
+                <Clock className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
               </div>
               <div>
                 <p className="font-medium text-foreground">Checkout Guru</p>
-                <p className="text-sm text-muted-foreground">Pendente configuração</p>
+                <p className="text-sm text-yellow-600 dark:text-yellow-400">Pendente</p>
               </div>
             </div>
           </div>
