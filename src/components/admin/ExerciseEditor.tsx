@@ -1,12 +1,10 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowLeft, Save, Eye, EyeOff, Mic, Plus, Trash2, GripVertical, Upload } from 'lucide-react';
+import React, { useState, forwardRef } from 'react';
+import { ArrowLeft, Save, Eye, EyeOff, Mic, Plus, Trash2, GripVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import MediaUploader from './MediaUploader';
 
@@ -27,7 +25,7 @@ interface ExerciseEditorProps {
   onCancel: () => void;
 }
 
-const ExerciseEditor: React.FC<ExerciseEditorProps> = ({ exercise, onSave, onCancel }) => {
+const ExerciseEditor = forwardRef<HTMLDivElement, ExerciseEditorProps>(({ exercise, onSave, onCancel }, ref) => {
   const { toast } = useToast();
   const [editedExercise, setEditedExercise] = useState<Exercise>(exercise);
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
@@ -593,81 +591,74 @@ const ExerciseEditor: React.FC<ExerciseEditorProps> = ({ exercise, onSave, onCan
   };
 
   return (
-    <div className="min-h-screen bg-muted/30" data-allow-context-menu data-allow-copy>
-      {/* Sidebar */}
-      <aside className="fixed left-0 top-0 bottom-0 w-64 bg-sidebar border-r border-sidebar-border z-50">
-        <div className="flex flex-col h-full">
-          <div className="p-6 border-b border-sidebar-border">
-            <Link to="/" className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full gradient-gold flex items-center justify-center shadow-gold">
-                <span className="font-serif text-lg font-bold text-secondary">O</span>
-              </div>
-              <div>
-                <h1 className="font-serif font-semibold text-sidebar-foreground">Admin</h1>
-                <p className="text-xs text-sidebar-foreground/60">Offe Orunmila</p>
-              </div>
-            </Link>
-          </div>
+    <div ref={ref} className="space-y-6" data-allow-context-menu data-allow-copy>
+      {/* Header */}
+      <div className="flex items-center gap-4">
+        <Button variant="ghost" onClick={onCancel}>
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Voltar
+        </Button>
+        <div className="flex-1">
+          <h1 className="font-serif text-2xl font-bold text-foreground">
+            Editar Exercício
+          </h1>
+          <p className="text-muted-foreground text-sm">
+            {getTypeLabel()}
+          </p>
         </div>
-      </aside>
-
-      {/* Main Content */}
-      <main className="ml-64 p-8">
-        {/* Header */}
-        <div className="flex items-center gap-4 mb-8">
-          <Button variant="ghost" onClick={onCancel}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Voltar
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Switch
+              checked={editedExercise.is_published}
+              onCheckedChange={(checked) => setEditedExercise({ ...editedExercise, is_published: checked })}
+            />
+            <span className="text-sm text-muted-foreground">
+              {editedExercise.is_published ? (
+                <span className="flex items-center gap-1 text-green-600">
+                  <Eye className="w-4 h-4" /> Publicado
+                </span>
+              ) : (
+                <span className="flex items-center gap-1">
+                  <EyeOff className="w-4 h-4" /> Rascunho
+                </span>
+              )}
+            </span>
+          </div>
+          <Button variant="outline" onClick={onCancel}>
+            Cancelar
           </Button>
-          <div className="flex-1">
-            <h1 className="font-serif text-3xl font-bold text-foreground">
-              Editar Exercício
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              {getTypeLabel()}
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <Switch
-                checked={editedExercise.is_published}
-                onCheckedChange={(checked) => setEditedExercise({ ...editedExercise, is_published: checked })}
-              />
-              <span className="text-sm text-muted-foreground">
-                {editedExercise.is_published ? 'Publicado' : 'Rascunho'}
-              </span>
-            </div>
-            <Button variant="outline" onClick={onCancel}>
-              Cancelar
-            </Button>
-            <Button 
-              className="gradient-gold text-secondary shadow-gold"
-              onClick={() => onSave(editedExercise)}
-            >
-              <Save className="w-4 h-4 mr-2" />
-              Salvar
-            </Button>
-          </div>
+          <Button 
+            className="gradient-gold text-secondary shadow-gold"
+            onClick={() => onSave(editedExercise)}
+          >
+            <Save className="w-4 h-4 mr-2" />
+            Salvar
+          </Button>
         </div>
+      </div>
 
-        {/* Title */}
-        <div className="mb-8">
-          <Label htmlFor="exercise-title">Título do Exercício</Label>
-          <Input
-            id="exercise-title"
-            value={editedExercise.title}
-            onChange={(e) => setEditedExercise({ ...editedExercise, title: e.target.value })}
-            className="max-w-xl mt-2 text-lg"
-          />
-        </div>
+      {/* Title */}
+      <div className="bg-card rounded-xl border border-border p-6">
+        <Label htmlFor="exercise-title" className="text-base font-semibold">
+          Título do Exercício
+        </Label>
+        <Input
+          id="exercise-title"
+          value={editedExercise.title}
+          onChange={(e) => setEditedExercise({ ...editedExercise, title: e.target.value })}
+          className="mt-2"
+          placeholder="Digite o título do exercício..."
+        />
+      </div>
 
-        {/* Editor */}
-        <div className="bg-card rounded-xl border border-border shadow-soft p-6">
-          {renderEditor()}
-        </div>
-      </main>
+      {/* Editor Content */}
+      <div className="bg-card rounded-xl border border-border shadow-soft p-6">
+        {renderEditor()}
+      </div>
     </div>
   );
-};
+});
+
+ExerciseEditor.displayName = 'ExerciseEditor';
 
 export default ExerciseEditor;
