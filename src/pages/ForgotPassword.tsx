@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { usePlatformSettings } from '@/hooks/usePlatformSettings';
 import { z } from 'zod';
 
 const emailSchema = z.object({
@@ -18,6 +19,10 @@ const ForgotPassword: React.FC = () => {
   const [sent, setSent] = useState(false);
   const [error, setError] = useState('');
   const { toast } = useToast();
+  const { platformName } = usePlatformSettings();
+  
+  const displayPlatformName = platformName?.split(' ').slice(0, 2).join(' ') || 'Offe Orunmila';
+  const displayPlatformSuffix = platformName?.split(' ').slice(2).join(' ') || 'Learning';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,11 +113,11 @@ const ForgotPassword: React.FC = () => {
         <div className="w-full max-w-md">
           <Link to="/" className="flex items-center gap-3 mb-8">
             <div className="w-10 h-10 rounded-full gradient-gold flex items-center justify-center shadow-gold">
-              <span className="font-serif text-lg font-bold text-secondary">O</span>
+              <span className="font-serif text-lg font-bold text-secondary">{displayPlatformName.charAt(0)}</span>
             </div>
             <div>
-              <h1 className="font-serif text-lg font-semibold text-foreground">Offe Orunmila</h1>
-              <p className="text-xs text-muted-foreground -mt-1">Learning</p>
+              <h1 className="font-serif text-lg font-semibold text-foreground">{displayPlatformName}</h1>
+              <p className="text-xs text-muted-foreground -mt-1">{displayPlatformSuffix}</p>
             </div>
           </Link>
 
