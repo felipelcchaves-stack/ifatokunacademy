@@ -130,7 +130,7 @@ export function useSpacedRepetition(exerciseId?: string): UseSpacedRepetitionRet
     itemIndex: number, 
     itemText: string,
     options?: { lessonId?: string; moduleId?: string; easeFactor?: number }
-  ) => {
+  ): Promise<void> => {
     if (!user?.id) return;
 
     try {
@@ -140,7 +140,7 @@ export function useSpacedRepetition(exerciseId?: string): UseSpacedRepetitionRet
           user_id: user.id,
           exercise_id: exerciseId,
           item_index: itemIndex,
-          item_text: itemText.substring(0, 200), // Truncar para identificação
+          item_text: itemText.substring(0, 200),
           next_review_at: new Date().toISOString(),
           interval_days: 1,
           ease_factor: options?.easeFactor ?? 2.5,
@@ -151,20 +151,25 @@ export function useSpacedRepetition(exerciseId?: string): UseSpacedRepetitionRet
           onConflict: 'user_id,exercise_id,item_index'
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error adding spaced repetition item:', error);
+        throw error;
+      }
       await fetchItems();
     } catch (error) {
-      console.error('Error adding spaced repetition item:', error);
+      console.error('Error in addItem:', error);
     }
   };
 
-  const recordReview = async (itemId: string, wasCorrect: boolean) => {
+  const recordReview = async (itemId: string, wasCorrect: boolean): Promise<void> => {
     if (!user?.id) return;
 
     try {
-      // Buscar item atual
       const item = allItems.find(i => i.id === itemId);
-      if (!item) return;
+      if (!item) {
+        console.warn('Item not found for review:', itemId);
+        return;
+      }
 
       const { intervalDays, easeFactor, repetitions } = calculateNextReview(
         item.interval_days,
@@ -173,7 +178,6 @@ export function useSpacedRepetition(exerciseId?: string): UseSpacedRepetitionRet
         wasCorrect
       );
 
-      // Calcular próxima data de revisão
       const nextReviewAt = new Date();
       nextReviewAt.setDate(nextReviewAt.getDate() + intervalDays);
 
@@ -189,14 +193,17 @@ export function useSpacedRepetition(exerciseId?: string): UseSpacedRepetitionRet
         })
         .eq('id', itemId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error recording review:', error);
+        throw error;
+      }
       await fetchItems();
     } catch (error) {
-      console.error('Error recording review:', error);
+      console.error('Error in recordReview:', error);
     }
   };
 
-  const removeItem = async (itemId: string) => {
+  const removeItem = async (itemId: string): Promise<void> => {
     if (!user?.id) return;
 
     try {
@@ -205,10 +212,13 @@ export function useSpacedRepetition(exerciseId?: string): UseSpacedRepetitionRet
         .delete()
         .eq('id', itemId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error removing item:', error);
+        throw error;
+      }
       await fetchItems();
     } catch (error) {
-      console.error('Error removing item:', error);
+      console.error('Error in removeItem:', error);
     }
   };
 
