@@ -18,12 +18,14 @@ import {
   Clock, 
   BookOpen,
   Plus,
-  Library
+  Library,
+  AlertTriangle
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useQuery } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
+import { isAudioUrlPlayable, getFormatCompatibilityMessage } from '@/lib/audioFormatUtils';
 
 export default function RecordingStudio() {
   const { user } = useAuth();
@@ -53,13 +55,31 @@ export default function RecordingStudio() {
   });
 
   const handlePlay = (recordingId: string, audioUrl: string) => {
+    // Check if format is playable in this browser
+    if (!isAudioUrlPlayable(audioUrl)) {
+      const message = getFormatCompatibilityMessage(audioUrl);
+      toast({
+        title: "Formato não suportado",
+        description: message || "Este formato não é suportado pelo seu navegador.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     if (playingId === recordingId) {
       audioRef.current?.pause();
       setPlayingId(null);
     } else {
       if (audioRef.current) {
         audioRef.current.src = audioUrl;
-        audioRef.current.play();
+        audioRef.current.play().catch((err) => {
+          console.error('Playback error:', err);
+          toast({
+            title: "Erro ao reproduzir",
+            description: "Não foi possível reproduzir este áudio. Tente gravar novamente.",
+            variant: "destructive"
+          });
+        });
         setPlayingId(recordingId);
       }
     }
@@ -201,50 +221,63 @@ export default function RecordingStudio() {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {recordings.map(recording => (
-                      <div 
-                        key={recording.id}
-                        className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg border"
-                      >
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handlePlay(recording.id, recording.audio_url)}
-                          className="shrink-0"
+                    {recordings.map(recording => {
+                      const isPlayable = isAudioUrlPlayable(recording.audio_url);
+                      return (
+                        <div 
+                          key={recording.id}
+                          className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg border"
                         >
-                          {playingId === recording.id ? (
-                            <Pause className="h-5 w-5" />
-                          ) : (
-                            <Play className="h-5 w-5" />
-                          )}
-                        </Button>
-                        
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-medium truncate">{recording.title}</h4>
-                          <p className="text-sm text-muted-foreground line-clamp-1">
-                            {recording.text_content}
-                          </p>
-                          <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
-                            <span className="flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              {formatDuration(recording.duration_seconds)}
-                            </span>
-                            <span>
-                              {format(new Date(recording.created_at), "d 'de' MMMM", { locale: ptBR })}
-                            </span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handlePlay(recording.id, recording.audio_url)}
+                            className="shrink-0"
+                            disabled={!isPlayable}
+                          >
+                            {!isPlayable ? (
+                              <AlertTriangle className="h-5 w-5 text-amber-500" />
+                            ) : playingId === recording.id ? (
+                              <Pause className="h-5 w-5" />
+                            ) : (
+                              <Play className="h-5 w-5" />
+                            )}
+                          </Button>
+                          
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-medium truncate">{recording.title}</h4>
+                              {!isPlayable && (
+                                <span className="text-xs bg-amber-500/20 text-amber-600 px-1.5 py-0.5 rounded">
+                                  Formato incompatível
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-sm text-muted-foreground line-clamp-1">
+                              {recording.text_content}
+                            </p>
+                            <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
+                              <span className="flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                {formatDuration(recording.duration_seconds)}
+                              </span>
+                              <span>
+                                {format(new Date(recording.created_at), "d 'de' MMMM", { locale: ptBR })}
+                              </span>
+                            </div>
                           </div>
-                        </div>
 
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(recording.id, recording.audio_url)}
-                          className="text-destructive hover:text-destructive shrink-0"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(recording.id, recording.audio_url)}
+                            className="text-destructive hover:text-destructive shrink-0"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </CardContent>

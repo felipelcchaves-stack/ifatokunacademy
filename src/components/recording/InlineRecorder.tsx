@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { getBestRecordingFormat, type AudioFormat } from '@/lib/audioFormatUtils';
 
 interface InlineRecorderProps {
   text: string;
@@ -40,6 +41,7 @@ const InlineRecorder: React.FC<InlineRecorderProps> = ({
   const audioChunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioFormatRef = useRef<AudioFormat | null>(null);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -50,7 +52,13 @@ const InlineRecorder: React.FC<InlineRecorderProps> = ({
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
+      
+      // Detect best format for this browser (Safari = mp4, Chrome = webm)
+      const format = getBestRecordingFormat();
+      audioFormatRef.current = format;
+      
+      const options = format.mimeType ? { mimeType: format.mimeType } : undefined;
+      const mediaRecorder = new MediaRecorder(stream, options);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 
@@ -61,7 +69,8 @@ const InlineRecorder: React.FC<InlineRecorderProps> = ({
       };
 
       mediaRecorder.onstop = () => {
-        const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const mimeType = format.mimeType || 'audio/webm';
+        const blob = new Blob(audioChunksRef.current, { type: mimeType });
         setAudioBlob(blob);
         const url = URL.createObjectURL(blob);
         setAudioUrl(url);
@@ -142,12 +151,14 @@ const InlineRecorder: React.FC<InlineRecorderProps> = ({
 
     setIsUploading(true);
     try {
-      const fileName = `${user.id}/${Date.now()}_reading.webm`;
+      // Use the format that was detected when recording started
+      const format = audioFormatRef.current || { extension: 'webm', contentType: 'audio/webm' };
+      const fileName = `${user.id}/${Date.now()}_reading.${format.extension}`;
       
       const { error: uploadError } = await supabase.storage
         .from('user-recordings')
         .upload(fileName, audioBlob, {
-          contentType: 'audio/webm',
+          contentType: format.contentType,
           upsert: false
         });
 

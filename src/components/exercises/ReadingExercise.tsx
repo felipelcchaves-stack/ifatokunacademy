@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { Play, Pause, RotateCcw, Volume2, Loader2, Check, Bot, Mic } from 'lucide-react';
+import { Play, Pause, RotateCcw, Volume2, Loader2, Check, Bot, Mic, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { toast } from 'sonner';
@@ -7,6 +7,7 @@ import { calculateWordTimings, findWordAtTime, type WordTiming } from '@/lib/aud
 import InlineRecorder from '@/components/recording/InlineRecorder';
 import { useUserRecordings } from '@/hooks/useUserRecordings';
 import { AudioSource } from '@/components/exercises/AudioSourceSelector';
+import { isAudioUrlPlayable, getFormatCompatibilityMessage } from '@/lib/audioFormatUtils';
 
 interface ReadingExerciseProps {
   text: string;
@@ -36,6 +37,7 @@ const ReadingExercise: React.FC<ReadingExerciseProps> = ({
   const [wordTimings, setWordTimings] = useState<WordTiming[]>([]);
   const [audioSource, setAudioSource] = useState<AudioSource>('ai');
   const [selectedRecordingUrl, setSelectedRecordingUrl] = useState<string | null>(null);
+  const [audioError, setAudioError] = useState<string | null>(null);
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const textContainerRef = useRef<HTMLDivElement>(null);
@@ -120,12 +122,25 @@ const ReadingExercise: React.FC<ReadingExerciseProps> = ({
 
   useEffect(() => {
     if (effectiveAudioUrl) {
+      // Check compatibility before setting up audio
+      if (!isAudioUrlPlayable(effectiveAudioUrl)) {
+        const message = getFormatCompatibilityMessage(effectiveAudioUrl);
+        setAudioError(message);
+        return;
+      }
+      
+      setAudioError(null);
       audioRef.current = new Audio(effectiveAudioUrl);
       
       audioRef.current.addEventListener('loadedmetadata', () => {
         if (audioRef.current) {
           setDuration(audioRef.current.duration);
         }
+      });
+      
+      audioRef.current.addEventListener('error', (e) => {
+        console.error('Audio playback error:', e);
+        setAudioError('Não foi possível carregar o áudio. Tente gravar novamente.');
       });
       
       audioRef.current.addEventListener('timeupdate', handleTimeUpdate);
@@ -284,7 +299,10 @@ const ReadingExercise: React.FC<ReadingExerciseProps> = ({
           <span className="text-sm text-muted-foreground">Ouvir:</span>
           <div className="flex rounded-lg border border-border overflow-hidden">
             <button
-              onClick={() => setAudioSource('ai')}
+              onClick={() => {
+                setAudioSource('ai');
+                setAudioError(null);
+              }}
               className={`flex items-center gap-1.5 px-3 py-1.5 text-sm transition-colors ${
                 audioSource === 'ai' 
                   ? 'bg-primary text-primary-foreground' 
@@ -296,7 +314,10 @@ const ReadingExercise: React.FC<ReadingExerciseProps> = ({
               <span>IA</span>
             </button>
             <button
-              onClick={() => setAudioSource('personal')}
+              onClick={() => {
+                setAudioSource('personal');
+                setAudioError(null);
+              }}
               className={`flex items-center gap-1.5 px-3 py-1.5 text-sm transition-colors ${
                 audioSource === 'personal' 
                   ? 'bg-green-600 text-white' 
@@ -315,7 +336,19 @@ const ReadingExercise: React.FC<ReadingExerciseProps> = ({
       )}
 
       {/* Audio Controls */}
-      {effectiveAudioUrl ? (
+      {audioError && audioSource === 'personal' ? (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4">
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm text-amber-700 dark:text-amber-300">{audioError}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Grave novamente usando o botão abaixo ou use o áudio de IA.
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : effectiveAudioUrl ? (
         <div className="bg-muted/50 rounded-xl p-4">
           <div className="flex items-center gap-4">
             <Button
