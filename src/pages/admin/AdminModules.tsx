@@ -507,57 +507,98 @@ const AdminModules: React.FC = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredModules.map((module) => (
+            {filteredModules.map((module, index) => (
               <div 
                 key={module.id}
-                className="bg-card rounded-xl border border-border shadow-soft overflow-hidden group"
+                className={`
+                  bg-card rounded-xl overflow-hidden group transition-all duration-300
+                  ${module.image_url 
+                    ? 'border border-sacred-300/40 hover:border-sacred-400/60 hover:shadow-sacred' 
+                    : 'border border-border hover:border-primary/30 hover:shadow-soft'
+                  }
+                  ${!module.is_published ? 'opacity-80' : ''}
+                  animate-fade-in
+                `}
+                style={{ animationDelay: `${index * 50}ms` }}
               >
-                {/* Header */}
-                <div className={`h-24 bg-gradient-to-br ${module.color || 'from-amber-500 to-orange-600'} relative pattern-adinkra`}>
+                {/* Banner Area - Expanded */}
+                <div className={`aspect-[16/9] bg-gradient-to-br ${module.color || 'from-amber-500 to-orange-600'} relative overflow-hidden`}>
                   {module.image_url ? (
-                    <img 
-                      src={module.image_url} 
-                      alt={module.title}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : null}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-                  <div className="absolute bottom-3 left-4 right-4 flex items-end justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="px-2 py-1 bg-white/20 backdrop-blur-sm rounded text-xs font-medium text-white">
-                        {module.type === 'proficiency' 
-                          ? `Nível ${module.level?.charAt(0).toUpperCase()}${module.level?.slice(1)}` 
-                          : module.theme}
-                      </span>
-                      {module.is_published ? (
-                        <span className="px-2 py-1 bg-green-500/80 backdrop-blur-sm rounded text-xs font-medium text-white">
-                          Publicado
-                        </span>
-                      ) : (
-                        <span className="px-2 py-1 bg-gray-500/80 backdrop-blur-sm rounded text-xs font-medium text-white">
-                          Rascunho
-                        </span>
+                    <>
+                      <img 
+                        src={module.image_url} 
+                        alt={module.title}
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+                      />
+                      {/* Shimmer overlay when regenerating */}
+                      {regeneratingBanner === module.id && (
+                        <div className="absolute inset-0 module-card-shimmer" />
                       )}
+                    </>
+                  ) : (
+                    /* Placeholder for modules without banner */
+                    <div className="absolute inset-0 flex items-center justify-center pattern-adinkra">
+                      <div className="w-16 h-16 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center border border-white/20 transition-transform duration-300 group-hover:scale-110">
+                        <Wand2 className="w-8 h-8 text-white/70" />
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Subtle gradient overlay - only at bottom */}
+                  <div className="absolute inset-0 module-card-overlay pointer-events-none" />
+                  
+                  {/* Badges - Top Right */}
+                  <div className="absolute top-3 right-3 flex flex-col items-end gap-2">
+                    <span className="px-2.5 py-1 bg-black/40 backdrop-blur-md rounded-full text-xs font-medium text-white border border-white/20">
+                      {module.type === 'proficiency' 
+                        ? `Nível ${module.level?.charAt(0).toUpperCase()}${module.level?.slice(1)}` 
+                        : module.theme}
+                    </span>
+                    {module.is_published ? (
+                      <span className="px-2.5 py-1 bg-green-500/80 backdrop-blur-md rounded-full text-xs font-medium text-white flex items-center gap-1.5 shadow-lg">
+                        <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                        Publicado
+                      </span>
+                    ) : (
+                      <span className="px-2.5 py-1 bg-gray-600/80 backdrop-blur-md rounded-full text-xs font-medium text-white/80">
+                        Rascunho
+                      </span>
+                    )}
+                  </div>
+                  
+                  {/* Module Title - Bottom with backdrop */}
+                  <div className="absolute bottom-0 inset-x-0 p-4 pt-10">
+                    <h3 className="font-serif text-lg font-bold text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] line-clamp-1">
+                      {module.title}
+                    </h3>
+                  </div>
+                  
+                  {/* Drag handle */}
+                  <div className="absolute top-3 left-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <GripVertical className="w-5 h-5 text-white/60 cursor-grab drop-shadow-lg" />
+                  </div>
+                </div>
+
+                {/* Content Area */}
+                <div className="p-4 relative">
+                  {/* Decorative golden line */}
+                  <div className="absolute top-0 left-4 right-4 h-px bg-gradient-to-r from-transparent via-sacred-400/40 to-transparent" />
+                  
+                  <div className="flex items-start justify-between pt-1 mb-2">
+                    <div className="flex-1 min-w-0">
                       {!module.image_url && (
-                        <span className="px-2 py-1 bg-orange-500/80 backdrop-blur-sm rounded text-xs font-medium text-white flex items-center gap-1">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 mb-2 bg-orange-500/10 rounded text-xs font-medium text-orange-600 dark:text-orange-400">
                           <ImageOff className="w-3 h-3" />
                           Sem banner
                         </span>
                       )}
+                      <p className="text-sm text-muted-foreground line-clamp-2">
+                        {module.description || 'Sem descrição'}
+                      </p>
                     </div>
-                    <GripVertical className="w-5 h-5 text-white/60 cursor-grab" />
-                  </div>
-                </div>
-
-                {/* Content */}
-                <div className="p-4">
-                  <div className="flex items-start justify-between mb-2">
-                    <h3 className="font-serif text-lg font-semibold text-foreground">
-                      {module.title}
-                    </h3>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0 ml-2">
                           <MoreVertical className="w-4 h-4" />
                         </Button>
                       </DropdownMenuTrigger>
@@ -608,10 +649,8 @@ const AdminModules: React.FC = () => {
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
-                  <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
-                    {module.description || 'Sem descrição'}
-                  </p>
-                  <div className="flex items-center justify-between text-sm">
+                  
+                  <div className="flex items-center justify-between text-sm pt-2 border-t border-border/50">
                     <div className="flex items-center gap-1 text-muted-foreground">
                       <BookOpen className="w-4 h-4" />
                       <span>{module.lessons_count || 0} lições</span>
@@ -619,6 +658,7 @@ const AdminModules: React.FC = () => {
                     <Button 
                       variant="outline" 
                       size="sm"
+                      className="hover:bg-sacred-100 hover:text-sacred-700 hover:border-sacred-300 dark:hover:bg-sacred-900/20 dark:hover:text-sacred-400"
                       onClick={() => navigate(`/admin/modules/${module.id}/lessons`)}
                     >
                       Gerenciar Lições
