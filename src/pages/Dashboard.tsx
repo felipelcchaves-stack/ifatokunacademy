@@ -27,6 +27,7 @@ import { useStreak } from '@/hooks/useStreak';
 import { useSequentialProgress } from '@/hooks/useSequentialProgress';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { useModulePermissions } from '@/hooks/useModulePermissions';
+import { useModulePhaseProgress } from '@/hooks/useModulePhaseProgress';
 
 const Dashboard: React.FC = () => {
   const { user, profile } = useAuth();
@@ -41,8 +42,16 @@ const Dashboard: React.FC = () => {
 
   const displayName = profile?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || 'Estudante';
 
-  // Use new sequential progress logic
-  const { calculateLockedModules, areThematicsUnlocked, getThematicUnlockProgress, getActiveThematicModule } = useSequentialProgress();
+  // Use new sequential progress logic with phase progress
+  const { calculateLockedModules, areThematicsUnlocked, getThematicUnlockProgress, getActiveThematicModule, fetchPhaseProgress } = useSequentialProgress();
+  const { phaseProgress, fetchPhaseProgress: fetchPhaseProgressFromHook } = useModulePhaseProgress();
+  
+  // Fetch phase progress on mount
+  React.useEffect(() => {
+    if (user) {
+      fetchPhaseProgressFromHook();
+    }
+  }, [user, fetchPhaseProgressFromHook]);
   
   const getLockedModulesAndThematicInfo = () => {
     // Convert completions to the format expected by the hook
@@ -60,23 +69,36 @@ const Dashboard: React.FC = () => {
       display_order: m.display_order,
     }));
     
-    const lockResult = calculateLockedModules(formattedModules, formattedCompletions, userProgress);
-    const thematicsUnlocked = areThematicsUnlocked(formattedModules, formattedCompletions);
-    const thematicProgress = getThematicUnlockProgress(formattedModules, formattedCompletions);
+    // Format phase progress for the hook
+    const formattedPhaseProgress = phaseProgress.map(p => ({
+      moduleId: p.moduleId,
+      phase1CompletedAt: p.phase1CompletedAt,
+      phase2CompletedAt: p.phase2CompletedAt,
+    }));
+    
+    const lockResult = calculateLockedModules(formattedModules, formattedCompletions, userProgress, formattedPhaseProgress);
+    const thematicsUnlocked = areThematicsUnlocked(formattedModules, formattedCompletions, formattedPhaseProgress);
+    const thematicProgress = getThematicUnlockProgress(formattedModules, formattedCompletions, formattedPhaseProgress);
     
     // Get active thematic module
     const thematicModulesForCheck = formattedModules.filter(m => m.type === 'thematic');
     const activeThematic = getActiveThematicModule(thematicModulesForCheck, formattedCompletions, userProgress);
+    
+    // Get modules with pending phase 2 (phase1 complete but phase2 not complete)
+    const pendingPhase2Modules = formattedPhaseProgress
+      .filter(p => p.phase1CompletedAt && !p.phase2CompletedAt)
+      .map(p => p.moduleId);
     
     return {
       ...lockResult,
       thematicsUnlocked,
       thematicProgress,
       activeThematicTitle: activeThematic?.title,
+      pendingPhase2Modules,
     };
   };
 
-  const { lockedModules, unlockRequirements, thematicsUnlocked, thematicProgress, activeThematicTitle } = getLockedModulesAndThematicInfo();
+  const { lockedModules, unlockRequirements, thematicsUnlocked, thematicProgress, activeThematicTitle, pendingPhase2Modules } = getLockedModulesAndThematicInfo();
 
   // Filtrar módulos por permissão (admin vê todos)
   const accessibleModules = modules.filter(m => hasAccess(m.id));
@@ -142,6 +164,7 @@ const Dashboard: React.FC = () => {
                 lockedModules={lockedModules}
                 unlockRequirements={unlockRequirements}
                 displayName={displayName}
+                pendingPhase2Modules={pendingPhase2Modules}
               />
             </div>
           </section>

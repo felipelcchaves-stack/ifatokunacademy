@@ -14,6 +14,7 @@ interface ModuleCardProps {
   unlockRequirement?: string;
   retentionStatus?: 'fresh' | 'due_soon' | 'overdue' | 'not_started';
   retentionScore?: number;
+  hasPendingPhase2?: boolean;
 }
 
 const ModuleCard: React.FC<ModuleCardProps> = ({ 
@@ -23,6 +24,7 @@ const ModuleCard: React.FC<ModuleCardProps> = ({
   unlockRequirement,
   retentionStatus = 'not_started',
   retentionScore,
+  hasPendingPhase2 = false,
 }) => {
   const navigate = useNavigate();
 
@@ -263,6 +265,16 @@ const ModuleCard: React.FC<ModuleCardProps> = ({
           {isCompleted && retentionStatus !== 'not_started' && (
             <div className="mb-5">
               <RetentionBadge />
+            </div>
+          )}
+          
+          {/* Pending Phase 2 Badge */}
+          {hasPendingPhase2 && !isLocked && (
+            <div className="mb-5">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700 border border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800">
+                <Sparkles className="w-3 h-3" />
+                Fase 2 Pendente - Buscar Proficiência
+              </div>
             </div>
           )}
 

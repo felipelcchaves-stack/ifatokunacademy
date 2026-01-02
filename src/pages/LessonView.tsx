@@ -17,6 +17,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAchievementTriggers } from '@/hooks/useAchievementTriggers';
 import { useAchievements } from '@/hooks/useAchievements';
+import { useModulePhaseProgress } from '@/hooks/useModulePhaseProgress';
 import { showAchievementUnlockToast } from '@/components/achievements/AchievementUnlockToast';
 import { Badge } from '@/components/ui/badge';
 
@@ -52,6 +53,7 @@ const LessonView: React.FC = () => {
   const { user } = useAuth();
   const { onExerciseComplete, onStudySessionStart } = useAchievementTriggers();
   const { checkAllAchievements } = useAchievements();
+  const { checkAndMarkPhaseComplete } = useModulePhaseProgress();
   
   const [lesson, setLesson] = useState<Lesson | null>(null);
   const [exercises, setExercises] = useState<Exercise[]>([]);
@@ -201,10 +203,32 @@ const LessonView: React.FC = () => {
         showAchievementUnlockToast(achievement);
       });
 
-      toast({
-        title: 'Muito bem!',
-        description: 'Exercício concluído com sucesso.',
-      });
+      // Check and mark phase completion
+      if (moduleId) {
+        const phaseResult = await checkAndMarkPhaseComplete(moduleId);
+        
+        if (phaseResult.phase1JustCompleted) {
+          toast({
+            title: 'Fase 1 Concluída! 🎉',
+            description: 'O próximo módulo foi desbloqueado! Você pode continuar para Fase 2 ou avançar.',
+          });
+        } else if (phaseResult.phase2JustCompleted) {
+          toast({
+            title: 'Fase 2 Concluída! 🏆',
+            description: 'Parabéns! Você está pronto para o quiz de proficiência.',
+          });
+        } else {
+          toast({
+            title: 'Muito bem!',
+            description: 'Exercício concluído com sucesso.',
+          });
+        }
+      } else {
+        toast({
+          title: 'Muito bem!',
+          description: 'Exercício concluído com sucesso.',
+        });
+      }
     }
   };
 

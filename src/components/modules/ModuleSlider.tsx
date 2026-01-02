@@ -10,6 +10,7 @@ interface ModuleSliderProps {
   subtitle?: string;
   lockedModules?: Set<string>;
   unlockRequirements?: Record<string, string>;
+  pendingPhase2Modules?: string[];
 }
 
 const ModuleSlider: React.FC<ModuleSliderProps> = ({ 
@@ -18,6 +19,7 @@ const ModuleSlider: React.FC<ModuleSliderProps> = ({
   subtitle,
   lockedModules = new Set(),
   unlockRequirements = {},
+  pendingPhase2Modules = [],
 }) => {
   const sliderRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -92,6 +94,7 @@ const ModuleSlider: React.FC<ModuleSliderProps> = ({
               module={module} 
               isLocked={lockedModules.has(module.id)}
               unlockRequirement={unlockRequirements[module.id]}
+              hasPendingPhase2={pendingPhase2Modules.includes(module.id)}
             />
           </div>
         ))}
