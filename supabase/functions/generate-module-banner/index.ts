@@ -9,6 +9,103 @@ const corsHeaders = {
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 2000;
 
+// Mapeamento de contexto cultural por palavras-chave
+const contextKeywords: Record<string, string> = {
+  "oogun": "traditional Yoruba medicine (Oogun), sacred healing herbs and leaves (ewe), medicinal preparations in clay pots, forest medicine gathering, Osanyin staff",
+  "orisa": "Orisa shrine elements, sacred vessels (igba), ritual offerings, devotional symbols, altar arrangements",
+  "ogun": "Ogun symbolism - iron tools, palm fronds (mariwo), forest imagery, blacksmith elements, colors: black and green",
+  "sango": "Sango symbolism - ose Sango (double-headed axe), lightning, thunder stones (edun ara), colors: red and white",
+  "osun": "Osun symbolism - river waters, brass jewelry, mirror (aworan), honey, fertility symbols, colors: yellow and gold",
+  "obatala": "Obatala symbolism - white cloth (ala), dove, snail shells, purity, creation, colors: pure white and silver",
+  "yemoja": "Yemoja symbolism - ocean waters, fish, seashells, motherhood, colors: blue and crystal",
+  "oya": "Oya symbolism - wind, buffalo horns, cemetery, transformation, colors: burgundy and purple",
+  "esu": "Esu symbolism - crossroads, laterite clay, cowries, communication, colors: red and black",
+  "iyami": "Iyaami Osoronga - sacred birds (eleiye), night symbolism, Gelede masks, maternal ancestral power, calabash",
+  "odu": "Ifá Odu signatures, sacred markings on iyerosun powder, palm nut arrangements, divination patterns on Opon Ifá",
+  "imule": "sacred oaths and covenants, spiritual bonds, ritual agreements, binding symbols, blood pacts",
+  "sise": "ritual practice (sise), ceremonial preparations, sacred work, devotional service, offerings",
+  "ifa": "Ifá divination system, Opon Ifá (divination board), Opele chain, Ikin (sacred palm nuts), Iroke tapper",
+  "yoruba": "Yoruba language and culture, oral tradition, proverbs (owe), Aroko communication symbols",
+  "akapo": "apprentice studies, learning path, student of Ifá, foundation knowledge, sitting at master's feet",
+  "awo": "mysteries (awo), initiated knowledge, deeper understanding, secret wisdom, sacred groves",
+  "oluwo": "master priest, highest knowledge, leadership in Ifá, complete mastery, elder wisdom",
+  "egungun": "ancestral masquerade, Egungun costumes, ancestor veneration, spiritual lineage",
+  "ori": "Ori (inner head/destiny), consciousness, personal divinity, spiritual alignment",
+  "ibeji": "sacred twins, Ere Ibeji carvings, twin veneration, duality symbolism"
+};
+
+function getContextualElements(title: string, description: string): string {
+  const combinedText = `${title} ${description}`.toLowerCase();
+  const matchedContexts: string[] = [];
+  
+  for (const [keyword, context] of Object.entries(contextKeywords)) {
+    if (combinedText.includes(keyword.toLowerCase())) {
+      matchedContexts.push(context);
+    }
+  }
+  
+  if (matchedContexts.length > 0) {
+    return `\n\nSPECIFIC CONTEXT FOR THIS MODULE:\n- ${matchedContexts.join('\n- ')}`;
+  }
+  
+  return "";
+}
+
+function buildPrompt(title: string, description: string, isRetry: boolean = false): string {
+  const contextualElements = getContextualElements(title, description);
+  
+  const basePrompt = `Create a sacred banner image inspired by authentic Nigerian Isese and Ifá tradition for an educational module titled "${title}".
+
+Module description: ${description || "Traditional Yoruba spiritual studies"}.
+
+CULTURAL FOUNDATION - This is content about traditional Yoruba religion (Isese), the Ifá divination system, and Orisa worship from Nigeria/Benin. Include these AUTHENTIC elements:
+
+SACRED IFÁ OBJECTS:
+- Opon Ifá (divination board with intricate carved borders featuring Esu face)
+- Opele (divination chain with 8 half seed pods)
+- Ikin Ifá (16 sacred palm nuts arranged ceremonially)
+- Iroke Ifá (carved ivory or wood divination tapper)
+- Iyerosun (sacred divination powder from Irosun tree)
+
+TRADITIONAL YORUBA AESTHETICS:
+- Adire textile patterns (indigo tie-dye with symbolic motifs)
+- Aso-Oke woven fabric textures (strip-woven cloth)
+- Ere Ibeji carving style (smooth wood, detailed features)
+- Benin bronze art influence (detailed metalwork)
+- Carved calabash patterns
+
+SACRED NATURAL ELEMENTS:
+- Iroko tree (sacred Orisa tree)
+- Palm fronds (mariwo)
+- Cowrie shells (owo eyo) in patterns
+- Kola nuts (obi abata) - four-lobed sacred nuts
+- Sacred grove atmosphere (igbo)
+- River or forest settings
+
+AUTHENTIC COLOR PALETTE:
+- Earth browns and terracotta
+- Deep forest greens  
+- Indigo blues (from Adire)
+- Warm golds and brass tones
+- Sacred whites
+${contextualElements}
+
+STYLE REQUIREMENTS:
+- Mystical, sacred forest or shrine atmosphere
+- Horizontal banner format (16:9 aspect ratio)
+- Professional, dignified, spiritually evocative
+- Ultra high resolution quality
+- NO TEXT, NO LETTERS, NO WORDS in the image
+- Authentic Nigerian/Yoruba aesthetic - NOT generic "African" imagery
+- Subtle, artistic representation - not literal or cartoonish`;
+
+  if (isRetry) {
+    return basePrompt + "\n\nIMPORTANT: Generate the actual visual image now. Do not describe it - CREATE the image directly.";
+  }
+  
+  return basePrompt;
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -90,7 +187,7 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    console.log("generate-module-banner: Generating banner for module:", moduleId);
+    console.log("generate-module-banner: Generating banner for module:", title);
 
     // Generate image with retry logic
     let imageData: string | null = null;
@@ -99,26 +196,8 @@ serve(async (req) => {
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       console.log(`generate-module-banner: Attempt ${attempt}/${MAX_RETRIES}`);
 
-      // Build contextual prompt based on module info - be more explicit on retries
-      const moduleDescription = description || title;
-      const basePrompt = `Create a sacred African spiritual art banner image for an educational module titled "${title}". 
-The module is about: ${moduleDescription}.
-
-Style requirements:
-- Traditional Yoruba and Nigerian sacred art aesthetic
-- Rich earth tones: deep forest green, warm brown, golden amber accents
-- Include subtle Adinkra or Ifa symbols relevant to the content
-- Mystical atmosphere with soft golden light
-- Nature elements: sacred trees, forest, moonlight
-- Horizontal banner format (16:9 aspect ratio)
-- Professional, dignified, and spiritually evocative
-- No text or letters in the image
-- Ultra high resolution`;
-
-      // On retries, be more explicit that we want an image, not a description
-      const prompt = attempt === 1 
-        ? basePrompt 
-        : `${basePrompt}\n\nIMPORTANT: Generate the actual visual image now. Do not describe or explain - create the image directly.`;
+      const isRetry = attempt > 1;
+      const prompt = buildPrompt(title, description || "", isRetry);
 
       try {
         console.log("generate-module-banner: Calling AI Gateway");
@@ -147,7 +226,6 @@ Style requirements:
           
           if (response.status === 429) {
             lastError = "Rate limit exceeded. Please try again later.";
-            // On rate limit, wait longer before retry
             if (attempt < MAX_RETRIES) {
               console.log(`generate-module-banner: Rate limited, waiting ${RETRY_DELAY_MS * 2}ms...`);
               await sleep(RETRY_DELAY_MS * 2);
@@ -155,7 +233,6 @@ Style requirements:
             }
           } else if (response.status === 402) {
             lastError = "Payment required. Please add credits to continue.";
-            // Don't retry on payment issues
             break;
           } else {
             lastError = `AI Gateway error: ${response.status}`;
