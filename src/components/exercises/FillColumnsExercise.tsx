@@ -16,8 +16,26 @@ const FillColumnsExercise: React.FC<FillColumnsExerciseProps> = ({
   blankPositions,
   onComplete,
 }) => {
+  // Normalize rows data - ensure each row is an array
+  const normalizedRows = (rows || []).map(row => {
+    if (!Array.isArray(row)) return [];
+    return row;
+  }).filter(row => row.length > 0);
+
+  // Early return if data is malformed
+  if (normalizedRows.length === 0 || normalizedRows.some(row => row.length < columns.length)) {
+    return (
+      <div className="bg-card rounded-xl border border-border p-6 text-center">
+        <p className="text-amber-600">
+          Este exercício precisa ser reconfigurado. 
+          Os dados da tabela estão incompletos.
+        </p>
+      </div>
+    );
+  }
+
   // Determine which cells should be blank (fillable)
-  const blanks = blankPositions || rows.flatMap((row, rowIndex) => 
+  const blanks = blankPositions || normalizedRows.flatMap((row, rowIndex) => 
     row.map((_, colIndex) => ({ row: rowIndex, col: colIndex }))
       .filter((_, i) => i % 2 === 1) // Default: every other cell is blank
   );
@@ -54,7 +72,7 @@ const FillColumnsExercise: React.FC<FillColumnsExerciseProps> = ({
     blanks.forEach(({ row, col }) => {
       const key = `${row}-${col}`;
       const userAnswer = answers[key]?.trim().toLowerCase() || '';
-      const correctAnswer = rows[row][col].trim().toLowerCase();
+      const correctAnswer = normalizedRows[row]?.[col]?.trim().toLowerCase() || '';
       const isCorrect = userAnswer === correctAnswer;
       newResults[key] = isCorrect;
       if (!isCorrect) allCorrect = false;
@@ -111,7 +129,7 @@ const FillColumnsExercise: React.FC<FillColumnsExerciseProps> = ({
             </tr>
           </thead>
           <tbody>
-            {rows.map((row, rowIndex) => (
+            {normalizedRows.map((row, rowIndex) => (
               <tr key={rowIndex}>
                 {row.map((cell, colIndex) => {
                   const key = `${rowIndex}-${colIndex}`;
@@ -134,7 +152,7 @@ const FillColumnsExercise: React.FC<FillColumnsExerciseProps> = ({
                       {isCellBlank ? (
                         <div className="relative">
                           <Input
-                            value={showAnswers ? cell : answers[key]}
+                            value={showAnswers ? (normalizedRows[rowIndex]?.[colIndex] || '') : answers[key]}
                             onChange={(e) => handleAnswerChange(rowIndex, colIndex, e.target.value)}
                             placeholder="..."
                             disabled={showAnswers}
