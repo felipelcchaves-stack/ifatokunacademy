@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,11 +14,18 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requireAdmin 
   const location = useLocation();
   const [mfaChecking, setMfaChecking] = useState(true);
   const [mfaRequired, setMfaRequired] = useState(false);
+  const mfaCheckedOnce = useRef(false);
 
   useEffect(() => {
-    if (isAuthenticated && !loading) {
+    // Only check MFA once on initial mount, not on every auth state change
+    if (isAuthenticated && !loading && !mfaCheckedOnce.current) {
+      mfaCheckedOnce.current = true;
       checkMFALevel();
-    } else if (!loading) {
+    } else if (!loading && !isAuthenticated) {
+      mfaCheckedOnce.current = false; // Reset for next login
+      setMfaChecking(false);
+    } else if (!loading && mfaCheckedOnce.current) {
+      // Already checked, don't re-check
       setMfaChecking(false);
     }
   }, [isAuthenticated, loading]);
