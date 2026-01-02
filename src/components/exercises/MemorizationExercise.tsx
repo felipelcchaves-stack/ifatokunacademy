@@ -1003,7 +1003,7 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
             </span>
             {studyMode !== 'classic' && (
               <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full capitalize">
-                {studyMode === 'scaffold' ? 'Escada' : studyMode === 'chunk' ? 'Fragmentos' : 'Encadeamento'}
+                {studyMode === 'progressive' ? 'Progressivo' : studyMode === 'scaffold' ? 'Escada' : studyMode === 'chunk' ? 'Fragmentos' : studyMode === 'chain' ? 'Encadeamento' : studyMode}
               </span>
             )}
           </div>
@@ -1125,10 +1125,27 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
 
           {!showContent ? (
             <>
+              {/* Progressive Level Indicator */}
+              {studyMode === 'progressive' && (
+                <div className="mb-4 w-full">
+                  <ProgressiveLevelIndicator
+                    currentLevel={progressiveLevel}
+                    levelsMastered={levelsMastered}
+                    wordCounts={progressiveWordCounts}
+                  />
+                </div>
+              )}
+
               {/* Visible Text Prompt */}
               <div className="mb-4 w-full">
                 <p className="text-xs uppercase tracking-wider text-muted-foreground mb-2">
-                  {studyMode === 'scaffold' 
+                  {studyMode === 'progressive'
+                    ? progressiveLevel === 1 
+                      ? 'Memorize o resumo:'
+                      : progressiveLevel === 2
+                      ? 'Agora o texto intermediário:'
+                      : 'Texto completo:'
+                    : studyMode === 'scaffold' 
                     ? `Complete (${scaffoldLevels[scaffoldLevel]?.visiblePercent || 0}% visível):`
                     : studyMode === 'chunk'
                     ? `Memorize o trecho ${currentChunkIndex + 1}:`
@@ -1137,11 +1154,29 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
                     : 'Complete o verso:'
                   }
                 </p>
-                {visibleText && (
+                
+                {/* Progressive mode: show text to memorize */}
+                {studyMode === 'progressive' && (
+                  <div className="bg-muted/50 rounded-lg p-4 mb-3">
+                    <p className="font-serif text-lg text-foreground leading-relaxed">
+                      {getProgressiveText(currentItem, progressiveLevel)}
+                    </p>
+                  </div>
+                )}
+                
+                {visibleText && studyMode !== 'progressive' && (
                   <p className="font-serif text-lg text-foreground/70 mb-2">
                     {visibleText}
                   </p>
                 )}
+                
+                {/* Progressive mode: show previous levels as context */}
+                {studyMode === 'progressive' && visibleText && (
+                  <p className="font-serif text-sm text-muted-foreground mb-2">
+                    {visibleText}
+                  </p>
+                )}
+                
                 {studyMode === 'scaffold' && scaffoldLevels[scaffoldLevel]?.hint && (
                   <p className="font-mono text-sm text-primary/60 mt-2">
                     {scaffoldLevels[scaffoldLevel].hint}
@@ -1198,11 +1233,14 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
                 </div>
               )}
 
-              {validationResult?.isCorrect && (studyMode === 'scaffold' || studyMode === 'chunk' || studyMode === 'chain') && (
+              {validationResult?.isCorrect && (studyMode === 'scaffold' || studyMode === 'chunk' || studyMode === 'chain' || studyMode === 'progressive') && (
                 <div className="mb-4 flex items-center gap-2 text-green-600">
                   <CheckCircle className="w-5 h-5" />
                   <span className="font-medium">
-                    Correto! Avançando...
+                    {studyMode === 'progressive' && progressiveLevel < 3 
+                      ? `Nível ${progressiveLevel} dominado! Avançando para o nível ${progressiveLevel + 1}...`
+                      : 'Correto! Avançando...'
+                    }
                   </span>
                 </div>
               )}
