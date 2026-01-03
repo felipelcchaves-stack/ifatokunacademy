@@ -16,6 +16,7 @@ interface ReadingExerciseProps {
   exerciseId?: string;
   lessonId?: string;
   moduleId?: string;
+  phase?: 'phase1' | 'phase2';
 }
 
 const ReadingExercise: React.FC<ReadingExerciseProps> = ({ 
@@ -24,7 +25,8 @@ const ReadingExercise: React.FC<ReadingExerciseProps> = ({
   onComplete,
   exerciseId,
   lessonId,
-  moduleId
+  moduleId,
+  phase = 'phase1'
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -43,11 +45,12 @@ const ReadingExercise: React.FC<ReadingExerciseProps> = ({
   const textContainerRef = useRef<HTMLDivElement>(null);
   const wordRefs = useRef<(HTMLSpanElement | null)[]>([]);
 
-  // Fetch user recordings for this context
+  // Fetch user recordings for this context (filtered by phase)
   const { recordings, refetch: refetchRecordings } = useUserRecordings({
     exerciseId,
     lessonId,
-    moduleId
+    moduleId,
+    phase
   });
 
   // Handle recording saved - auto-switch to personal and auto-play
@@ -432,10 +435,11 @@ const ReadingExercise: React.FC<ReadingExerciseProps> = ({
       {/* Inline Recorder */}
       <InlineRecorder
         text={text}
-        title="Leitura Guiada"
+        title={`Leitura Guiada - ${phase === 'phase2' ? 'Fase 2' : 'Fase 1'}`}
         exerciseId={exerciseId}
         lessonId={lessonId}
         moduleId={moduleId}
+        phase={phase}
         onSaved={handleRecordingSaved}
         className="mt-4"
       />

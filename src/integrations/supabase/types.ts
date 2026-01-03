@@ -213,6 +213,7 @@ export type Database = {
           id: string
           is_published: boolean
           lesson_id: string
+          phase: string | null
           title: string
           type: string
           updated_at: string
@@ -224,6 +225,7 @@ export type Database = {
           id?: string
           is_published?: boolean
           lesson_id: string
+          phase?: string | null
           title: string
           type: string
           updated_at?: string
@@ -235,6 +237,7 @@ export type Database = {
           id?: string
           is_published?: boolean
           lesson_id?: string
+          phase?: string | null
           title?: string
           type?: string
           updated_at?: string
@@ -873,6 +876,7 @@ export type Database = {
           id: string
           lesson_id: string | null
           module_id: string | null
+          phase: string | null
           text_content: string
           title: string
           updated_at: string
@@ -886,6 +890,7 @@ export type Database = {
           id?: string
           lesson_id?: string | null
           module_id?: string | null
+          phase?: string | null
           text_content: string
           title: string
           updated_at?: string
@@ -899,6 +904,7 @@ export type Database = {
           id?: string
           lesson_id?: string | null
           module_id?: string | null
+          phase?: string | null
           text_content?: string
           title?: string
           updated_at?: string
