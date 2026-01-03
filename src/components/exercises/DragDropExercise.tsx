@@ -1,6 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Check, X, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+
+// Fisher-Yates shuffle
+function shuffleArray<T>(array: T[]): T[] {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
 
 interface DragDropExerciseProps {
   items: string[];
@@ -15,11 +25,22 @@ const DragDropExercise: React.FC<DragDropExerciseProps> = ({
   correctMatches,
   onComplete,
 }) => {
+  // Shuffle items on mount
+  const shuffledItems = useMemo(() => shuffleArray(items), [items]);
+  
   const [matches, setMatches] = useState<Record<string, string>>({});
-  const [availableItems, setAvailableItems] = useState<string[]>(items);
+  const [availableItems, setAvailableItems] = useState<string[]>(shuffledItems);
   const [draggedItem, setDraggedItem] = useState<string | null>(null);
   const [isChecked, setIsChecked] = useState(false);
   const [results, setResults] = useState<Record<string, boolean>>({});
+
+  // Reset when items change
+  useEffect(() => {
+    setAvailableItems(shuffleArray(items));
+    setMatches({});
+    setIsChecked(false);
+    setResults({});
+  }, [items]);
 
   const handleDragStart = (item: string) => {
     setDraggedItem(item);
@@ -59,7 +80,8 @@ const DragDropExercise: React.FC<DragDropExerciseProps> = ({
 
     targets.forEach(target => {
       const matchedItem = matches[target];
-      const isCorrect = matchedItem && correctMatches[target] === matchedItem;
+      // FIX: correctMatches maps item -> target, so check if correctMatches[matchedItem] === target
+      const isCorrect = matchedItem && correctMatches[matchedItem] === target;
       newResults[target] = isCorrect !== undefined ? isCorrect : false;
       if (!isCorrect) allCorrect = false;
     });
@@ -74,7 +96,7 @@ const DragDropExercise: React.FC<DragDropExerciseProps> = ({
 
   const handleReset = () => {
     setMatches({});
-    setAvailableItems(items);
+    setAvailableItems(shuffleArray(items)); // Re-shuffle on reset
     setIsChecked(false);
     setResults({});
   };

@@ -12,7 +12,7 @@ import { generateSummary, generateIntermediateText, countWords } from '@/lib/tex
 interface Exercise {
   id: string;
   lesson_id: string;
-  type: 'reading' | 'drag-drop' | 'fill-columns' | 'flashcard' | 'video' | 'memorization' | 'quiz';
+  type: 'reading' | 'drag-drop' | 'fill-columns' | 'flashcard' | 'video' | 'memorization' | 'quiz' | 'tap-complete';
   title: string;
   content: Record<string, any>;
   display_order: number;
@@ -640,6 +640,49 @@ const ExerciseEditor: React.FC<ExerciseEditorProps> = ({ exercise, onSave, onCan
     );
   };
 
+  const renderTapCompleteEditor = () => (
+    <div className="space-y-6">
+      <div className="space-y-2">
+        <Label htmlFor="tap-complete-text">Texto para Ordenar</Label>
+        <Textarea
+          id="tap-complete-text"
+          placeholder="Digite o texto que será ordenado palavra por palavra..."
+          value={editedExercise.content.text || ''}
+          onChange={(e) => updateContent('text', e.target.value)}
+          className="min-h-[200px] font-serif"
+        />
+        <p className="text-sm text-muted-foreground">
+          {(editedExercise.content.text || '').split(/\s+/).filter(Boolean).length} palavras
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Áudio (opcional)</Label>
+        <MediaUploader
+          exerciseId={exercise.id}
+          lessonId={exercise.lesson_id}
+          onUploadComplete={(url) => updateContent('audioUrl', url)}
+          acceptedTypes="audio/*"
+          label="Enviar áudio"
+          currentUrl={editedExercise.content.audioUrl}
+        />
+        <div className="flex gap-3 mt-2">
+          <Input
+            placeholder="Ou cole a URL do áudio"
+            value={editedExercise.content.audioUrl || ''}
+            onChange={(e) => updateContent('audioUrl', e.target.value)}
+            className="flex-1"
+          />
+        </div>
+        {editedExercise.content.audioUrl && (
+          <audio controls className="w-full mt-2">
+            <source src={editedExercise.content.audioUrl} type="audio/mpeg" />
+          </audio>
+        )}
+      </div>
+    </div>
+  );
+
   const renderEditor = () => {
     switch (editedExercise.type) {
       case 'reading':
@@ -654,6 +697,8 @@ const ExerciseEditor: React.FC<ExerciseEditorProps> = ({ exercise, onSave, onCan
         return renderVideoEditor();
       case 'memorization':
         return renderMemorizationEditor();
+      case 'tap-complete':
+        return renderTapCompleteEditor();
       default:
         return <p>Tipo de exercício não suportado</p>;
     }
@@ -667,6 +712,7 @@ const ExerciseEditor: React.FC<ExerciseEditorProps> = ({ exercise, onSave, onCan
       'fill-columns': 'Preencher Colunas',
       'video': 'Vídeo Aula',
       'memorization': 'Memorização',
+      'tap-complete': 'Ordenar Palavras',
     };
     return labels[editedExercise.type] || editedExercise.type;
   };

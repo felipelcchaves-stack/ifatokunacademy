@@ -23,7 +23,7 @@ interface QuizContent {
 interface Exercise {
   id: string;
   lesson_id: string;
-  type: 'reading' | 'drag-drop' | 'fill-columns' | 'flashcard' | 'video' | 'memorization' | 'quiz';
+  type: 'reading' | 'drag-drop' | 'fill-columns' | 'flashcard' | 'video' | 'memorization' | 'quiz' | 'tap-complete';
   title: string;
   content: Record<string, any>;
   display_order: number;
