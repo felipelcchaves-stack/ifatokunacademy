@@ -279,9 +279,14 @@ const LessonView: React.FC = () => {
           />
         );
       case 'flashcard':
+        const flashcardPhase = getExercisePhase(exercise.title);
         return (
           <FlashCard 
             cards={content.cards || []}
+            exerciseId={exercise.id}
+            lessonId={lessonId}
+            moduleId={moduleId}
+            phase={flashcardPhase === 2 ? 'phase2' : 'phase1'}
             onComplete={handleExerciseComplete}
           />
         );
@@ -312,15 +317,19 @@ const LessonView: React.FC = () => {
           />
         );
       case 'memorization':
-        const items = (content.items || []).map((item: any) => 
+        const memorizationPhase = getExercisePhase(exercise.title);
+        const memItems = (content.items || []).map((item: any) => 
           typeof item === 'string' 
             ? { text: item, hint: '' } 
             : item
         );
         return (
           <MemorizationExercise 
-            items={items}
+            items={memItems}
             exerciseId={exercise.id}
+            lessonId={lessonId}
+            moduleId={moduleId}
+            phase={memorizationPhase === 2 ? 'phase2' : 'phase1'}
             onComplete={handleExerciseComplete}
           />
         );

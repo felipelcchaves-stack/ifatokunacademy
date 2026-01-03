@@ -9,6 +9,10 @@ interface Card {
 
 interface FlashCardProps {
   cards: Card[];
+  exerciseId?: string;
+  lessonId?: string;
+  moduleId?: string;
+  phase?: 'phase1' | 'phase2';
   onComplete?: () => void;
 }
 
@@ -16,7 +20,7 @@ export interface FlashCardRef {
   reset: () => void;
 }
 
-const FlashCard = forwardRef<FlashCardRef, FlashCardProps>(({ cards, onComplete }, ref) => {
+const FlashCard = forwardRef<FlashCardRef, FlashCardProps>(({ cards, exerciseId, lessonId, moduleId, phase = 'phase1', onComplete }, ref) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [knownCards, setKnownCards] = useState<Set<number>>(new Set());
