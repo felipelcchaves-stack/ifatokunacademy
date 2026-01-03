@@ -12,7 +12,8 @@ import {
   Clock,
   Eye,
   EyeOff,
-  Sparkles
+  Sparkles,
+  MousePointer
 } from 'lucide-react';
 import {
   DndContext,
@@ -250,6 +251,7 @@ const AdminLessons: React.FC = () => {
     is_published: false,
     contextText: '',
     fullText: '',
+    autoGenerateTapComplete: true,
   });
 
   // State for post-creation flow
@@ -323,10 +325,19 @@ const AdminLessons: React.FC = () => {
       setLessons([...lessons, data]);
       setIsCreateDialogOpen(false);
       
-      // Check if both texts are provided
+      // Check if texts are provided
       const hasContextText = newLesson.contextText.trim().length > 0;
       const hasFullText = newLesson.fullText.trim().length > 0;
       
+      // Auto-generate TapComplete exercises if enabled
+      if (newLesson.autoGenerateTapComplete && (hasContextText || hasFullText)) {
+        await generateTapCompleteForLesson(data.id, [
+          hasContextText ? newLesson.contextText : null,
+          hasFullText ? newLesson.fullText : null,
+        ].filter(Boolean) as string[]);
+      }
+      
+      // Check if both texts are provided for full pedagogical generation
       if (hasContextText && hasFullText) {
         // Store data and show confirmation
         setCreatedLessonData({ id: data.id, title: data.title });
@@ -335,18 +346,58 @@ const AdminLessons: React.FC = () => {
       } else {
         toast({
           title: 'Lição criada!',
-          description: `A lição "${newLesson.title}" foi criada com sucesso.`,
+          description: `A lição "${newLesson.title}" foi criada com sucesso.${newLesson.autoGenerateTapComplete ? ' Exercícios TapComplete gerados.' : ''}`,
         });
       }
       
       // Reset form
-      setNewLesson({ title: '', description: '', duration_minutes: 30, is_published: false, contextText: '', fullText: '' });
+      setNewLesson({ title: '', description: '', duration_minutes: 30, is_published: false, contextText: '', fullText: '', autoGenerateTapComplete: true });
     } catch (error: any) {
       toast({
         title: 'Erro ao criar lição',
         description: error.message,
         variant: 'destructive',
       });
+    }
+  };
+
+  const generateTapCompleteForLesson = async (lessonId: string, texts: string[]) => {
+    try {
+      // Get max display_order for this lesson
+      const { data: existingExercises } = await supabase
+        .from('exercises')
+        .select('display_order')
+        .eq('lesson_id', lessonId)
+        .order('display_order', { ascending: false })
+        .limit(1);
+
+      let maxOrder = existingExercises?.[0]?.display_order ?? -1;
+      let createdCount = 0;
+
+      for (const text of texts) {
+        if (!text || text.split(/\s+/).filter(Boolean).length < 3) continue;
+
+        maxOrder++;
+
+        const { error: insertError } = await supabase
+          .from('exercises')
+          .insert({
+            lesson_id: lessonId,
+            type: 'tap-complete',
+            title: `Ordenar: ${text.substring(0, 40)}${text.length > 40 ? '...' : ''}`,
+            content: { text, audioUrl: '' },
+            display_order: maxOrder,
+            is_published: false,
+          });
+
+        if (!insertError) createdCount++;
+      }
+
+      if (createdCount > 0) {
+        console.log(`Generated ${createdCount} TapComplete exercises for lesson ${lessonId}`);
+      }
+    } catch (error) {
+      console.error('Error generating TapComplete exercises:', error);
     }
   };
 
@@ -639,6 +690,26 @@ const AdminLessons: React.FC = () => {
                     className="min-h-[100px] font-mono text-sm"
                   />
                 </div>
+
+                {/* Auto-generate TapComplete option */}
+                {(newLesson.contextText.trim() || newLesson.fullText.trim()) && (
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-accent/30 border border-accent/50">
+                    <Switch
+                      id="autoTapComplete"
+                      checked={newLesson.autoGenerateTapComplete}
+                      onCheckedChange={(checked) => setNewLesson({ ...newLesson, autoGenerateTapComplete: checked })}
+                    />
+                    <div className="flex-1">
+                      <Label htmlFor="autoTapComplete" className="flex items-center gap-2 cursor-pointer">
+                        <MousePointer className="w-4 h-4 text-primary" />
+                        Gerar TapComplete automaticamente
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Cria exercícios de ordenar palavras a partir dos textos fornecidos
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
