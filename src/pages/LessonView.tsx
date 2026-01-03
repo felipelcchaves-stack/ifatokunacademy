@@ -266,11 +266,16 @@ const LessonView: React.FC = () => {
     
     switch (exercise.type) {
       case 'reading':
+        const exercisePhase = getExercisePhase(exercise.title);
         return (
           <ReadingExercise 
             text={content.text || ''}
             audioUrl={content.audioUrl}
             onComplete={handleExerciseComplete}
+            exerciseId={exercise.id}
+            lessonId={lessonId}
+            moduleId={moduleId}
+            phase={exercisePhase === 2 ? 'phase2' : 'phase1'}
           />
         );
       case 'flashcard':

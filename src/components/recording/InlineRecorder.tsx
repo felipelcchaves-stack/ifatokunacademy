@@ -13,6 +13,7 @@ interface InlineRecorderProps {
   exerciseId?: string;
   lessonId?: string;
   moduleId?: string;
+  phase?: string;
   onSaved?: () => void;
   className?: string;
 }
@@ -23,6 +24,7 @@ const InlineRecorder: React.FC<InlineRecorderProps> = ({
   exerciseId,
   lessonId,
   moduleId,
+  phase,
   onSaved,
   className
 }) => {
@@ -252,7 +254,8 @@ const InlineRecorder: React.FC<InlineRecorderProps> = ({
           duration_seconds: recordingTime,
           exercise_id: exerciseId || null,
           lesson_id: lessonId || null,
-          module_id: moduleId || null
+          module_id: moduleId || null,
+          phase: phase || null
         });
 
       if (dbError) throw dbError;

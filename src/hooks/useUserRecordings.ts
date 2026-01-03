@@ -21,10 +21,11 @@ interface UseUserRecordingsProps {
   exerciseId?: string;
   lessonId?: string;
   moduleId?: string;
+  phase?: 'phase1' | 'phase2';
 }
 
 export function useUserRecordings(props: UseUserRecordingsProps = {}) {
-  const { exerciseId, lessonId, moduleId } = props;
+  const { exerciseId, lessonId, moduleId, phase } = props;
   const { user } = useAuth();
   const { toast } = useToast();
   
@@ -59,6 +60,9 @@ export function useUserRecordings(props: UseUserRecordingsProps = {}) {
       if (moduleId) {
         query = query.eq('module_id', moduleId);
       }
+      if (phase) {
+        query = query.eq('phase', phase);
+      }
 
       const { data, error } = await query;
 
@@ -82,7 +86,7 @@ export function useUserRecordings(props: UseUserRecordingsProps = {}) {
     } finally {
       setIsLoading(false);
     }
-  }, [user, exerciseId, lessonId, moduleId, toast]);
+  }, [user, exerciseId, lessonId, moduleId, phase, toast]);
 
   const deleteRecording = useCallback(async (recordingId: string, audioUrl: string) => {
     if (!user) return false;
