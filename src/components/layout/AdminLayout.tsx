@@ -11,7 +11,8 @@ import {
   Upload,
   FileText,
   Home,
-  UserPlus
+  UserPlus,
+  MousePointer
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
@@ -31,6 +32,7 @@ const AdminLayout: React.FC = () => {
     { icon: BookOpen, label: 'Módulos', path: '/admin/modules' },
     { icon: FileText, label: 'Lições', path: '/admin/lessons' },
     { icon: Upload, label: 'Importar Odu', path: '/admin/import-odu' },
+    { icon: MousePointer, label: 'Gerar TapComplete', path: '/admin/generate-tap-complete' },
     { icon: Users, label: 'Usuários', path: '/admin/users' },
     { icon: UserPlus, label: 'Convites', path: '/admin/invites' },
     { icon: CreditCard, label: 'Pagamentos', path: '/admin/payments' },

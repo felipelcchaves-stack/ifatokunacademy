@@ -26,6 +26,7 @@ import AdminLessons from "./pages/admin/AdminLessons";
 import AdminLessonsOverview from "./pages/admin/AdminLessonsOverview";
 import AdminExercises from "./pages/admin/AdminExercises";
 import AdminImportOdu from "./pages/admin/AdminImportOdu";
+import AdminGenerateTapComplete from "./pages/admin/AdminGenerateTapComplete";
 import AdminSettings from "./pages/admin/AdminSettings";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminInvites from "./pages/admin/AdminInvites";
@@ -147,6 +148,7 @@ const App = () => (
                 <Route path="modules/:moduleId/lessons/:lessonId/exercises" element={<AdminExercises />} />
                 <Route path="lessons" element={<AdminLessonsOverview />} />
                 <Route path="import-odu" element={<AdminImportOdu />} />
+                <Route path="generate-tap-complete" element={<AdminGenerateTapComplete />} />
                 
                 <Route path="users" element={<AdminUsers />} />
                 <Route path="invites" element={<AdminInvites />} />
