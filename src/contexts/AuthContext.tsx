@@ -74,8 +74,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        console.log('[AuthContext] onAuthStateChange:', { event, hasSession: !!session, userId: session?.user?.id });
+        
         // Skip TOKEN_REFRESHED events if user hasn't changed - prevents unnecessary re-renders
         if (event === 'TOKEN_REFRESHED' && session?.user?.id === currentUserId) {
+          console.log('[AuthContext] Skipping TOKEN_REFRESHED - same user');
           return;
         }
 
@@ -85,11 +88,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
         // Defer Supabase calls with setTimeout to avoid deadlock
         if (session?.user) {
+          console.log('[AuthContext] User detected, fetching profile and admin status');
           setTimeout(() => {
             fetchProfile(session.user.id);
             checkAdminStatus(session.user.id);
           }, 0);
         } else {
+          console.log('[AuthContext] No user, clearing state');
           setProfile(null);
           setIsAdmin(false);
         }
@@ -97,7 +102,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     );
 
     // THEN check for existing session
+    console.log('[AuthContext] Checking for existing session...');
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('[AuthContext] getSession result:', { hasSession: !!session, userId: session?.user?.id });
       setSession(session);
       setUser(session?.user ?? null);
       
@@ -107,6 +114,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
       
       setLoading(false);
+      console.log('[AuthContext] Loading complete');
     });
 
     return () => subscription.unsubscribe();

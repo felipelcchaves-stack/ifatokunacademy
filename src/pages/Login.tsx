@@ -73,31 +73,38 @@ const Login: React.FC = () => {
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
 
+  // Determine safe navigation target (avoid /admin if not checked yet)
+  const safeFrom = from.startsWith('/admin') ? '/dashboard' : from;
+  
   const checkMFAStatus = async () => {
+    console.log('[Login] checkMFAStatus called, target:', safeFrom);
     try {
       const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      console.log('[Login] MFA check result:', { data, error: error?.message });
       
       // If there's an error or no data, assume no MFA needed and proceed
       if (error || !data) {
-        console.log('[Login] MFA check error or no data, proceeding to dashboard');
+        console.log('[Login] MFA check error or no data, proceeding to:', safeFrom);
         toast({
           title: 'Bem-vindo de volta!',
           description: 'Login realizado com sucesso.',
         });
-        navigate(from, { replace: true });
+        navigate(safeFrom, { replace: true });
         return;
       }
       
       // Only show MFA if user REALLY needs to verify
       if (data.currentLevel === 'aal1' && data.nextLevel === 'aal2') {
+        console.log('[Login] MFA required, showing verification');
         setShowMFA(true);
       } else {
         // No MFA required, proceed to dashboard
+        console.log('[Login] No MFA required, navigating to:', safeFrom);
         toast({
           title: 'Bem-vindo de volta!',
           description: 'Login realizado com sucesso.',
         });
-        navigate(from, { replace: true });
+        navigate(safeFrom, { replace: true });
       }
     } catch (error) {
       console.error('[Login] Error checking MFA status:', error);
@@ -106,17 +113,18 @@ const Login: React.FC = () => {
         title: 'Bem-vindo de volta!',
         description: 'Login realizado com sucesso.',
       });
-      navigate(from, { replace: true });
+      navigate(safeFrom, { replace: true });
     }
   };
 
   const handleMFAVerified = () => {
+    console.log('[Login] MFA verified, navigating to:', safeFrom);
     setShowMFA(false);
     toast({
       title: 'Bem-vindo de volta!',
       description: 'Login realizado com sucesso.',
     });
-    navigate(from, { replace: true });
+    navigate(safeFrom, { replace: true });
   };
 
   const handleMFACancel = async () => {
@@ -145,9 +153,11 @@ const Login: React.FC = () => {
     hasCheckedMFA.current = false;
 
     try {
+      console.log('[Login] Attempting signIn...');
       const { error } = await signIn(email, password);
       
       if (error) {
+        console.log('[Login] signIn error:', error.message);
         let message = 'Ocorreu um erro ao fazer login.';
         
         if (error.message.includes('Invalid login credentials')) {
@@ -161,6 +171,8 @@ const Login: React.FC = () => {
           title: 'Erro no login',
           description: message,
         });
+      } else {
+        console.log('[Login] signIn success, waiting for isAuthenticated change');
       }
       // Note: Success handling moved to useEffect/checkMFAStatus
     } catch (error) {
