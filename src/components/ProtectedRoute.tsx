@@ -12,21 +12,26 @@ interface ProtectedRouteProps {
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requireAdmin = false }) => {
   const { isAuthenticated, isAdmin, loading } = useAuth();
   const location = useLocation();
-  const [mfaChecking, setMfaChecking] = useState(true);
+  // Start as false to avoid unnecessary loading state for users without MFA
+  const [mfaChecking, setMfaChecking] = useState(false);
   const [mfaRequired, setMfaRequired] = useState(false);
   const mfaCheckedOnce = useRef(false);
 
   useEffect(() => {
-    // Only check MFA once on initial mount, not on every auth state change
-    if (isAuthenticated && !loading && !mfaCheckedOnce.current) {
-      mfaCheckedOnce.current = true;
-      checkMFALevel();
-    } else if (!loading && !isAuthenticated) {
+    // Skip MFA check entirely if still loading auth or not authenticated
+    if (loading) return;
+    
+    if (!isAuthenticated) {
       mfaCheckedOnce.current = false; // Reset for next login
       setMfaChecking(false);
-    } else if (!loading && mfaCheckedOnce.current) {
-      // Already checked, don't re-check
-      setMfaChecking(false);
+      return;
+    }
+    
+    // Only check MFA once per session
+    if (!mfaCheckedOnce.current) {
+      mfaCheckedOnce.current = true;
+      setMfaChecking(true);
+      checkMFALevel();
     }
   }, [isAuthenticated, loading]);
 

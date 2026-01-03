@@ -26,6 +26,8 @@ const Login: React.FC = () => {
   const [showMFA, setShowMFA] = useState(false);
   const [parallaxOffset, setParallaxOffset] = useState({ x: 0, y: 0 });
   const parallaxRef = useRef<HTMLDivElement>(null);
+  const hasCheckedMFA = useRef(false);
+  const loginInProgress = useRef(false);
   
   const { signIn, isAuthenticated } = useAuth();
   const { platformName } = usePlatformSettings();
@@ -38,12 +40,18 @@ const Login: React.FC = () => {
 
   const from = (location.state as any)?.from?.pathname || '/dashboard';
 
+  // Effect to handle post-login navigation
   useEffect(() => {
-    if (isAuthenticated && !showMFA) {
-      // Check if MFA is required
+    // Only check MFA if:
+    // 1. User is authenticated
+    // 2. Not already showing MFA screen
+    // 3. Login was initiated from this page (loginInProgress)
+    // 4. Haven't already checked MFA in this session
+    if (isAuthenticated && !showMFA && loginInProgress.current && !hasCheckedMFA.current) {
+      hasCheckedMFA.current = true;
       checkMFAStatus();
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, showMFA]);
 
   // Parallax effect on mouse movement
   useEffect(() => {
@@ -68,17 +76,36 @@ const Login: React.FC = () => {
   const checkMFAStatus = async () => {
     try {
       const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-      if (error) throw error;
       
+      // If there's an error or no data, assume no MFA needed and proceed
+      if (error || !data) {
+        console.log('[Login] MFA check error or no data, proceeding to dashboard');
+        toast({
+          title: 'Bem-vindo de volta!',
+          description: 'Login realizado com sucesso.',
+        });
+        navigate(from, { replace: true });
+        return;
+      }
+      
+      // Only show MFA if user REALLY needs to verify
       if (data.currentLevel === 'aal1' && data.nextLevel === 'aal2') {
-        // User has MFA enabled but hasn't verified yet
         setShowMFA(true);
       } else {
         // No MFA required, proceed to dashboard
+        toast({
+          title: 'Bem-vindo de volta!',
+          description: 'Login realizado com sucesso.',
+        });
         navigate(from, { replace: true });
       }
     } catch (error) {
-      console.error('Error checking MFA status:', error);
+      console.error('[Login] Error checking MFA status:', error);
+      // Even on error, navigate to dashboard
+      toast({
+        title: 'Bem-vindo de volta!',
+        description: 'Login realizado com sucesso.',
+      });
       navigate(from, { replace: true });
     }
   };
@@ -114,6 +141,8 @@ const Login: React.FC = () => {
     }
 
     setLoading(true);
+    loginInProgress.current = true;
+    hasCheckedMFA.current = false;
 
     try {
       const { error } = await signIn(email, password);
