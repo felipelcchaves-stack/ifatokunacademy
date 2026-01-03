@@ -69,6 +69,7 @@ interface MemorizationExerciseProps {
   exerciseId?: string;
   lessonId?: string;
   moduleId?: string;
+  phase?: 'phase1' | 'phase2';
   onComplete?: () => void;
 }
 
@@ -100,7 +101,8 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
   items, 
   exerciseId, 
   lessonId, 
-  moduleId, 
+  moduleId,
+  phase = 'phase1',
   onComplete 
 }) => {
   // Sort items by word count (shortest first) for progressive learning
