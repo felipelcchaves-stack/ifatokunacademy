@@ -7,11 +7,15 @@ import {
   CheckCircle, 
   XCircle,
   Play,
-  Brain
+  Brain,
+  Filter
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -39,25 +43,53 @@ interface GenerationResult {
   createdCount: number;
 }
 
+interface ExerciseStatus {
+  totalTexts: number;
+  existingCount: number;
+  pendingCount: number;
+}
+
 const AdminGenerateTapComplete: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   
   const [exercises, setExercises] = useState<MemorizationExercise[]>([]);
+  const [exerciseStatus, setExerciseStatus] = useState<Record<string, ExerciseStatus>>({});
   const [selectedExercises, setSelectedExercises] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
   const [results, setResults] = useState<GenerationResult[]>([]);
+  const [showOnlyPending, setShowOnlyPending] = useState(true);
 
   useEffect(() => {
     fetchMemorizationExercises();
   }, []);
 
+  const getTextsFromExercise = (exercise: MemorizationExercise): string[] => {
+    const items = exercise.content?.items || [];
+    const texts: string[] = [];
+    
+    for (const item of items) {
+      if (item.summary && item.summary.split(/\s+/).filter(Boolean).length >= 3) {
+        texts.push(item.summary);
+      }
+      if (item.intermediate && item.intermediate.split(/\s+/).filter(Boolean).length >= 3) {
+        texts.push(item.intermediate);
+      }
+      if (item.text && item.text.split(/\s+/).filter(Boolean).length >= 3) {
+        texts.push(item.text);
+      }
+    }
+    
+    return texts;
+  };
+
   const fetchMemorizationExercises = async () => {
     try {
       setLoading(true);
       
+      // Fetch memorization exercises
       const { data, error } = await supabase
         .from('exercises')
         .select(`
@@ -80,7 +112,7 @@ const AdminGenerateTapComplete: React.FC = () => {
       if (error) throw error;
 
       // Transform data structure
-      const transformed = (data || []).map((ex: any) => ({
+      const transformed: MemorizationExercise[] = (data || []).map((ex: any) => ({
         id: ex.id,
         title: ex.title,
         lesson_id: ex.lesson_id,
@@ -95,7 +127,44 @@ const AdminGenerateTapComplete: React.FC = () => {
         },
       }));
 
+      // Get all lesson IDs to fetch existing tap-complete exercises
+      const lessonIds = [...new Set(transformed.map(e => e.lesson_id))];
+      
+      // Fetch all existing tap-complete exercises for these lessons
+      const { data: existingTapComplete } = await supabase
+        .from('exercises')
+        .select('lesson_id, content')
+        .eq('type', 'tap-complete')
+        .in('lesson_id', lessonIds);
+
+      // Calculate status for each memorization exercise
+      const statusMap: Record<string, ExerciseStatus> = {};
+      
+      for (const exercise of transformed) {
+        const texts = getTextsFromExercise(exercise);
+        const lessonTapCompletes = existingTapComplete?.filter(
+          tc => tc.lesson_id === exercise.lesson_id
+        ) || [];
+        
+        // Count how many texts already have tap-complete (exact match)
+        let existingCount = 0;
+        for (const text of texts) {
+          const exists = lessonTapCompletes.some(tc => {
+            const tcContent = tc.content as { text?: string };
+            return tcContent?.text === text;
+          });
+          if (exists) existingCount++;
+        }
+        
+        statusMap[exercise.id] = {
+          totalTexts: texts.length,
+          existingCount,
+          pendingCount: texts.length - existingCount,
+        };
+      }
+
       setExercises(transformed);
+      setExerciseStatus(statusMap);
     } catch (error: any) {
       toast({
         title: 'Erro ao carregar exercícios',
@@ -119,11 +188,15 @@ const AdminGenerateTapComplete: React.FC = () => {
     });
   };
 
+  const filteredExercises = showOnlyPending
+    ? exercises.filter(e => (exerciseStatus[e.id]?.pendingCount || 0) > 0)
+    : exercises;
+
   const selectAll = () => {
-    if (selectedExercises.size === exercises.length) {
+    if (selectedExercises.size === filteredExercises.length) {
       setSelectedExercises(new Set());
     } else {
-      setSelectedExercises(new Set(exercises.map(e => e.id)));
+      setSelectedExercises(new Set(filteredExercises.map(e => e.id)));
     }
   };
 
@@ -158,57 +231,57 @@ const AdminGenerateTapComplete: React.FC = () => {
 
         let maxOrder = existingExercises?.[0]?.display_order ?? -1;
 
+        // Fetch existing tap-complete for this lesson with exact content
+        const { data: existingTapComplete } = await supabase
+          .from('exercises')
+          .select('content')
+          .eq('lesson_id', exercise.lesson_id)
+          .eq('type', 'tap-complete');
+
+        const existingTexts = new Set(
+          (existingTapComplete || []).map(tc => {
+            const content = tc.content as { text?: string };
+            return content?.text;
+          }).filter(Boolean)
+        );
+
         // Extract texts from memorization items
-        const items = exercise.content?.items || [];
+        const texts = getTextsFromExercise(exercise);
         let createdCount = 0;
 
-        for (const item of items) {
-          const textsToUse = [
-            item.summary,
-            item.intermediate,
-            item.text,
-          ].filter(Boolean);
+        for (const text of texts) {
+          // Skip if tap-complete already exists (exact match)
+          if (existingTexts.has(text)) continue;
 
-          for (const text of textsToUse) {
-            if (!text || text.split(/\s+/).filter(Boolean).length < 3) continue;
+          maxOrder++;
 
-            // Check if tap-complete already exists for this text
-            const { data: existing } = await supabase
-              .from('exercises')
-              .select('id')
-              .eq('lesson_id', exercise.lesson_id)
-              .eq('type', 'tap-complete')
-              .contains('content', { text });
+          const { error: insertError } = await supabase
+            .from('exercises')
+            .insert({
+              lesson_id: exercise.lesson_id,
+              type: 'tap-complete',
+              title: `Ordenar: ${text.substring(0, 50)}${text.length > 50 ? '...' : ''}`,
+              content: { 
+                text,
+                audioUrl: '', 
+              },
+              display_order: maxOrder,
+              is_published: true,
+            });
 
-            if (existing && existing.length > 0) continue;
-
-            maxOrder++;
-
-            const { error: insertError } = await supabase
-              .from('exercises')
-              .insert({
-                lesson_id: exercise.lesson_id,
-                type: 'tap-complete',
-                title: `Ordenar: ${text.substring(0, 50)}${text.length > 50 ? '...' : ''}`,
-                content: { 
-                  text,
-                  audioUrl: '', 
-                },
-                display_order: maxOrder,
-                is_published: false,
-              });
-
-            if (insertError) throw insertError;
-            createdCount++;
-          }
+          if (insertError) throw insertError;
+          createdCount++;
+          
+          // Add to set to prevent duplicates within the same run
+          existingTexts.add(text);
         }
 
         newResults.push({
           exerciseId: exercise.id,
           success: true,
           message: createdCount > 0 
-            ? `${createdCount} exercício(s) criado(s)` 
-            : 'Nenhum texto válido encontrado',
+            ? `${createdCount} exercício(s) criado(s) e publicado(s)` 
+            : 'Todos os textos já têm TapComplete',
           createdCount,
         });
       } catch (error: any) {
@@ -231,19 +304,11 @@ const AdminGenerateTapComplete: React.FC = () => {
 
     toast({
       title: 'Geração concluída!',
-      description: `${totalCreated} exercícios TapComplete criados de ${successCount}/${selected.length} exercícios processados.`,
+      description: `${totalCreated} exercícios TapComplete criados e publicados de ${successCount}/${selected.length} exercícios processados.`,
     });
-  };
 
-  const getItemCount = (exercise: MemorizationExercise): number => {
-    const items = exercise.content?.items || [];
-    return items.reduce((count, item) => {
-      let c = 0;
-      if (item.summary && item.summary.split(/\s+/).filter(Boolean).length >= 3) c++;
-      if (item.intermediate && item.intermediate.split(/\s+/).filter(Boolean).length >= 3) c++;
-      if (item.text && item.text.split(/\s+/).filter(Boolean).length >= 3) c++;
-      return count + c;
-    }, 0);
+    // Refresh status after generation
+    fetchMemorizationExercises();
   };
 
   if (loading) {
@@ -253,6 +318,8 @@ const AdminGenerateTapComplete: React.FC = () => {
       </div>
     );
   }
+
+  const totalPending = Object.values(exerciseStatus).reduce((sum, s) => sum + s.pendingCount, 0);
 
   return (
     <div className="space-y-6">
@@ -288,9 +355,28 @@ const AdminGenerateTapComplete: React.FC = () => {
             <ul className="text-sm text-muted-foreground mt-1 space-y-1">
               <li>• Para cada exercício de memorização selecionado, serão criados exercícios TapComplete</li>
               <li>• Cada nível (resumo, intermediário, completo) com 3+ palavras gera um exercício</li>
-              <li>• Os exercícios são criados como rascunho para você revisar antes de publicar</li>
+              <li>• Os exercícios são criados e <strong>publicados automaticamente</strong></li>
+              <li>• Textos que já têm TapComplete são ignorados (sem duplicatas)</li>
             </ul>
           </div>
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-4">
+        <div className="bg-card border border-border rounded-xl p-4 text-center">
+          <p className="text-2xl font-bold text-foreground">{exercises.length}</p>
+          <p className="text-sm text-muted-foreground">Exercícios de memorização</p>
+        </div>
+        <div className="bg-card border border-border rounded-xl p-4 text-center">
+          <p className="text-2xl font-bold text-primary">{totalPending}</p>
+          <p className="text-sm text-muted-foreground">TapComplete pendentes</p>
+        </div>
+        <div className="bg-card border border-border rounded-xl p-4 text-center">
+          <p className="text-2xl font-bold text-green-600">
+            {Object.values(exerciseStatus).reduce((sum, s) => sum + s.existingCount, 0)}
+          </p>
+          <p className="text-sm text-muted-foreground">TapComplete existentes</p>
         </div>
       </div>
 
@@ -340,42 +426,70 @@ const AdminGenerateTapComplete: React.FC = () => {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <Checkbox 
-              checked={selectedExercises.size === exercises.length && exercises.length > 0}
+              checked={selectedExercises.size === filteredExercises.length && filteredExercises.length > 0}
               onCheckedChange={selectAll}
             />
             <span className="font-medium text-foreground">
-              {selectedExercises.size} de {exercises.length} selecionados
+              {selectedExercises.size} de {filteredExercises.length} selecionados
             </span>
           </div>
-          <Button
-            onClick={generateTapCompleteExercises}
-            disabled={generating || selectedExercises.size === 0}
-            className="gradient-gold text-secondary shadow-gold"
-          >
-            {generating ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Gerando...
-              </>
-            ) : (
-              <>
-                <Play className="w-4 h-4 mr-2" />
-                Gerar Exercícios
-              </>
-            )}
-          </Button>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Switch
+                id="show-pending"
+                checked={showOnlyPending}
+                onCheckedChange={setShowOnlyPending}
+              />
+              <Label htmlFor="show-pending" className="text-sm text-muted-foreground flex items-center gap-1">
+                <Filter className="w-3 h-3" />
+                Só pendentes
+              </Label>
+            </div>
+            <Button
+              onClick={generateTapCompleteExercises}
+              disabled={generating || selectedExercises.size === 0}
+              className="gradient-gold text-secondary shadow-gold"
+            >
+              {generating ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Gerando...
+                </>
+              ) : (
+                <>
+                  <Play className="w-4 h-4 mr-2" />
+                  Gerar e Publicar
+                </>
+              )}
+            </Button>
+          </div>
         </div>
 
-        {exercises.length === 0 ? (
+        {filteredExercises.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             <Brain className="w-12 h-12 mx-auto mb-3 opacity-50" />
-            <p>Nenhum exercício de memorização encontrado.</p>
+            <p>
+              {showOnlyPending 
+                ? 'Todos os exercícios já têm TapComplete completos!' 
+                : 'Nenhum exercício de memorização encontrado.'
+              }
+            </p>
+            {showOnlyPending && exercises.length > 0 && (
+              <Button
+                variant="link"
+                onClick={() => setShowOnlyPending(false)}
+                className="mt-2"
+              >
+                Ver todos os exercícios
+              </Button>
+            )}
           </div>
         ) : (
           <div className="space-y-2 max-h-[400px] overflow-y-auto">
-            {exercises.map(exercise => {
-              const itemCount = getItemCount(exercise);
+            {filteredExercises.map(exercise => {
+              const status = exerciseStatus[exercise.id];
               const result = results.find(r => r.exerciseId === exercise.id);
+              const isComplete = status?.pendingCount === 0;
               
               return (
                 <div 
@@ -389,7 +503,7 @@ const AdminGenerateTapComplete: React.FC = () => {
                   <Checkbox
                     checked={selectedExercises.has(exercise.id)}
                     onCheckedChange={() => toggleExercise(exercise.id)}
-                    disabled={generating}
+                    disabled={generating || isComplete}
                   />
                   <Brain className="w-5 h-5 text-muted-foreground flex-shrink-0" />
                   <div className="flex-1 min-w-0">
@@ -399,8 +513,21 @@ const AdminGenerateTapComplete: React.FC = () => {
                     </p>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <p className="text-sm font-medium text-primary">{itemCount} textos</p>
-                    <p className="text-xs text-muted-foreground">disponíveis</p>
+                    {isComplete ? (
+                      <Badge className="bg-green-100 text-green-700 hover:bg-green-100">
+                        <CheckCircle className="w-3 h-3 mr-1" />
+                        Completo
+                      </Badge>
+                    ) : (
+                      <>
+                        <p className="text-sm font-medium text-primary">
+                          {status?.pendingCount || 0} pendentes
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          de {status?.totalTexts || 0} textos
+                        </p>
+                      </>
+                    )}
                   </div>
                 </div>
               );
