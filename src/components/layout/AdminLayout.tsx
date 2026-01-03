@@ -12,7 +12,8 @@ import {
   FileText,
   Home,
   UserPlus,
-  MousePointer
+  MousePointer,
+  GripVertical
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
@@ -33,6 +34,7 @@ const AdminLayout: React.FC = () => {
     { icon: FileText, label: 'Lições', path: '/admin/lessons' },
     { icon: Upload, label: 'Importar Odu', path: '/admin/import-odu' },
     { icon: MousePointer, label: 'Gerar TapComplete', path: '/admin/generate-tap-complete' },
+    { icon: GripVertical, label: 'Gerar Drag & Drop', path: '/admin/generate-drag-drop' },
     { icon: Users, label: 'Usuários', path: '/admin/users' },
     { icon: UserPlus, label: 'Convites', path: '/admin/invites' },
     { icon: CreditCard, label: 'Pagamentos', path: '/admin/payments' },
