@@ -40,6 +40,7 @@ import TestMemorization from "./pages/TestMemorization";
 import MemorizationGuide from "./pages/MemorizationGuide";
 import RecordingStudio from "./pages/RecordingStudio";
 import NotFound from "./pages/NotFound";
+import AuthDebug from "./pages/AuthDebug";
 
 const queryClient = new QueryClient();
 
@@ -59,6 +60,7 @@ const App = () => (
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/mfa-verify" element={<MFAVerify />} />
+              <Route path="/auth-debug" element={<AuthDebug />} />
               
               {/* Student Routes - Protected */}
               <Route path="/dashboard" element={
