@@ -15,6 +15,7 @@ import {
   Layers,
   Columns,
   CreditCard,
+  MousePointer,
   Video,
   Brain,
   HelpCircle,
@@ -64,7 +65,7 @@ import AdminErrorBoundary from '@/components/errors/AdminErrorBoundary';
 interface Exercise {
   id: string;
   lesson_id: string;
-  type: 'reading' | 'drag-drop' | 'fill-columns' | 'flashcard' | 'video' | 'memorization' | 'quiz';
+  type: 'reading' | 'drag-drop' | 'fill-columns' | 'flashcard' | 'video' | 'memorization' | 'quiz' | 'tap-complete';
   title: string;
   content: Record<string, any>;
   display_order: number;
@@ -91,6 +92,7 @@ const exerciseTypes = [
   { value: 'video', label: 'Vídeo Aula', icon: Video, description: 'Conteúdo em vídeo' },
   { value: 'memorization', label: 'Memorização', icon: Brain, description: 'Técnicas de memorização' },
   { value: 'quiz', label: 'Quiz', icon: HelpCircle, description: 'Questionário com múltipla escolha' },
+  { value: 'tap-complete', label: 'Ordenar Palavras', icon: MousePointer, description: 'Ordenar palavras para formar texto' },
 ];
 
 const AdminExercises: React.FC = () => {
@@ -235,6 +237,8 @@ const AdminExercises: React.FC = () => {
           passingScore: 90,
           timeLimit: null
         };
+      case 'tap-complete':
+        return { text: '', audioUrl: '' };
       default:
         return {};
     }

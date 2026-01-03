@@ -12,6 +12,7 @@ import VideoExercise from '@/components/exercises/VideoExercise';
 import FillColumnsExercise from '@/components/exercises/FillColumnsExercise';
 import MemorizationExercise from '@/components/exercises/MemorizationExercise';
 import QuizExercise from '@/components/exercises/QuizExercise';
+import TapComplete from '@/components/exercises/TapComplete';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -24,7 +25,7 @@ import { Badge } from '@/components/ui/badge';
 interface Exercise {
   id: string;
   lesson_id: string;
-  type: 'reading' | 'drag-drop' | 'fill-columns' | 'flashcard' | 'video' | 'memorization' | 'quiz';
+  type: 'reading' | 'drag-drop' | 'fill-columns' | 'flashcard' | 'video' | 'memorization' | 'quiz' | 'tap-complete';
   title: string;
   content: Record<string, any>;
   display_order: number;
@@ -339,6 +340,13 @@ const LessonView: React.FC = () => {
             questions={content.questions || []}
             passingScore={content.passingScore || 90}
             onComplete={(passed, score) => handleExerciseComplete(score)}
+          />
+        );
+      case 'tap-complete':
+        return (
+          <TapComplete
+            text={content.text || ''}
+            onComplete={(correct) => correct && handleExerciseComplete()}
           />
         );
       default:
