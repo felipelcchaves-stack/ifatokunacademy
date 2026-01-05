@@ -68,21 +68,21 @@ const AdminGenerateTapComplete: React.FC = () => {
 
   const getTextsFromExercise = (exercise: MemorizationExercise): string[] => {
     const items = exercise.content?.items || [];
-    const texts: string[] = [];
+    const textsSet = new Set<string>();
     
     for (const item of items) {
       if (item.summary && item.summary.split(/\s+/).filter(Boolean).length >= 3) {
-        texts.push(item.summary);
+        textsSet.add(item.summary.trim());
       }
       if (item.intermediate && item.intermediate.split(/\s+/).filter(Boolean).length >= 3) {
-        texts.push(item.intermediate);
+        textsSet.add(item.intermediate.trim());
       }
       if (item.text && item.text.split(/\s+/).filter(Boolean).length >= 3) {
-        texts.push(item.text);
+        textsSet.add(item.text.trim());
       }
     }
     
-    return texts;
+    return Array.from(textsSet);
   };
 
   const fetchMemorizationExercises = async () => {
@@ -146,12 +146,12 @@ const AdminGenerateTapComplete: React.FC = () => {
           tc => tc.lesson_id === exercise.lesson_id
         ) || [];
         
-        // Count how many texts already have tap-complete (exact match)
+        // Count how many texts already have tap-complete (exact match with trim)
         let existingCount = 0;
         for (const text of texts) {
           const exists = lessonTapCompletes.some(tc => {
             const tcContent = tc.content as { text?: string };
-            return tcContent?.text === text;
+            return tcContent?.text?.trim() === text.trim();
           });
           if (exists) existingCount++;
         }
@@ -241,7 +241,7 @@ const AdminGenerateTapComplete: React.FC = () => {
         const existingTexts = new Set(
           (existingTapComplete || []).map(tc => {
             const content = tc.content as { text?: string };
-            return content?.text;
+            return content?.text?.trim();
           }).filter(Boolean)
         );
 
@@ -250,8 +250,8 @@ const AdminGenerateTapComplete: React.FC = () => {
         let createdCount = 0;
 
         for (const text of texts) {
-          // Skip if tap-complete already exists (exact match)
-          if (existingTexts.has(text)) continue;
+          // Skip if tap-complete already exists (exact match with trim)
+          if (existingTexts.has(text.trim())) continue;
 
           maxOrder++;
 
