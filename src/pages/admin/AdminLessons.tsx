@@ -13,7 +13,8 @@ import {
   Eye,
   EyeOff,
   Sparkles,
-  MousePointer
+  MousePointer,
+  RefreshCw
 } from 'lucide-react';
 import {
   DndContext,
@@ -95,6 +96,7 @@ interface SortableLessonItemProps {
   onEdit: (lesson: Lesson) => void;
   onTogglePublish: (lesson: Lesson) => void;
   onDelete: (lesson: Lesson) => void;
+  onRegenerate: (lesson: Lesson) => void;
 }
 
 const SortableLessonItem: React.FC<SortableLessonItemProps> = ({
@@ -105,6 +107,7 @@ const SortableLessonItem: React.FC<SortableLessonItemProps> = ({
   onEdit,
   onTogglePublish,
   onDelete,
+  onRegenerate,
 }) => {
   const {
     attributes,
@@ -181,6 +184,10 @@ const SortableLessonItem: React.FC<SortableLessonItemProps> = ({
           <DropdownMenuItem onClick={() => onEdit(lesson)}>
             <Edit className="w-4 h-4 mr-2" />
             Editar
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onRegenerate(lesson)}>
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Regenerar Exercícios
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => onTogglePublish(lesson)}>
             {lesson.is_published ? (
@@ -549,6 +556,74 @@ const AdminLessons: React.FC = () => {
     }
   };
 
+  const handleRegenerateExercises = async (lesson: Lesson) => {
+    if (!await ensureSession()) return;
+    
+    try {
+      toast({
+        title: 'Regenerando exercícios...',
+        description: 'Buscando textos e recriando exercícios.',
+      });
+
+      // Fetch existing exercises to extract texts
+      const { data: exercises, error: fetchError } = await supabase
+        .from('exercises')
+        .select('type, content')
+        .eq('lesson_id', lesson.id)
+        .in('type', ['tap-complete', 'drag-drop']);
+
+      if (fetchError) throw fetchError;
+
+      // Extract unique texts from existing exercises
+      const textsSet = new Set<string>();
+      
+      for (const ex of exercises || []) {
+        const content = ex.content as { text?: string; sourceText?: string; items?: string[] };
+        if (ex.type === 'tap-complete' && content?.text) {
+          textsSet.add(content.text.trim());
+        } else if (ex.type === 'drag-drop') {
+          const text = content?.sourceText?.trim() || content?.items?.join(' ').trim();
+          if (text) textsSet.add(text);
+        }
+      }
+
+      const texts = Array.from(textsSet);
+
+      if (texts.length === 0) {
+        toast({
+          title: 'Nenhum texto encontrado',
+          description: 'Não foi possível extrair textos dos exercícios existentes.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Delete existing TapComplete and DragDrop exercises
+      const { error: deleteError } = await supabase
+        .from('exercises')
+        .delete()
+        .eq('lesson_id', lesson.id)
+        .in('type', ['tap-complete', 'drag-drop']);
+
+      if (deleteError) throw deleteError;
+
+      // Regenerate exercises
+      await generateTapCompleteForLesson(lesson.id, texts);
+      await generateDragDropForLesson(lesson.id, texts);
+
+      toast({
+        title: 'Exercícios regenerados!',
+        description: `${texts.length} texto(s) processado(s). TapComplete e DragDrop recriados.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao regenerar',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
+  };
+
   const togglePublish = async (lesson: Lesson) => {
     // Ensure valid session before write operation
     if (!await ensureSession()) return;
@@ -894,6 +969,7 @@ const AdminLessons: React.FC = () => {
                     }}
                     onTogglePublish={togglePublish}
                     onDelete={handleDeleteLesson}
+                    onRegenerate={handleRegenerateExercises}
                   />
                 ))}
               </div>
