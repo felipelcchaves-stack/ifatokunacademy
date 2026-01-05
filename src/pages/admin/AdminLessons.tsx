@@ -401,7 +401,7 @@ const AdminLessons: React.FC = () => {
           .insert({
             lesson_id: lessonId,
             type: 'tap-complete',
-            title: `Ordenar: ${text.substring(0, 40)}${text.length > 40 ? '...' : ''}`,
+            title: `Fase 1 - Ordenar: ${text.substring(0, 40)}${text.length > 40 ? '...' : ''}`,
             content: { text, audioUrl: '' },
             display_order: maxOrder,
             is_published: true,

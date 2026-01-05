@@ -39,12 +39,30 @@ interface Lesson {
   module_id: string;
 }
 
-// Helper to determine phase from exercise title
-const getExercisePhase = (title: string): 1 | 2 => {
-  if (title.toLowerCase().includes('fase 2') || title.toLowerCase().includes('completo')) {
+// Helper to determine phase from exercise title and display order
+const getExercisePhase = (title: string, displayOrder: number): 1 | 2 => {
+  const titleLower = title.toLowerCase();
+  
+  // Verificação explícita por "Fase 2" no título
+  if (titleLower.includes('fase 2') || titleLower.includes('proficiência')) {
     return 2;
   }
-  return 1;
+  
+  // Verificação explícita por "Fase 1" no título
+  if (titleLower.includes('fase 1') || titleLower.includes('contexto')) {
+    return 1;
+  }
+  
+  // Para exercícios sem marcação explícita, usar display_order
+  // Estrutura padrão do PedagogicalExerciseGenerator:
+  // Fase 1: orders 0-5 (6 exercícios)
+  // Fase 2: orders 6-10 (5 exercícios)
+  // Exercícios extras (tap-complete, drag-drop) = orders 11+ = Fase 1 (fixação)
+  if (displayOrder >= 11) {
+    return 1; // Exercícios de fixação extras pertencem à Fase 1
+  }
+  
+  return displayOrder <= 5 ? 1 : 2;
 };
 
 const LessonView: React.FC = () => {
@@ -120,8 +138,8 @@ const LessonView: React.FC = () => {
   const phaseInfo = useMemo(() => {
     if (exercises.length === 0) return null;
     
-    const phase1Exercises = exercises.filter(ex => getExercisePhase(ex.title) === 1);
-    const phase2Exercises = exercises.filter(ex => getExercisePhase(ex.title) === 2);
+    const phase1Exercises = exercises.filter(ex => getExercisePhase(ex.title, ex.display_order) === 1);
+    const phase2Exercises = exercises.filter(ex => getExercisePhase(ex.title, ex.display_order) === 2);
     
     const hasPhases = phase1Exercises.length > 0 && phase2Exercises.length > 0;
     const phase1EndIndex = phase1Exercises.length - 1;
@@ -267,7 +285,7 @@ const LessonView: React.FC = () => {
     
     switch (exercise.type) {
       case 'reading':
-        const exercisePhase = getExercisePhase(exercise.title);
+        const exercisePhase = getExercisePhase(exercise.title, exercise.display_order);
         return (
           <ReadingExercise 
             text={content.text || ''}
@@ -280,7 +298,7 @@ const LessonView: React.FC = () => {
           />
         );
       case 'flashcard':
-        const flashcardPhase = getExercisePhase(exercise.title);
+        const flashcardPhase = getExercisePhase(exercise.title, exercise.display_order);
         return (
           <FlashCard 
             cards={content.cards || []}
@@ -318,8 +336,8 @@ const LessonView: React.FC = () => {
           />
         );
       case 'memorization':
-        const memorizationPhase = getExercisePhase(exercise.title);
-        const memItems = (content.items || []).map((item: any) => 
+        const memorizationPhase = getExercisePhase(exercise.title, exercise.display_order);
+        const memItems = (content.items || []).map((item: any) =>
           typeof item === 'string' 
             ? { text: item, hint: '' } 
             : item
