@@ -127,20 +127,23 @@ const PedagogicalExerciseGenerator: React.FC<PedagogicalExerciseGeneratorProps> 
     return { items, targets, correctMatches };
   };
 
-  // Generate fill-columns exercise - formato padronizado string[][]
-  const generateFillColumns = (text: string): { columns: string[]; rows: string[][] } => {
+  // Generate fill-blanks exercise - novo formato com {{blank}}
+  const generateFillBlanks = (text: string): { items: { text: string; answers: string[]; hint: string }[] } => {
     const lines = splitIntoLines(text);
-    const columns = ['Linha', 'Complete o verso'];
-    // Formato padronizado: array de arrays de strings
-    const rows: string[][] = lines.map((line, i) => {
+    const items = lines.map((line) => {
       const words = line.split(' ');
-      // Hide some words (every 3rd word)
-      const displayWords = words.map((word, idx) => 
-        idx % 3 === 1 ? '______' : word
-      );
-      return [`${i + 1}`, displayWords.join(' ')];
+      const answers: string[] = [];
+      // Hide some words (every 3rd word) and replace with {{blank}}
+      const textWithBlanks = words.map((word, idx) => {
+        if (idx % 3 === 1 && word.length > 0) {
+          answers.push(word);
+          return '{{blank}}';
+        }
+        return word;
+      }).join(' ');
+      return { text: textWithBlanks, answers, hint: '' };
     });
-    return { columns, rows };
+    return { items };
   };
 
   // Generate all 11 exercises
@@ -175,12 +178,12 @@ const PedagogicalExerciseGenerator: React.FC<PedagogicalExerciseGeneratorProps> 
       display_order: order++,
     });
 
-    // 3 - Fill-columns: Contexto
-    const fillColumnsContexto = generateFillColumns(contextoText);
+    // 3 - Fill-blanks: Contexto
+    const fillBlanksContexto = generateFillBlanks(contextoText);
     exercises.push({
       title: `Fase 1 - Completar Contexto: ${lessonTitle}`,
-      type: 'fill-columns',
-      content: fillColumnsContexto,
+      type: 'fill-blanks',
+      content: fillBlanksContexto,
       display_order: order++,
     });
 
@@ -227,12 +230,12 @@ const PedagogicalExerciseGenerator: React.FC<PedagogicalExerciseGeneratorProps> 
       display_order: order++,
     });
 
-    // 9 - Fill-columns: Verso
-    const fillColumnsVerso = generateFillColumns(versoText);
+    // 9 - Fill-blanks: Verso
+    const fillBlanksVerso = generateFillBlanks(versoText);
     exercises.push({
       title: `Fase 2 - Completar Verso: ${lessonTitle}`,
-      type: 'fill-columns',
-      content: fillColumnsVerso,
+      type: 'fill-blanks',
+      content: fillBlanksVerso,
       display_order: order++,
     });
 
@@ -324,13 +327,13 @@ const PedagogicalExerciseGenerator: React.FC<PedagogicalExerciseGeneratorProps> 
     { phase: 'Fase 1', name: 'Contexto (Leitura)', type: 'reading' },
     { phase: 'Fase 1', name: 'Memorizar Contexto', type: 'memorization' },
     { phase: 'Fase 1', name: 'Ordenar Contexto', type: 'drag-drop' },
-    { phase: 'Fase 1', name: 'Completar Contexto', type: 'fill-columns' },
+    { phase: 'Fase 1', name: 'Completar Contexto', type: 'fill-blanks' },
     { phase: 'Fase 1', name: 'Revisão Contexto', type: 'flashcard' },
     { phase: 'Fase 1', name: 'Fixação do Contexto', type: 'memorization' },
     { phase: 'Fase 2', name: 'Verso Completo (Leitura)', type: 'reading' },
     { phase: 'Fase 2', name: 'Memorizar Verso', type: 'memorization' },
     { phase: 'Fase 2', name: 'Ordenar Verso', type: 'drag-drop' },
-    { phase: 'Fase 2', name: 'Completar Verso', type: 'fill-columns' },
+    { phase: 'Fase 2', name: 'Completar Verso', type: 'fill-blanks' },
     { phase: 'Fase 2', name: 'Revisão Verso', type: 'flashcard' },
   ];
 
