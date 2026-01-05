@@ -68,22 +68,22 @@ const AdminGenerateDragDrop: React.FC = () => {
 
   const getTextsFromExercise = (exercise: MemorizationExercise): string[] => {
     const items = exercise.content?.items || [];
-    const texts: string[] = [];
+    const textsSet = new Set<string>();
     
     for (const item of items) {
       // For drag-drop, we use texts with at least 4 words to split into parts
       if (item.summary && item.summary.split(/\s+/).filter(Boolean).length >= 4) {
-        texts.push(item.summary);
+        textsSet.add(item.summary.trim());
       }
       if (item.intermediate && item.intermediate.split(/\s+/).filter(Boolean).length >= 4) {
-        texts.push(item.intermediate);
+        textsSet.add(item.intermediate.trim());
       }
       if (item.text && item.text.split(/\s+/).filter(Boolean).length >= 4) {
-        texts.push(item.text);
+        textsSet.add(item.text.trim());
       }
     }
     
-    return texts;
+    return Array.from(textsSet);
   };
 
   const fetchMemorizationExercises = async () => {
@@ -146,7 +146,7 @@ const AdminGenerateDragDrop: React.FC = () => {
         for (const text of texts) {
           const exists = lessonDragDrops.some(dd => {
             const ddContent = dd.content as { sourceText?: string };
-            return ddContent?.sourceText === text;
+            return ddContent?.sourceText?.trim() === text.trim();
           });
           if (exists) existingCount++;
         }
@@ -269,7 +269,7 @@ const AdminGenerateDragDrop: React.FC = () => {
         const existingTexts = new Set(
           (existingDragDrop || []).map(dd => {
             const content = dd.content as { sourceText?: string };
-            return content?.sourceText;
+            return content?.sourceText?.trim();
           }).filter(Boolean)
         );
 
@@ -277,7 +277,7 @@ const AdminGenerateDragDrop: React.FC = () => {
         let createdCount = 0;
 
         for (const text of texts) {
-          if (existingTexts.has(text)) continue;
+          if (existingTexts.has(text.trim())) continue;
 
           maxOrder++;
 
