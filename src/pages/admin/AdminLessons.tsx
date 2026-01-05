@@ -446,7 +446,7 @@ const AdminLessons: React.FC = () => {
           .insert({
             lesson_id: lessonId,
             type: 'drag-drop',
-            title: `Ordenar: ${text.substring(0, 40)}${text.length > 40 ? '...' : ''}`,
+            title: `Fase 1 - Organizar: ${text.substring(0, 40)}${text.length > 40 ? '...' : ''}`,
             content: { 
               sourceText: text.trim(),
               items: shuffledWords 
