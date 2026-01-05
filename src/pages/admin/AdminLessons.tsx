@@ -404,7 +404,7 @@ const AdminLessons: React.FC = () => {
             title: `Ordenar: ${text.substring(0, 40)}${text.length > 40 ? '...' : ''}`,
             content: { text, audioUrl: '' },
             display_order: maxOrder,
-            is_published: false,
+            is_published: true,
           });
 
         if (!insertError) createdCount++;
@@ -452,7 +452,7 @@ const AdminLessons: React.FC = () => {
               items: shuffledWords 
             },
             display_order: maxOrder,
-            is_published: false,
+            is_published: true,
           });
 
         if (!insertError) createdCount++;
