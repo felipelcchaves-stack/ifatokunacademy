@@ -180,8 +180,10 @@ const AdminGenerateDragDrop: React.FC = () => {
         let existingCount = 0;
         for (const text of texts) {
           const exists = lessonDragDrops.some(dd => {
-            const ddContent = dd.content as { sourceText?: string };
-            return ddContent?.sourceText?.trim() === text.trim();
+            const ddContent = dd.content as { sourceText?: string; items?: string[] };
+            // Fallback: usar sourceText ou primeiro item (para exercícios antigos)
+            const ddText = ddContent?.sourceText?.trim() || ddContent?.items?.[0]?.trim() || '';
+            return ddText === text.trim();
           });
           if (exists) existingCount++;
         }
