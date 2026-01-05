@@ -109,7 +109,23 @@ const LessonView: React.FC = () => {
         .order('display_order', { ascending: true });
 
       if (exercisesError) throw exercisesError;
-      setExercises((exercisesData || []) as Exercise[]);
+      
+      // Reordenar exercícios por fase para garantir navegação correta
+      // Primeiro todos da Fase 1, depois todos da Fase 2
+      const sortedExercises = [...(exercisesData || [])].sort((a, b) => {
+        const phaseA = getExercisePhase(a.title, a.display_order);
+        const phaseB = getExercisePhase(b.title, b.display_order);
+        
+        // Agrupa por fase primeiro
+        if (phaseA !== phaseB) {
+          return phaseA - phaseB; // Fase 1 primeiro
+        }
+        
+        // Dentro da mesma fase, manter ordem original por display_order
+        return a.display_order - b.display_order;
+      });
+      
+      setExercises(sortedExercises as Exercise[]);
 
       // Load already completed exercises
       if (user) {
