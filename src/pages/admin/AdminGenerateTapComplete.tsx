@@ -61,6 +61,7 @@ const AdminGenerateTapComplete: React.FC = () => {
   const [progress, setProgress] = useState(0);
   const [results, setResults] = useState<GenerationResult[]>([]);
   const [showOnlyPending, setShowOnlyPending] = useState(true);
+  const [loadedCount, setLoadedCount] = useState(0);
 
   useEffect(() => {
     fetchMemorizationExercises();
@@ -85,9 +86,45 @@ const AdminGenerateTapComplete: React.FC = () => {
     return Array.from(textsSet);
   };
 
+  // Função para buscar TODOS os exercícios com paginação (sem limite de 1000)
+  const fetchAllExercisesByType = async (
+    type: string, 
+    lessonIds: string[]
+  ): Promise<Array<{ lesson_id: string; content: any }>> => {
+    const allResults: Array<{ lesson_id: string; content: any }> = [];
+    const pageSize = 1000;
+    let from = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      const { data, error } = await supabase
+        .from('exercises')
+        .select('lesson_id, content')
+        .eq('type', type)
+        .in('lesson_id', lessonIds)
+        .order('id', { ascending: true })
+        .range(from, from + pageSize - 1);
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        allResults.push(...data);
+        from += pageSize;
+        hasMore = data.length === pageSize;
+        console.log(`[Paginação] ${type}: carregados ${allResults.length} registros...`);
+      } else {
+        hasMore = false;
+      }
+    }
+
+    console.log(`[Paginação] ${type}: TOTAL carregado = ${allResults.length}`);
+    return allResults;
+  };
+
   const fetchMemorizationExercises = async () => {
     try {
       setLoading(true);
+      setLoadedCount(0);
       
       // Fetch memorization exercises
       const { data, error } = await supabase
@@ -130,21 +167,18 @@ const AdminGenerateTapComplete: React.FC = () => {
       // Get all lesson IDs to fetch existing tap-complete exercises
       const lessonIds = [...new Set(transformed.map(e => e.lesson_id))];
       
-      // Fetch all existing tap-complete exercises for these lessons
-      const { data: existingTapComplete } = await supabase
-        .from('exercises')
-        .select('lesson_id, content')
-        .eq('type', 'tap-complete')
-        .in('lesson_id', lessonIds);
+      // Fetch ALL existing tap-complete exercises using pagination
+      const existingTapComplete = await fetchAllExercisesByType('tap-complete', lessonIds);
+      setLoadedCount(existingTapComplete.length);
 
       // Calculate status for each memorization exercise
       const statusMap: Record<string, ExerciseStatus> = {};
       
       for (const exercise of transformed) {
         const texts = getTextsFromExercise(exercise);
-        const lessonTapCompletes = existingTapComplete?.filter(
+        const lessonTapCompletes = existingTapComplete.filter(
           tc => tc.lesson_id === exercise.lesson_id
-        ) || [];
+        );
         
         // Count how many texts already have tap-complete (exact match with trim)
         let existingCount = 0;
@@ -363,7 +397,7 @@ const AdminGenerateTapComplete: React.FC = () => {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-4 gap-4">
         <div className="bg-card border border-border rounded-xl p-4 text-center">
           <p className="text-2xl font-bold text-foreground">{exercises.length}</p>
           <p className="text-sm text-muted-foreground">Exercícios de memorização</p>
@@ -377,6 +411,10 @@ const AdminGenerateTapComplete: React.FC = () => {
             {Object.values(exerciseStatus).reduce((sum, s) => sum + s.existingCount, 0)}
           </p>
           <p className="text-sm text-muted-foreground">TapComplete existentes</p>
+        </div>
+        <div className="bg-card border border-blue-500/30 rounded-xl p-4 text-center">
+          <p className="text-2xl font-bold text-blue-600">{loadedCount}</p>
+          <p className="text-sm text-muted-foreground">Total carregados (DB)</p>
         </div>
       </div>
 
