@@ -22,14 +22,25 @@ interface LessonProgress {
   phase1Completed: number;
 }
 
-// Helper to determine exercise phase based on title
-const getExercisePhase = (title: string): 1 | 2 => {
+// Helper to determine phase from exercise title with display_order fallback
+const getExercisePhase = (title: string, displayOrder?: number): 1 | 2 => {
   const lowerTitle = title.toLowerCase();
-  if (lowerTitle.includes('fase 2') || 
-      lowerTitle.includes('proficiência') ||
-      lowerTitle.includes('completo')) {
+  
+  // Phase 2 explicit markers
+  if (lowerTitle.includes('fase 2') || lowerTitle.includes('proficiência')) {
     return 2;
   }
+  
+  // Phase 1 explicit markers
+  if (lowerTitle.includes('fase 1') || lowerTitle.includes('contexto')) {
+    return 1;
+  }
+  
+  // Fallback by display_order if available (positions 6-10 are Phase 2)
+  if (displayOrder !== undefined && displayOrder >= 6 && displayOrder <= 10) {
+    return 2;
+  }
+  
   return 1;
 };
 
