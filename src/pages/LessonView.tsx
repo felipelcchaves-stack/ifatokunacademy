@@ -568,7 +568,7 @@ const LessonView: React.FC = () => {
 
                 <div className="flex gap-1.5 flex-wrap justify-center max-w-md">
                   {exercises.map((ex, index) => {
-                    const phase = getExercisePhase(ex.title);
+                    const phase = getExercisePhase(ex.title, ex.display_order);
                     const isPhase2 = phase === 2;
                     
                     return (
