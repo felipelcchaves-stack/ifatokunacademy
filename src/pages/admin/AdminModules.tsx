@@ -45,6 +45,7 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useOrganization } from '@/contexts/OrganizationContext';
 import MediaUploader from '@/components/admin/MediaUploader';
 import BannerGenerator from '@/components/admin/BannerGenerator';
 import BatchBannerGenerator from '@/components/admin/BatchBannerGenerator';
@@ -61,6 +62,7 @@ interface Module {
   display_order: number;
   is_published: boolean;
   created_at: string;
+  organization_id: string | null;
   lessons_count?: number;
 }
 
@@ -76,6 +78,7 @@ const colorOptions = [
 const AdminModules: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { organization } = useOrganization();
   const [modules, setModules] = useState<Module[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -146,6 +149,7 @@ const AdminModules: React.FC = () => {
           image_url: newModule.image_url || null,
           display_order: maxOrder + 1,
           is_published: newModule.is_published,
+          organization_id: organization?.id || null,
         })
         .select()
         .single();
