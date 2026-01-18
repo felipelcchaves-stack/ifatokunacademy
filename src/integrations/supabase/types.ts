@@ -631,6 +631,7 @@ export type Database = {
           full_name: string | null
           id: string
           mfa_enabled: boolean | null
+          study_mode: string | null
           updated_at: string
         }
         Insert: {
@@ -641,6 +642,7 @@ export type Database = {
           full_name?: string | null
           id: string
           mfa_enabled?: boolean | null
+          study_mode?: string | null
           updated_at?: string
         }
         Update: {
@@ -651,6 +653,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           mfa_enabled?: boolean | null
+          study_mode?: string | null
           updated_at?: string
         }
         Relationships: []

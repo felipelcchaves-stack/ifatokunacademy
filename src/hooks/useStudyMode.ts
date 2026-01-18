@@ -40,33 +40,58 @@ export function useStudyMode() {
   const { user } = useAuth();
   const [mode, setModeState] = useState<StudyMode>('complete');
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-  // Load user preference from localStorage (could be profiles table in future)
+  // Load user preference from database
   useEffect(() => {
-    const loadPreference = () => {
+    const loadPreference = async () => {
+      if (!user?.id) {
+        setLoading(false);
+        return;
+      }
+
       try {
-        const saved = localStorage.getItem(`study_mode_${user?.id}`);
-        if (saved === 'express' || saved === 'complete') {
-          setModeState(saved);
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('study_mode')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        if (error) {
+          console.error('Error loading study mode preference:', error);
+        } else if (data?.study_mode === 'express' || data?.study_mode === 'complete') {
+          setModeState(data.study_mode);
         }
       } catch (e) {
         console.error('Error loading study mode preference:', e);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
-    if (user?.id) {
-      loadPreference();
-    } else {
-      setLoading(false);
-    }
+    loadPreference();
   }, [user?.id]);
 
-  // Save preference
-  const setMode = useCallback((newMode: StudyMode) => {
+  // Save preference to database
+  const setMode = useCallback(async (newMode: StudyMode) => {
     setModeState(newMode);
-    if (user?.id) {
-      localStorage.setItem(`study_mode_${user.id}`, newMode);
+    
+    if (!user?.id) return;
+
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ study_mode: newMode })
+        .eq('id', user.id);
+
+      if (error) {
+        console.error('Error saving study mode preference:', error);
+      }
+    } catch (e) {
+      console.error('Error saving study mode preference:', e);
+    } finally {
+      setSaving(false);
     }
   }, [user?.id]);
 
@@ -148,6 +173,7 @@ export function useStudyMode() {
     mode,
     setMode,
     loading,
+    saving,
     filterExercises,
     getModeInfo,
     isExpress: mode === 'express',
