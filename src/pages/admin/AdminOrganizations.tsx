@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Building2, Users, BookOpen, Globe, Palette, Loader2, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Building2, Users, BookOpen, Globe, Palette, Loader2, Pencil, Trash2, Shield } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Organization, OrganizationBranding, OrganizationSettings } from '@/contexts/OrganizationContext';
@@ -421,13 +421,23 @@ const AdminOrganizations: React.FC = () => {
                         variant="ghost"
                         size="sm"
                         onClick={() => navigate(`/admin/organizations/${org.id}/branding`)}
+                        title="Branding"
                       >
                         <Palette className="w-4 h-4" />
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
+                        onClick={() => navigate(`/admin/organizations/${org.id}/admins`)}
+                        title="Administradores"
+                      >
+                        <Shield className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => handleOpenDialog(org)}
+                        title="Editar"
                       >
                         <Pencil className="w-4 h-4" />
                       </Button>
@@ -436,6 +446,7 @@ const AdminOrganizations: React.FC = () => {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleDelete(org)}
+                          title="Excluir"
                         >
                           <Trash2 className="w-4 h-4 text-destructive" />
                         </Button>
