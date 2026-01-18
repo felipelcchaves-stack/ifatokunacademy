@@ -13,6 +13,8 @@ export interface AccessibilityPreferences {
   preferredMode: 'classic' | 'microlearning' | 'tap' | 'karaoke' | 'visual' | 'listen';
   colorCoding: boolean;
   reducedMotion: boolean;
+  // Modo Contexto Prioritário: prioriza memorização sobre ortografia
+  contextPriorityMode: boolean;
 }
 
 const defaultPreferences: AccessibilityPreferences = {
@@ -26,6 +28,7 @@ const defaultPreferences: AccessibilityPreferences = {
   preferredMode: 'classic',
   colorCoding: false,
   reducedMotion: false,
+  contextPriorityMode: true, // Habilitado por padrão - foco em memorização
 };
 
 const STORAGE_KEY = 'accessibility_preferences';
