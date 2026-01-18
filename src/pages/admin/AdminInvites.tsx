@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { validatePassword } from "@/lib/passwordValidation";
 import { PasswordStrengthIndicator } from "@/components/auth/PasswordStrengthIndicator";
+import { useAdminOrganization } from "@/hooks/useAdminOrganization";
 import { 
   Search, 
   Filter, 
@@ -91,6 +92,7 @@ interface Module {
 export default function AdminInvites() {
   const { isAdmin, user, profile } = useAuth();
   const { organization, isOrgAdmin } = useOrganization();
+  const { activeOrg, loading: orgLoading } = useAdminOrganization();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [invites, setInvites] = useState<Invite[]>([]);
@@ -127,38 +129,31 @@ export default function AdminInvites() {
       navigate('/dashboard');
       return;
     }
-    fetchData();
-  }, [isAdmin, isOrgAdmin, navigate]);
+    if (!orgLoading && activeOrg) {
+      fetchData();
+    }
+  }, [isAdmin, isOrgAdmin, navigate, activeOrg, orgLoading]);
 
   const fetchData = async () => {
+    if (!activeOrg) return;
+    
     try {
-      // Buscar convites - filtrar por organização se for org admin e não global admin
-      let invitesQuery = supabase
+      // Buscar convites - ALWAYS filter by active organization
+      const { data: invitesData, error: invitesError } = await supabase
         .from('user_invites')
         .select('*')
+        .eq('organization_id', activeOrg.id)
         .order('created_at', { ascending: false });
-
-      // Se não é admin global mas é org admin, filtrar pela organização
-      if (!isAdmin && isOrgAdmin && organization) {
-        invitesQuery = invitesQuery.eq('organization_id', organization.id);
-      }
-
-      const { data: invitesData, error: invitesError } = await invitesQuery;
 
       if (invitesError) throw invitesError;
       setInvites(invitesData || []);
 
-      // Buscar módulos - filtrar por organização se necessário
-      let modulesQuery = supabase
+      // Buscar módulos - ALWAYS filter by active organization
+      const { data: modulesData, error: modulesError } = await supabase
         .from('modules')
         .select('id, title, type, level')
+        .eq('organization_id', activeOrg.id)
         .order('display_order');
-
-      if (!isAdmin && isOrgAdmin && organization) {
-        modulesQuery = modulesQuery.eq('organization_id', organization.id);
-      }
-
-      const { data: modulesData, error: modulesError } = await modulesQuery;
 
       if (modulesError) throw modulesError;
       setModules(modulesData || []);
@@ -186,7 +181,7 @@ export default function AdminInvites() {
           invited_by_id: user?.id || '',
           invited_by_name: profile?.full_name || user?.email || null,
           status: 'pending',
-          organization_id: organization?.id || null
+          organization_id: activeOrg?.id || null
         });
 
       if (error) {
@@ -230,7 +225,7 @@ export default function AdminInvites() {
           fullName: selectedInvite.full_name,
           moduleIds: activateForm.moduleIds,
           inviteId: selectedInvite.id,
-          organizationId: selectedInvite.organization_id || organization?.id
+          organizationId: selectedInvite.organization_id || activeOrg?.id
         },
         headers: {
           Authorization: `Bearer ${session?.access_token}`

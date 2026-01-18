@@ -67,6 +67,7 @@ import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useAdminOrganization } from '@/hooks/useAdminOrganization';
 
 interface Lesson {
   id: string;
@@ -86,6 +87,7 @@ interface Module {
   level: string | null;
   theme: string | null;
   color: string | null;
+  organization_id: string | null;
 }
 
 interface SortableLessonItemProps {
@@ -220,6 +222,7 @@ const AdminLessons: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { session } = useAuth();
+  const { activeOrg, loading: orgLoading } = useAdminOrganization();
 
   // Helper function to ensure valid session before write operations
   const ensureSession = async (): Promise<boolean> => {
@@ -269,23 +272,37 @@ const AdminLessons: React.FC = () => {
   const [pendingTexts, setPendingTexts] = useState({ context: '', full: '' });
 
   useEffect(() => {
-    if (moduleId) {
+    if (moduleId && !orgLoading && activeOrg) {
       fetchModuleAndLessons();
     }
-  }, [moduleId]);
+  }, [moduleId, activeOrg, orgLoading]);
 
   const fetchModuleAndLessons = async () => {
+    if (!activeOrg) return;
+    
     try {
       setLoading(true);
       
-      // Fetch module
+      // Fetch module with organization_id
       const { data: moduleData, error: moduleError } = await supabase
         .from('modules')
-        .select('*')
+        .select('*, organization_id')
         .eq('id', moduleId)
         .maybeSingle();
 
       if (moduleError) throw moduleError;
+      
+      // Validate that module belongs to active organization
+      if (moduleData && moduleData.organization_id !== activeOrg.id) {
+        toast({
+          title: 'Acesso negado',
+          description: 'Este módulo pertence a outra organização.',
+          variant: 'destructive',
+        });
+        navigate('/admin/modules');
+        return;
+      }
+      
       setModule(moduleData);
 
       // Fetch lessons

@@ -14,12 +14,22 @@ import {
   UserPlus,
   MousePointer,
   GripVertical,
-  Building2
+  Building2,
+  ChevronDown,
+  Check
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrganization } from '@/contexts/OrganizationContext';
 import { usePlatformSettings } from '@/hooks/usePlatformSettings';
+import { useAdminOrganization } from '@/hooks/useAdminOrganization';
 
 const AdminLayout: React.FC = () => {
   const { platformName } = usePlatformSettings();
@@ -28,6 +38,7 @@ const AdminLayout: React.FC = () => {
   const navigate = useNavigate();
   const { user, profile, signOut, isAdmin } = useAuth();
   const { organization, isOrgAdmin } = useOrganization();
+  const { activeOrg, organizations, loading: orgsLoading, switchOrganization } = useAdminOrganization();
 
   const displayName = profile?.full_name || user?.email?.split('@')[0] || 'Admin';
 
@@ -71,6 +82,11 @@ const AdminLayout: React.FC = () => {
     return location.pathname.startsWith(path);
   };
 
+  // Determinar a URL da área do aluno baseado na org ativa
+  const studentAreaUrl = activeOrg?.slug 
+    ? `/org/${activeOrg.slug}/dashboard`
+    : '/dashboard';
+
   return (
     <div className="min-h-screen bg-muted/30">
       {/* Sidebar */}
@@ -93,11 +109,59 @@ const AdminLayout: React.FC = () => {
             </Link>
           </div>
 
+          {/* Seletor de Organização */}
+          {organizations.length > 0 && (
+            <div className="px-4 py-3 border-b border-sidebar-border">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    className="w-full justify-between bg-sidebar-accent/50 border-sidebar-border hover:bg-sidebar-accent"
+                  >
+                    <div className="flex items-center gap-2 truncate">
+                      <Building2 className="w-4 h-4 text-primary flex-shrink-0" />
+                      <span className="truncate text-sm font-medium">
+                        {orgsLoading ? 'Carregando...' : (activeOrg?.name || 'Selecionar Org')}
+                      </span>
+                    </div>
+                    <ChevronDown className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-56">
+                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                    Gerenciando
+                  </div>
+                  <DropdownMenuSeparator />
+                  {organizations.map((org) => (
+                    <DropdownMenuItem
+                      key={org.id}
+                      onClick={() => switchOrganization(org.id)}
+                      className="flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-2 truncate">
+                        <div 
+                          className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white"
+                          style={{ backgroundColor: (org.branding as any)?.primaryColor || '#8B5CF6' }}
+                        >
+                          {org.name.charAt(0).toUpperCase()}
+                        </div>
+                        <span className="truncate">{org.name}</span>
+                      </div>
+                      {activeOrg?.id === org.id && (
+                        <Check className="w-4 h-4 text-primary" />
+                      )}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )}
+
           {/* Navigation */}
           <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
             {/* Botão Área do Aluno */}
             <Link
-              to="/dashboard"
+              to={studentAreaUrl}
               className="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors mb-2 bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20"
             >
               <Home className="w-5 h-5" />

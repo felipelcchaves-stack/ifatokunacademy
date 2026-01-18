@@ -17,6 +17,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import { useAdminOrganization } from '@/hooks/useAdminOrganization';
 
 interface ModuleData {
   id: string;
@@ -46,6 +47,7 @@ interface Stats {
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user, profile, isAdmin } = useAuth();
+  const { activeOrg, loading: orgLoading } = useAdminOrganization();
 
   const [modules, setModules] = useState<ModuleData[]>([]);
   const [users, setUsers] = useState<UserData[]>([]);
@@ -60,8 +62,8 @@ const AdminDashboard: React.FC = () => {
   const displayName = profile?.full_name || user?.email?.split('@')[0] || 'Admin';
 
   const statsDisplay = [
-    { label: 'Total de Módulos', value: stats.totalModules.toString(), change: 'Criados no sistema' },
-    { label: 'Usuários Ativos', value: stats.activeUsers.toString(), change: 'Cadastrados' },
+    { label: 'Total de Módulos', value: stats.totalModules.toString(), change: 'Nesta organização' },
+    { label: 'Usuários Ativos', value: stats.activeUsers.toString(), change: 'Membros' },
     { label: 'Lições Criadas', value: stats.totalLessons.toString(), change: 'No total' },
     { label: 'Taxa de Conclusão', value: `${stats.completionRate}%`, change: 'Média geral' },
   ];
@@ -80,92 +82,129 @@ const AdminDashboard: React.FC = () => {
   }, [isAdmin, navigate]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const { data: modulesData, error: modulesError } = await supabase
-          .from('modules')
-          .select('id, title, type, is_published, created_at, color')
-          .order('created_at', { ascending: false })
-          .limit(4);
+    if (!orgLoading && activeOrg) {
+      fetchData();
+    }
+  }, [activeOrg, orgLoading]);
 
-        if (modulesError) throw modulesError;
+  const fetchData = async () => {
+    if (!activeOrg) return;
+    
+    setLoading(true);
+    try {
+      // Fetch modules FILTERED BY ORGANIZATION
+      const { data: modulesData, error: modulesError } = await supabase
+        .from('modules')
+        .select('id, title, type, is_published, created_at, color')
+        .eq('organization_id', activeOrg.id)
+        .order('created_at', { ascending: false })
+        .limit(4);
 
-        const modulesWithCount = await Promise.all(
-          (modulesData || []).map(async (module) => {
-            const { count } = await supabase
-              .from('lessons')
-              .select('*', { count: 'exact', head: true })
-              .eq('module_id', module.id);
-            
-            return {
-              ...module,
-              lesson_count: count || 0
-            };
-          })
-        );
+      if (modulesError) throw modulesError;
 
-        setModules(modulesWithCount);
+      const modulesWithCount = await Promise.all(
+        (modulesData || []).map(async (module) => {
+          const { count } = await supabase
+            .from('lessons')
+            .select('*', { count: 'exact', head: true })
+            .eq('module_id', module.id);
+          
+          return {
+            ...module,
+            lesson_count: count || 0
+          };
+        })
+      );
 
-        const { data: profilesData, error: profilesError } = await supabase
-          .from('profiles')
-          .select('id, full_name, email, created_at')
-          .order('created_at', { ascending: false })
-          .limit(5);
+      setModules(modulesWithCount);
 
-        if (profilesError) throw profilesError;
+      // Fetch users FILTERED BY ORGANIZATION via organization_members
+      const { data: membersData, error: membersError } = await supabase
+        .from('organization_members')
+        .select(`
+          user_id,
+          role,
+          profiles:user_id (
+            id,
+            full_name,
+            email,
+            created_at
+          )
+        `)
+        .eq('organization_id', activeOrg.id)
+        .order('joined_at', { ascending: false })
+        .limit(5);
 
-        const usersWithAdmin = await Promise.all(
-          (profilesData || []).map(async (userProfile) => {
-            const { data: isAdminResult } = await supabase
-              .rpc('is_admin', { user_id: userProfile.id });
-            
-            return {
-              ...userProfile,
-              is_admin: isAdminResult || false
-            };
-          })
-        );
+      if (membersError) throw membersError;
 
-        setUsers(usersWithAdmin);
+      const usersWithAdmin = (membersData || [])
+        .filter(m => m.profiles)
+        .map(m => ({
+          id: (m.profiles as any).id,
+          full_name: (m.profiles as any).full_name,
+          email: (m.profiles as any).email,
+          created_at: (m.profiles as any).created_at,
+          is_admin: m.role === 'admin' || m.role === 'owner'
+        }));
 
-        const { count: totalModules } = await supabase
-          .from('modules')
-          .select('*', { count: 'exact', head: true });
+      setUsers(usersWithAdmin);
 
-        const { count: totalUsers } = await supabase
-          .from('profiles')
-          .select('*', { count: 'exact', head: true });
+      // Count stats FILTERED BY ORGANIZATION
+      const { count: totalModules } = await supabase
+        .from('modules')
+        .select('*', { count: 'exact', head: true })
+        .eq('organization_id', activeOrg.id);
 
-        const { count: totalLessons } = await supabase
+      const { count: totalUsers } = await supabase
+        .from('organization_members')
+        .select('*', { count: 'exact', head: true })
+        .eq('organization_id', activeOrg.id);
+
+      // Get module IDs for this org to filter lessons
+      const { data: orgModules } = await supabase
+        .from('modules')
+        .select('id')
+        .eq('organization_id', activeOrg.id);
+
+      const moduleIds = (orgModules || []).map(m => m.id);
+
+      let totalLessons = 0;
+      let totalCompletions = 0;
+
+      if (moduleIds.length > 0) {
+        const { count: lessonsCount } = await supabase
           .from('lessons')
-          .select('*', { count: 'exact', head: true });
+          .select('*', { count: 'exact', head: true })
+          .in('module_id', moduleIds);
+        
+        totalLessons = lessonsCount || 0;
 
-        const { count: totalCompletions } = await supabase
+        const { count: completionsCount } = await supabase
           .from('module_completions')
-          .select('*', { count: 'exact', head: true });
-
-        const possibleCompletions = (totalUsers || 0) * (totalModules || 0);
-        const completionRate = possibleCompletions > 0 
-          ? Math.round(((totalCompletions || 0) / possibleCompletions) * 100) 
-          : 0;
-
-        setStats({
-          totalModules: totalModules || 0,
-          activeUsers: totalUsers || 0,
-          totalLessons: totalLessons || 0,
-          completionRate
-        });
-
-      } catch (error) {
-        console.error('Error fetching admin data:', error);
-      } finally {
-        setLoading(false);
+          .select('*', { count: 'exact', head: true })
+          .in('module_id', moduleIds);
+        
+        totalCompletions = completionsCount || 0;
       }
-    };
 
-    fetchData();
-  }, []);
+      const possibleCompletions = (totalUsers || 0) * (totalModules || 0);
+      const completionRate = possibleCompletions > 0 
+        ? Math.round((totalCompletions / possibleCompletions) * 100) 
+        : 0;
+
+      setStats({
+        totalModules: totalModules || 0,
+        activeUsers: totalUsers || 0,
+        totalLessons,
+        completionRate
+      });
+
+    } catch (error) {
+      console.error('Error fetching admin data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div>

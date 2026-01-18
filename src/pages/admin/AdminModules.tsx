@@ -45,7 +45,7 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { useOrganization } from '@/contexts/OrganizationContext';
+import { useAdminOrganization } from '@/hooks/useAdminOrganization';
 import MediaUploader from '@/components/admin/MediaUploader';
 import BannerGenerator from '@/components/admin/BannerGenerator';
 import BatchBannerGenerator from '@/components/admin/BatchBannerGenerator';
@@ -78,7 +78,7 @@ const colorOptions = [
 const AdminModules: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { organization } = useOrganization();
+  const { activeOrg, loading: orgLoading } = useAdminOrganization();
   const [modules, setModules] = useState<Module[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -98,20 +98,25 @@ const AdminModules: React.FC = () => {
   });
 
   useEffect(() => {
-    fetchModules();
-  }, []);
+    if (!orgLoading && activeOrg) {
+      fetchModules();
+    }
+  }, [activeOrg, orgLoading]);
 
   const fetchModules = async () => {
+    if (!activeOrg) return;
+    
     try {
       setLoading(true);
       
-      // Fetch modules with lessons count
+      // Fetch modules with lessons count - FILTERED BY ORGANIZATION
       const { data, error } = await supabase
         .from('modules')
         .select(`
           *,
           lessons:lessons(count)
         `)
+        .eq('organization_id', activeOrg.id)
         .order('display_order', { ascending: true });
 
       if (error) throw error;
@@ -149,7 +154,7 @@ const AdminModules: React.FC = () => {
           image_url: newModule.image_url || null,
           display_order: maxOrder + 1,
           is_published: newModule.is_published,
-          organization_id: organization?.id || null,
+          organization_id: activeOrg?.id || null,
         })
         .select()
         .single();
