@@ -19,6 +19,7 @@ import { CompactXP } from '@/components/engagement/CompactXP';
 import { HeroStudyTrack } from '@/components/dashboard/HeroStudyTrack';
 import { AnimatedCounter } from '@/components/engagement/AnimatedCounter';
 import { StudyPlanSummaryCard } from '@/components/study-plan/StudyPlanSummaryCard';
+import { StudyModeCard } from '@/components/dashboard/StudyModeCard';
 import ModuleRetentionAlert from '@/components/dashboard/ModuleRetentionAlert';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
@@ -115,6 +116,15 @@ const Dashboard: React.FC = () => {
     ? Math.round(modulesWithProgress.reduce((acc, m) => acc + (m.progress || 0), 0) / modulesWithProgress.length)
     : 0;
 
+  // Calculate total lessons remaining (rough estimate: assume 5 lessons per module on average)
+  const estimatedLessonsRemaining = Math.round(
+    modulesWithProgress.reduce((acc, m) => {
+      const lessonsInModule = m.totalLessons || 5; // fallback to 5
+      const lessonsComplete = Math.round((m.progress || 0) / 100 * lessonsInModule);
+      return acc + (lessonsInModule - lessonsComplete);
+    }, 0)
+  );
+
   if (loading || permissionsLoading) {
     return (
       <ContentProtection>
@@ -172,8 +182,11 @@ const Dashboard: React.FC = () => {
           {/* SECOND FOLD - Quick Engagement */}
           <section className="py-16 bg-gradient-to-b from-background to-muted/30">
             <div className="container mx-auto px-4 space-y-6">
-              {/* Study Plan Summary */}
-              <StudyPlanSummaryCard />
+              {/* Study Plan and Study Mode */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <StudyPlanSummaryCard />
+                <StudyModeCard totalLessonsRemaining={estimatedLessonsRemaining} />
+              </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {/* Daily Goal */}
