@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Palette, Save, Loader2, Eye, Upload, X, Image } from 'lucide-react';
+import { ArrowLeft, Palette, Save, Loader2, Eye, Upload, X, Image, Mail, Lock, Monitor, Smartphone } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Organization, OrganizationBranding, OrganizationSettings } from '@/contexts/OrganizationContext';
@@ -476,35 +476,161 @@ const AdminOrganizationBranding: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Preview */}
+        {/* Preview Completo da Tela de Login */}
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Eye className="w-5 h-5" />
-              Preview
+              Preview da Tela de Login
             </CardTitle>
             <CardDescription>
-              Visualização das cores aplicadas
+              Visualização em tempo real de como ficará a tela de login
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="p-6 rounded-lg border" style={{ 
-              backgroundColor: `hsl(${branding.secondary_color})`,
-            }}>
-              <div className="flex items-center gap-4 mb-4">
-                {branding.logo_url ? (
-                  <img src={branding.logo_url} alt="Logo" className="h-10 object-contain" />
-                ) : (
-                  <div 
-                    className="h-10 w-32 rounded flex items-center justify-center text-white font-bold"
-                    style={{ backgroundColor: `hsl(${branding.primary_color})` }}
-                  >
-                    {organization.name}
+            {/* Login Preview Container */}
+            <div 
+              className="rounded-lg overflow-hidden border shadow-lg"
+              style={{ aspectRatio: '16/9', maxHeight: '500px' }}
+            >
+              <div className="w-full h-full grid lg:grid-cols-2">
+                {/* Left side - Form */}
+                <div 
+                  className="p-6 flex flex-col justify-center"
+                  style={{ backgroundColor: `hsl(${branding.secondary_color} / 0.1)` }}
+                >
+                  <div className="max-w-xs mx-auto w-full space-y-4">
+                    {/* Logo */}
+                    <div className="flex justify-center mb-4">
+                      {branding.logo_url ? (
+                        <img 
+                          src={branding.logo_url} 
+                          alt="Logo" 
+                          className="h-12 w-12 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div 
+                          className="h-12 w-12 rounded-full flex items-center justify-center text-white font-bold text-lg"
+                          style={{ backgroundColor: `hsl(${branding.primary_color})` }}
+                        >
+                          {organization.name.charAt(0)}
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Title */}
+                    <div className="text-center mb-4">
+                      <h2 
+                        className="text-lg font-bold"
+                        style={{ color: `hsl(${branding.primary_color})` }}
+                      >
+                        {organization.name.split(' ').slice(0, 2).join(' ')}
+                      </h2>
+                      <p className="text-xs text-muted-foreground">
+                        {organization.name.split(' ').slice(2).join(' ') || 'Learning'}
+                      </p>
+                    </div>
+                    
+                    {/* Form Fields Preview */}
+                    <div className="space-y-3">
+                      <div className="space-y-1">
+                        <label className="text-xs font-medium text-muted-foreground">E-mail</label>
+                        <div className="flex items-center gap-2 px-3 py-2 rounded-md border bg-background">
+                          <Mail className="w-3 h-3 text-muted-foreground" />
+                          <span className="text-xs text-muted-foreground">exemplo@email.com</span>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <label className="text-xs font-medium text-muted-foreground">Senha</label>
+                        <div className="flex items-center gap-2 px-3 py-2 rounded-md border bg-background">
+                          <Lock className="w-3 h-3 text-muted-foreground" />
+                          <span className="text-xs text-muted-foreground">••••••••</span>
+                        </div>
+                      </div>
+                      
+                      {/* Login Button */}
+                      <button
+                        className="w-full py-2 rounded-md text-white font-medium text-sm"
+                        style={{ backgroundColor: `hsl(${branding.primary_color})` }}
+                      >
+                        Entrar
+                      </button>
+                      
+                      {/* Forgot Password Link */}
+                      <div className="text-center">
+                        <span 
+                          className="text-xs cursor-pointer"
+                          style={{ color: `hsl(${branding.primary_color})` }}
+                        >
+                          Esqueceu sua senha?
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                )}
+                </div>
+                
+                {/* Right side - Background/Image */}
+                <div 
+                  className="hidden lg:flex flex-col items-center justify-center p-6 relative overflow-hidden"
+                  style={{ 
+                    background: branding.login_background_url 
+                      ? `url(${branding.login_background_url}) center/cover`
+                      : `linear-gradient(135deg, hsl(${branding.primary_color}), hsl(${branding.accent_color}))`
+                  }}
+                >
+                  {/* Overlay for better text visibility */}
+                  <div 
+                    className="absolute inset-0"
+                    style={{ backgroundColor: 'rgba(0,0,0,0.3)' }}
+                  />
+                  
+                  {/* Content */}
+                  <div className="relative z-10 text-center text-white">
+                    <h3 className="text-xl font-bold mb-2">
+                      Bem-vindo ao {organization.name.split(' ').slice(0, 2).join(' ')}
+                    </h3>
+                    <p className="text-sm opacity-90">
+                      Plataforma de estudos sagrados
+                    </p>
+                  </div>
+                  
+                  {/* Decorative elements */}
+                  <div 
+                    className="absolute -bottom-10 -right-10 w-40 h-40 rounded-full opacity-20"
+                    style={{ backgroundColor: `hsl(${branding.accent_color})` }}
+                  />
+                  <div 
+                    className="absolute -top-10 -left-10 w-32 h-32 rounded-full opacity-20"
+                    style={{ backgroundColor: `hsl(${branding.primary_color})` }}
+                  />
+                </div>
               </div>
-              
-              <div className="flex flex-wrap gap-4">
+            </div>
+            
+            {/* Preview Info */}
+            <div className="mt-4 flex items-center justify-center gap-4 text-xs text-muted-foreground">
+              <div className="flex items-center gap-1">
+                <Monitor className="w-3 h-3" />
+                <span>Preview Desktop</span>
+              </div>
+              <span>•</span>
+              <span>As cores são aplicadas em tempo real</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Preview de Componentes */}
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-lg">Preview de Componentes</CardTitle>
+            <CardDescription>
+              Visualização de botões e badges com as cores definidas
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="p-6 rounded-lg border bg-card">
+              <div className="flex flex-wrap gap-4 items-center">
                 <button
                   className="px-4 py-2 rounded-md text-white font-medium"
                   style={{ backgroundColor: `hsl(${branding.primary_color})` }}
@@ -517,14 +643,32 @@ const AdminOrganizationBranding: React.FC = () => {
                 >
                   Botão Destaque
                 </button>
+                <button
+                  className="px-4 py-2 rounded-md border font-medium"
+                  style={{ 
+                    borderColor: `hsl(${branding.primary_color})`,
+                    color: `hsl(${branding.primary_color})`,
+                  }}
+                >
+                  Botão Outline
+                </button>
                 <div 
-                  className="px-4 py-2 rounded-md"
+                  className="px-3 py-1 rounded-full text-sm font-medium"
                   style={{ 
                     backgroundColor: `hsl(${branding.primary_color} / 0.1)`,
                     color: `hsl(${branding.primary_color})`,
                   }}
                 >
-                  Badge Exemplo
+                  Badge Primário
+                </div>
+                <div 
+                  className="px-3 py-1 rounded-full text-sm font-medium"
+                  style={{ 
+                    backgroundColor: `hsl(${branding.accent_color} / 0.1)`,
+                    color: `hsl(${branding.accent_color})`,
+                  }}
+                >
+                  Badge Destaque
                 </div>
               </div>
             </div>
