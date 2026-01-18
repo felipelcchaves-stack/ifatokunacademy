@@ -18,6 +18,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useAdminOrganization } from '@/hooks/useAdminOrganization';
 
 interface MemorizationExercise {
   id: string;
@@ -52,6 +53,7 @@ interface ExerciseStatus {
 const AdminGenerateDragDrop: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { activeOrg, loading: orgLoading } = useAdminOrganization();
   
   const [exercises, setExercises] = useState<MemorizationExercise[]>([]);
   const [exerciseStatus, setExerciseStatus] = useState<Record<string, ExerciseStatus>>({});
@@ -64,8 +66,10 @@ const AdminGenerateDragDrop: React.FC = () => {
   const [loadedCount, setLoadedCount] = useState(0);
 
   useEffect(() => {
-    fetchMemorizationExercises();
-  }, []);
+    if (!orgLoading && activeOrg) {
+      fetchMemorizationExercises();
+    }
+  }, [activeOrg, orgLoading]);
 
   const getTextsFromExercise = (exercise: MemorizationExercise): string[] => {
     const items = exercise.content?.items || [];
@@ -123,10 +127,13 @@ const AdminGenerateDragDrop: React.FC = () => {
   };
 
   const fetchMemorizationExercises = async () => {
+    if (!activeOrg) return;
+    
     try {
       setLoading(true);
       setLoadedCount(0);
       
+      // MULTI-TENANT STRICT: Filtrar por organização via join
       const { data, error } = await supabase
         .from('exercises')
         .select(`
@@ -139,11 +146,13 @@ const AdminGenerateDragDrop: React.FC = () => {
             title,
             modules!inner (
               id,
-              title
+              title,
+              organization_id
             )
           )
         `)
         .eq('type', 'memorization')
+        .eq('lessons.modules.organization_id', activeOrg.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;

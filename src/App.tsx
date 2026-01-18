@@ -12,6 +12,7 @@ import { DomainRedirectProvider } from "@/hooks/useDomainRedirect";
 
 // Pages
 import { Navigate } from "react-router-dom";
+import DashboardRedirect from "./components/DashboardRedirect";
 import Login from "./pages/Login";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
@@ -114,9 +115,10 @@ const App = () => (
               } />
               
               {/* Student Routes - Protected */}
+              {/* IMPORTANTE: /dashboard agora redireciona para /org/:slug/dashboard */}
               <Route path="/dashboard" element={
                 <ProtectedRoute>
-                  <Dashboard />
+                  <DashboardRedirect />
                 </ProtectedRoute>
               } />
               <Route path="/module/:moduleId" element={
