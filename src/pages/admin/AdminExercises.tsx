@@ -62,6 +62,7 @@ import ExerciseEditor from '@/components/admin/ExerciseEditor';
 import QuizExerciseEditor from '@/components/admin/QuizExerciseEditor';
 import PedagogicalExerciseGenerator from '@/components/admin/PedagogicalExerciseGenerator';
 import AdminErrorBoundary from '@/components/errors/AdminErrorBoundary';
+import { useAdminOrganization } from '@/hooks/useAdminOrganization';
 
 interface Exercise {
   id: string;
@@ -83,6 +84,7 @@ interface Lesson {
 interface Module {
   id: string;
   title: string;
+  organization_id: string | null;
 }
 
 const exerciseTypes = [
@@ -101,6 +103,7 @@ const AdminExercises: React.FC = () => {
   const { moduleId, lessonId } = useParams<{ moduleId: string; lessonId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { activeOrg, loading: orgLoading } = useAdminOrganization();
   
   const [module, setModule] = useState<Module | null>(null);
   const [lesson, setLesson] = useState<Lesson | null>(null);
@@ -124,23 +127,37 @@ const AdminExercises: React.FC = () => {
   const [isPedagogicalGeneratorOpen, setIsPedagogicalGeneratorOpen] = useState(false);
 
   useEffect(() => {
-    if (moduleId && lessonId) {
+    if (moduleId && lessonId && !orgLoading && activeOrg) {
       fetchData();
     }
-  }, [moduleId, lessonId]);
+  }, [moduleId, lessonId, activeOrg, orgLoading]);
 
   const fetchData = async () => {
+    if (!activeOrg) return;
+    
     try {
       setLoading(true);
       
-      // Fetch module
+      // Fetch module with organization_id
       const { data: moduleData, error: moduleError } = await supabase
         .from('modules')
-        .select('id, title')
+        .select('id, title, organization_id')
         .eq('id', moduleId)
         .maybeSingle();
 
       if (moduleError) throw moduleError;
+      
+      // Validate that module belongs to active organization
+      if (moduleData && moduleData.organization_id !== activeOrg.id) {
+        toast({
+          title: 'Acesso negado',
+          description: 'Este módulo pertence a outra organização.',
+          variant: 'destructive',
+        });
+        navigate('/admin/modules');
+        return;
+      }
+      
       setModule(moduleData);
 
       // Fetch lesson

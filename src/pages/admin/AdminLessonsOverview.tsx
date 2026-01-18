@@ -23,6 +23,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { NavLink } from '@/components/NavLink';
+import { useAdminOrganization } from '@/hooks/useAdminOrganization';
 
 interface Lesson {
   id: string;
@@ -56,19 +57,25 @@ const sidebarLinks = [
 const AdminLessonsOverview: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { activeOrg, loading: orgLoading } = useAdminOrganization();
   
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    fetchAllLessons();
-  }, []);
+    if (!orgLoading && activeOrg) {
+      fetchAllLessons();
+    }
+  }, [activeOrg, orgLoading]);
 
   const fetchAllLessons = async () => {
+    if (!activeOrg) return;
+    
     try {
       setLoading(true);
       
+      // Fetch lessons FILTERED BY ORGANIZATION via modules
       const { data, error } = await supabase
         .from('lessons')
         .select(`
@@ -81,9 +88,11 @@ const AdminLessonsOverview: React.FC = () => {
           is_published,
           modules!inner (
             title,
-            color
+            color,
+            organization_id
           )
         `)
+        .eq('modules.organization_id', activeOrg.id)
         .order('display_order', { ascending: true });
 
       if (error) throw error;
