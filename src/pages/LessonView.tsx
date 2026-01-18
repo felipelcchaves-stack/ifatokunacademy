@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, CheckCircle, BookOpen, Loader2, Sparkles } from 'lucide-react';
 import Header from '@/components/layout/Header';
@@ -82,6 +82,10 @@ const LessonView: React.FC = () => {
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
   const [completedExercises, setCompletedExercises] = useState<Set<string>>(new Set());
   const [showPhaseTransition, setShowPhaseTransition] = useState(false);
+  
+  // Audio state for TapComplete
+  const [tapCompleteAudioLoading, setTapCompleteAudioLoading] = useState(false);
+  const tapCompleteAudioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     if (lessonId) {
@@ -297,6 +301,48 @@ const LessonView: React.FC = () => {
     }
   };
 
+  // Audio handler for TapComplete exercise
+  const handlePlayTapCompleteAudio = useCallback(async (text: string, existingAudioUrl?: string) => {
+    // Stop current audio if playing
+    if (tapCompleteAudioRef.current) {
+      tapCompleteAudioRef.current.pause();
+      tapCompleteAudioRef.current = null;
+    }
+
+    try {
+      let audioUrl = existingAudioUrl;
+      
+      // If no existing audio, generate via ElevenLabs
+      if (!audioUrl) {
+        setTapCompleteAudioLoading(true);
+        
+        const { data, error } = await supabase.functions.invoke('elevenlabs-tts', {
+          body: { text }
+        });
+        
+        if (error) throw error;
+        if (!data?.audioUrl) throw new Error('Áudio não gerado');
+        
+        audioUrl = data.audioUrl;
+      }
+      
+      // Play the audio
+      const audio = new Audio(audioUrl);
+      tapCompleteAudioRef.current = audio;
+      await audio.play();
+      
+    } catch (error: any) {
+      console.error('Error playing TapComplete audio:', error);
+      toast({
+        title: 'Erro ao reproduzir áudio',
+        description: error.message || 'Tente novamente.',
+        variant: 'destructive',
+      });
+    } finally {
+      setTapCompleteAudioLoading(false);
+    }
+  }, [toast]);
+
   const renderExercise = (exercise: Exercise) => {
     const content = exercise.content || {};
     
@@ -382,6 +428,10 @@ const LessonView: React.FC = () => {
           <TapComplete
             text={content.text || ''}
             onComplete={(correct) => correct && handleExerciseComplete()}
+            onPlayAudio={() => handlePlayTapCompleteAudio(content.text || '', content.audioUrl)}
+            audioLoading={tapCompleteAudioLoading}
+            preferChunkMode={content.preferChunkMode}
+            chunkSize={content.chunkSize}
           />
         );
       case 'fill-blanks':
