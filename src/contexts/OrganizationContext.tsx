@@ -63,11 +63,18 @@ export const detectTenantFromHostname = (): { slug: string | null; customDomain:
     'localhost',
     '127.0.0.1',
     'ifatokunacademy.lovable.app',
-    'id-preview--96033c3a-2c4e-4768-bdba-4809fc4199fd.lovable.app'
   ];
   
-  // Se for um dos hosts principais, retornar o tenant padrão
-  if (mainHosts.some(h => hostname.includes(h))) {
+  // Padrões de domínios de preview/desenvolvimento do Lovable
+  const devDomainPatterns = [
+    /\.lovableproject\.com$/,
+    /\.lovable\.app$/,
+    /^id-preview--.*\.lovable\.app$/,
+  ];
+  
+  // Se for um dos hosts principais ou um domínio de desenvolvimento, retornar o tenant padrão
+  if (mainHosts.some(h => hostname.includes(h)) || 
+      devDomainPatterns.some(pattern => pattern.test(hostname))) {
     return { slug: 'ifatokun', customDomain: null };
   }
   
