@@ -176,6 +176,48 @@ const LessonView: React.FC = () => {
     };
   }, [exercises, currentExerciseIndex, completedExercises]);
 
+  // Audio handler for TapComplete exercise - MUST be before any early returns
+  const handlePlayTapCompleteAudio = useCallback(async (text: string, existingAudioUrl?: string) => {
+    // Stop current audio if playing
+    if (tapCompleteAudioRef.current) {
+      tapCompleteAudioRef.current.pause();
+      tapCompleteAudioRef.current = null;
+    }
+
+    try {
+      let audioUrl = existingAudioUrl;
+      
+      // If no existing audio, generate via ElevenLabs
+      if (!audioUrl) {
+        setTapCompleteAudioLoading(true);
+        
+        const { data, error } = await supabase.functions.invoke('elevenlabs-tts', {
+          body: { text }
+        });
+        
+        if (error) throw error;
+        if (!data?.audioUrl) throw new Error('Áudio não gerado');
+        
+        audioUrl = data.audioUrl;
+      }
+      
+      // Play the audio
+      const audio = new Audio(audioUrl);
+      tapCompleteAudioRef.current = audio;
+      await audio.play();
+      
+    } catch (error: any) {
+      console.error('Error playing TapComplete audio:', error);
+      toast({
+        title: 'Erro ao reproduzir áudio',
+        description: error.message || 'Tente novamente.',
+        variant: 'destructive',
+      });
+    } finally {
+      setTapCompleteAudioLoading(false);
+    }
+  }, [toast]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -301,47 +343,6 @@ const LessonView: React.FC = () => {
     }
   };
 
-  // Audio handler for TapComplete exercise
-  const handlePlayTapCompleteAudio = useCallback(async (text: string, existingAudioUrl?: string) => {
-    // Stop current audio if playing
-    if (tapCompleteAudioRef.current) {
-      tapCompleteAudioRef.current.pause();
-      tapCompleteAudioRef.current = null;
-    }
-
-    try {
-      let audioUrl = existingAudioUrl;
-      
-      // If no existing audio, generate via ElevenLabs
-      if (!audioUrl) {
-        setTapCompleteAudioLoading(true);
-        
-        const { data, error } = await supabase.functions.invoke('elevenlabs-tts', {
-          body: { text }
-        });
-        
-        if (error) throw error;
-        if (!data?.audioUrl) throw new Error('Áudio não gerado');
-        
-        audioUrl = data.audioUrl;
-      }
-      
-      // Play the audio
-      const audio = new Audio(audioUrl);
-      tapCompleteAudioRef.current = audio;
-      await audio.play();
-      
-    } catch (error: any) {
-      console.error('Error playing TapComplete audio:', error);
-      toast({
-        title: 'Erro ao reproduzir áudio',
-        description: error.message || 'Tente novamente.',
-        variant: 'destructive',
-      });
-    } finally {
-      setTapCompleteAudioLoading(false);
-    }
-  }, [toast]);
 
   const renderExercise = (exercise: Exercise) => {
     const content = exercise.content || {};
