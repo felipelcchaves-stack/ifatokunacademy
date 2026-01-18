@@ -560,6 +560,7 @@ export type Database = {
           image_url: string | null
           is_published: boolean
           level: string | null
+          organization_id: string | null
           theme: string | null
           title: string
           type: string
@@ -574,6 +575,7 @@ export type Database = {
           image_url?: string | null
           is_published?: boolean
           level?: string | null
+          organization_id?: string | null
           theme?: string | null
           title: string
           type: string
@@ -588,10 +590,87 @@ export type Database = {
           image_url?: string | null
           is_published?: boolean
           level?: string | null
+          organization_id?: string | null
           theme?: string | null
           title?: string
           type?: string
           updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "modules_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organization_admins: {
+        Row: {
+          created_at: string | null
+          id: string
+          organization_id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          organization_id: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          organization_id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_admins_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizations: {
+        Row: {
+          branding: Json | null
+          created_at: string | null
+          custom_domain: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          settings: Json | null
+          slug: string
+          updated_at: string | null
+        }
+        Insert: {
+          branding?: Json | null
+          created_at?: string | null
+          custom_domain?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          settings?: Json | null
+          slug: string
+          updated_at?: string | null
+        }
+        Update: {
+          branding?: Json | null
+          created_at?: string | null
+          custom_domain?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          settings?: Json | null
+          slug?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -601,6 +680,7 @@ export type Database = {
           description: string | null
           id: string
           key: string
+          organization_id: string | null
           updated_at: string | null
           value: Json
         }
@@ -609,6 +689,7 @@ export type Database = {
           description?: string | null
           id?: string
           key: string
+          organization_id?: string | null
           updated_at?: string | null
           value?: Json
         }
@@ -617,10 +698,19 @@ export type Database = {
           description?: string | null
           id?: string
           key?: string
+          organization_id?: string | null
           updated_at?: string | null
           value?: Json
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "platform_settings_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -631,6 +721,7 @@ export type Database = {
           full_name: string | null
           id: string
           mfa_enabled: boolean | null
+          organization_id: string | null
           study_mode: string | null
           updated_at: string
         }
@@ -642,6 +733,7 @@ export type Database = {
           full_name?: string | null
           id: string
           mfa_enabled?: boolean | null
+          organization_id?: string | null
           study_mode?: string | null
           updated_at?: string
         }
@@ -653,10 +745,19 @@ export type Database = {
           full_name?: string | null
           id?: string
           mfa_enabled?: boolean | null
+          organization_id?: string | null
           study_mode?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       review_error_stats: {
         Row: {
@@ -1181,9 +1282,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_user_organization_id: { Args: { p_user_id: string }; Returns: string }
       is_admin: { Args: { user_id: string }; Returns: boolean }
       is_module_phase1_complete: {
         Args: { p_module_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      is_org_or_global_admin: { Args: { p_user_id: string }; Returns: boolean }
+      is_organization_admin: {
+        Args: { p_organization_id: string; p_user_id: string }
         Returns: boolean
       }
     }
