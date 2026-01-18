@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useOrganization } from "@/contexts/OrganizationContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { validatePassword } from "@/lib/passwordValidation";
@@ -92,6 +93,7 @@ interface Module {
 
 export default function AdminUsers() {
   const { isAdmin, user } = useAuth();
+  const { organization, isOrgAdmin } = useOrganization();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -122,35 +124,54 @@ export default function AdminUsers() {
   const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
-    if (!isAdmin) {
+    // Permitir acesso tanto para admin global quanto org admin
+    if (!isAdmin && !isOrgAdmin) {
       navigate('/dashboard');
       return;
     }
     fetchData();
-  }, [isAdmin, navigate]);
+  }, [isAdmin, isOrgAdmin, navigate]);
 
   const fetchData = async () => {
     try {
-      // Buscar todos os perfis
-      const { data: profiles, error: profilesError } = await supabase
+      // Buscar perfis - filtrar por organização se for org admin e não global admin
+      let profilesQuery = supabase
         .from('profiles')
-        .select('id, full_name, email, avatar_url, created_at')
+        .select('id, full_name, email, avatar_url, created_at, organization_id')
         .order('created_at', { ascending: false });
+
+      // Se não é admin global mas é org admin, filtrar pela organização
+      if (!isAdmin && isOrgAdmin && organization) {
+        profilesQuery = profilesQuery.eq('organization_id', organization.id);
+      }
+
+      const { data: profiles, error: profilesError } = await profilesQuery;
 
       if (profilesError) throw profilesError;
 
-      // Buscar emails de admin
-      const { data: admins, error: adminsError } = await supabase
-        .from('admin_emails')
-        .select('email');
+      // Buscar emails de admin (apenas admin global pode ver isso)
+      let adminEmailSet = new Set<string>();
+      if (isAdmin) {
+        const { data: admins, error: adminsError } = await supabase
+          .from('admin_emails')
+          .select('email');
 
-      if (adminsError) throw adminsError;
+        if (adminsError) throw adminsError;
+        adminEmailSet = new Set((admins || []).map((a: { email: string }) => a.email.toLowerCase()));
+      }
+      setAdminEmails(adminEmailSet);
 
-      // Buscar todos os módulos (para o admin)
-      const { data: modulesData, error: modulesError } = await supabase
+      // Buscar módulos - filtrar por organização se necessário
+      let modulesQuery = supabase
         .from('modules')
         .select('id, title, type, level')
         .order('display_order');
+
+      if (!isAdmin && isOrgAdmin && organization) {
+        modulesQuery = modulesQuery.eq('organization_id', organization.id);
+      }
+
+      const { data: modulesData, error: modulesError } = await modulesQuery;
 
       if (modulesError) throw modulesError;
       setModules(modulesData || []);
@@ -170,9 +191,6 @@ export default function AdminUsers() {
         }
         permissionsMap.get(p.user_id)!.push(p.module_id);
       });
-
-      const adminEmailSet = new Set((admins || []).map((a: { email: string }) => a.email.toLowerCase()));
-      setAdminEmails(adminEmailSet);
 
       // Marcar usuários com status e permissões
       const usersWithStatus = (profiles || []).map(profile => ({
@@ -211,7 +229,8 @@ export default function AdminUsers() {
           email: inviteForm.email,
           password: inviteForm.password,
           fullName: inviteForm.fullName,
-          moduleIds: inviteForm.moduleIds
+          moduleIds: inviteForm.moduleIds,
+          organizationId: organization?.id
         },
         headers: {
           Authorization: `Bearer ${session?.access_token}`
