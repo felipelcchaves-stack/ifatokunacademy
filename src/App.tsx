@@ -39,6 +39,7 @@ import AdminOrganizations from "./pages/admin/AdminOrganizations";
 import AdminOrganizationBranding from "./pages/admin/AdminOrganizationBranding";
 import AdminOrganizationAdmins from "./pages/admin/AdminOrganizationAdmins";
 import AdminOrganizationDomain from "./pages/admin/AdminOrganizationDomain";
+import AdminOrganizationMembers from "./pages/admin/AdminOrganizationMembers";
 import AdminOrgDashboard from "./pages/admin/AdminOrgDashboard";
 import UserSettings from "./pages/UserSettings";
 import ModuleRetentionReview from "./pages/ModuleRetentionReview";
@@ -210,6 +211,7 @@ const App = () => (
                 <Route path="organizations/:organizationId/branding" element={<AdminOrganizationBranding />} />
                 <Route path="organizations/:organizationId/admins" element={<AdminOrganizationAdmins />} />
                 <Route path="organizations/:organizationId/domain" element={<AdminOrganizationDomain />} />
+                <Route path="organizations/:organizationId/members" element={<AdminOrganizationMembers />} />
                 
                 <Route path="users" element={<AdminUsers />} />
                 <Route path="invites" element={<AdminInvites />} />

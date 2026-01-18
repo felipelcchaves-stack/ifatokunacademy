@@ -479,6 +479,14 @@ const AdminOrganizations: React.FC = () => {
                       <Button
                         variant="ghost"
                         size="sm"
+                        onClick={() => navigate(`/admin/organizations/${org.id}/members`)}
+                        title="Membros"
+                      >
+                        <Users className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => navigate(`/admin/organizations/${org.id}/admins`)}
                         title="Administradores"
                       >
