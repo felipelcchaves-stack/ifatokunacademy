@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, Loader2 } from 'lucide-react';
 import loginBg from '@/assets/login-bg.jpg';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { z } from 'zod';
 import MFAVerification from '@/components/auth/MFAVerification';
-import { usePlatformSettings } from '@/hooks/usePlatformSettings';
+import { useTenantDetection } from '@/hooks/useTenantDetection';
 
 const loginSchema = z.object({
   email: z.string().email('E-mail inválido'),
@@ -30,23 +30,57 @@ const Login: React.FC = () => {
   const loginInProgress = useRef(false);
   
   const { signIn, isAuthenticated } = useAuth();
-  const { platformName } = usePlatformSettings();
+  const { organization, loading: tenantLoading } = useTenantDetection();
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
 
-  const displayPlatformName = platformName?.split(' ').slice(0, 2).join(' ') || 'Offe Orunmila';
-  const displayPlatformSuffix = platformName?.split(' ').slice(2).join(' ') || 'Learning';
+  // Dynamic branding from tenant
+  const branding = organization?.branding;
+  const orgName = organization?.name || 'Offe Orunmila Learning';
+  const displayPlatformName = orgName.split(' ').slice(0, 2).join(' ') || 'Offe Orunmila';
+  const displayPlatformSuffix = orgName.split(' ').slice(2).join(' ') || 'Learning';
+  
+  // Dynamic background image
+  const backgroundImage = branding?.login_background_url || loginBg;
+  
+  // Dynamic logo
+  const logoUrl = branding?.logo_url;
 
   const from = (location.state as any)?.from?.pathname || '/dashboard';
 
+  // Apply dynamic CSS variables for this page
+  useEffect(() => {
+    if (branding) {
+      const root = document.documentElement;
+      
+      // Store original values
+      const originalPrimary = getComputedStyle(root).getPropertyValue('--primary');
+      const originalSecondary = getComputedStyle(root).getPropertyValue('--secondary');
+      const originalAccent = getComputedStyle(root).getPropertyValue('--accent');
+      
+      // Apply tenant branding
+      if (branding.primary_color) {
+        root.style.setProperty('--primary', branding.primary_color);
+      }
+      if (branding.secondary_color) {
+        root.style.setProperty('--secondary', branding.secondary_color);
+      }
+      if (branding.accent_color) {
+        root.style.setProperty('--accent', branding.accent_color);
+      }
+      
+      // Cleanup on unmount - restore original values
+      return () => {
+        root.style.setProperty('--primary', originalPrimary);
+        root.style.setProperty('--secondary', originalSecondary);
+        root.style.setProperty('--accent', originalAccent);
+      };
+    }
+  }, [branding]);
+
   // Effect to handle post-login navigation
   useEffect(() => {
-    // Only check MFA if:
-    // 1. User is authenticated
-    // 2. Not already showing MFA screen
-    // 3. Login was initiated from this page (loginInProgress)
-    // 4. Haven't already checked MFA in this session
     if (isAuthenticated && !showMFA && loginInProgress.current && !hasCheckedMFA.current) {
       hasCheckedMFA.current = true;
       checkMFAStatus();
@@ -62,7 +96,6 @@ const Login: React.FC = () => {
       const centerX = rect.left + rect.width / 2;
       const centerY = rect.top + rect.height / 2;
       
-      // Calculate offset from center (max 15px movement)
       const offsetX = ((e.clientX - centerX) / rect.width) * 15;
       const offsetY = ((e.clientY - centerY) / rect.height) * 15;
       
@@ -73,7 +106,6 @@ const Login: React.FC = () => {
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
 
-  // Determine safe navigation target (avoid /admin if not checked yet)
   const safeFrom = from.startsWith('/admin') ? '/dashboard' : from;
   
   const checkMFAStatus = async () => {
@@ -82,7 +114,6 @@ const Login: React.FC = () => {
       const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
       console.log('[Login] MFA check result:', { data, error: error?.message });
       
-      // If there's an error or no data, assume no MFA needed and proceed
       if (error || !data) {
         console.log('[Login] MFA check error or no data, proceeding to:', safeFrom);
         toast({
@@ -93,12 +124,10 @@ const Login: React.FC = () => {
         return;
       }
       
-      // Only show MFA if user REALLY needs to verify
       if (data.currentLevel === 'aal1' && data.nextLevel === 'aal2') {
         console.log('[Login] MFA required, showing verification');
         setShowMFA(true);
       } else {
-        // No MFA required, proceed to dashboard
         console.log('[Login] No MFA required, navigating to:', safeFrom);
         toast({
           title: 'Bem-vindo de volta!',
@@ -108,7 +137,6 @@ const Login: React.FC = () => {
       }
     } catch (error) {
       console.error('[Login] Error checking MFA status:', error);
-      // Even on error, navigate to dashboard
       toast({
         title: 'Bem-vindo de volta!',
         description: 'Login realizado com sucesso.',
@@ -136,7 +164,6 @@ const Login: React.FC = () => {
     e.preventDefault();
     setErrors({});
 
-    // Validate input
     const result = loginSchema.safeParse({ email, password });
     if (!result.success) {
       const fieldErrors: { email?: string; password?: string } = {};
@@ -174,7 +201,6 @@ const Login: React.FC = () => {
       } else {
         console.log('[Login] signIn success, waiting for isAuthenticated change');
       }
-      // Note: Success handling moved to useEffect/checkMFAStatus
     } catch (error) {
       toast({
         variant: 'destructive',
@@ -186,22 +212,56 @@ const Login: React.FC = () => {
     }
   };
 
+  // Loading state while detecting tenant
+  if (tenantLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <p className="text-muted-foreground">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Render logo component (dynamic or default)
+  const LogoComponent = () => (
+    <Link to="/login" className="flex items-center gap-3 mb-8">
+      {logoUrl ? (
+        <img src={logoUrl} alt={orgName} className="h-10 object-contain" />
+      ) : (
+        <>
+          <div 
+            className="w-10 h-10 rounded-full flex items-center justify-center shadow-lg"
+            style={{ 
+              background: branding?.accent_color 
+                ? `linear-gradient(135deg, hsl(${branding.accent_color}), hsl(${branding.accent_color} / 0.8))`
+                : 'linear-gradient(135deg, hsl(var(--gold)), hsl(var(--gold-dark)))'
+            }}
+          >
+            <span 
+              className="font-serif text-lg font-bold"
+              style={{ color: branding?.secondary_color ? `hsl(${branding.secondary_color})` : 'hsl(var(--secondary))' }}
+            >
+              {displayPlatformName.charAt(0)}
+            </span>
+          </div>
+          <div>
+            <h1 className="font-serif text-lg font-semibold text-foreground">{displayPlatformName}</h1>
+            <p className="text-xs text-muted-foreground -mt-1">{displayPlatformSuffix}</p>
+          </div>
+        </>
+      )}
+    </Link>
+  );
+
   // Show MFA verification screen
   if (showMFA) {
     return (
       <div className="min-h-screen flex">
         <div className="flex-1 flex items-center justify-center p-8">
           <div className="w-full max-w-md">
-            <Link to="/login" className="flex items-center gap-3 mb-8">
-              <div className="w-10 h-10 rounded-full gradient-gold flex items-center justify-center shadow-gold">
-                <span className="font-serif text-lg font-bold text-secondary">{displayPlatformName.charAt(0)}</span>
-              </div>
-              <div>
-                <h1 className="font-serif text-lg font-semibold text-foreground">{displayPlatformName}</h1>
-                <p className="text-xs text-muted-foreground -mt-1">{displayPlatformSuffix}</p>
-              </div>
-            </Link>
-
+            <LogoComponent />
             <MFAVerification 
               onVerified={handleMFAVerified}
               onCancel={handleMFACancel}
@@ -216,13 +276,20 @@ const Login: React.FC = () => {
           <div 
             className="absolute inset-[-20px] transition-transform duration-300 ease-out"
             style={{
-              backgroundImage: `url(${loginBg})`,
+              backgroundImage: `url(${backgroundImage})`,
               backgroundSize: 'cover',
               backgroundPosition: 'center',
               transform: `translate(${parallaxOffset.x}px, ${parallaxOffset.y}px) scale(1.05)`,
             }}
           />
-          <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/40 to-black/60" />
+          <div 
+            className="absolute inset-0"
+            style={{
+              background: branding?.primary_color 
+                ? `linear-gradient(135deg, hsl(${branding.primary_color} / 0.7), hsl(${branding.secondary_color || branding.primary_color} / 0.5))`
+                : 'linear-gradient(135deg, rgba(0,0,0,0.6), rgba(0,0,0,0.4))'
+            }}
+          />
           <div 
             className="relative max-w-lg text-center text-white z-10 transition-transform duration-300 ease-out"
             style={{
@@ -244,17 +311,9 @@ const Login: React.FC = () => {
   return (
     <div className="min-h-screen flex">
       {/* Left Side - Form */}
-        <div className="flex-1 flex items-center justify-center p-8">
-          <div className="w-full max-w-md">
-            <Link to="/login" className="flex items-center gap-3 mb-8">
-              <div className="w-10 h-10 rounded-full gradient-gold flex items-center justify-center shadow-gold">
-                <span className="font-serif text-lg font-bold text-secondary">{displayPlatformName.charAt(0)}</span>
-              </div>
-              <div>
-                <h1 className="font-serif text-lg font-semibold text-foreground">{displayPlatformName}</h1>
-                <p className="text-xs text-muted-foreground -mt-1">{displayPlatformSuffix}</p>
-              </div>
-            </Link>
+      <div className="flex-1 flex items-center justify-center p-8">
+        <div className="w-full max-w-md">
+          <LogoComponent />
 
           <h2 className="font-serif text-3xl font-bold text-foreground mb-2">
             Bem-vindo de volta
@@ -319,7 +378,13 @@ const Login: React.FC = () => {
 
             <Button 
               type="submit" 
-              className="w-full gradient-gold text-secondary font-semibold shadow-gold"
+              className="w-full font-semibold shadow-lg"
+              style={{
+                background: branding?.accent_color 
+                  ? `linear-gradient(135deg, hsl(${branding.accent_color}), hsl(${branding.accent_color} / 0.8))`
+                  : 'linear-gradient(135deg, hsl(var(--gold)), hsl(var(--gold-dark)))',
+                color: branding?.secondary_color ? `hsl(${branding.secondary_color})` : 'hsl(var(--secondary))'
+              }}
               disabled={loading}
             >
               {loading ? 'Entrando...' : 'Entrar'}
@@ -342,13 +407,20 @@ const Login: React.FC = () => {
         <div 
           className="absolute inset-[-20px] transition-transform duration-300 ease-out"
           style={{
-            backgroundImage: `url(${loginBg})`,
+            backgroundImage: `url(${backgroundImage})`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             transform: `translate(${parallaxOffset.x}px, ${parallaxOffset.y}px) scale(1.05)`,
           }}
         />
-        <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/40 to-black/60" />
+        <div 
+          className="absolute inset-0"
+          style={{
+            background: branding?.primary_color 
+              ? `linear-gradient(135deg, hsl(${branding.primary_color} / 0.7), hsl(${branding.secondary_color || branding.primary_color} / 0.5))`
+              : 'linear-gradient(135deg, rgba(0,0,0,0.6), rgba(0,0,0,0.4))'
+          }}
+        />
         <div 
           className="relative max-w-lg text-center text-white z-10 transition-transform duration-300 ease-out"
           style={{
