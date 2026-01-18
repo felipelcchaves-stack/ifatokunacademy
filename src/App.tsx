@@ -39,6 +39,7 @@ import AdminOrganizations from "./pages/admin/AdminOrganizations";
 import AdminOrganizationBranding from "./pages/admin/AdminOrganizationBranding";
 import AdminOrganizationAdmins from "./pages/admin/AdminOrganizationAdmins";
 import AdminOrganizationDomain from "./pages/admin/AdminOrganizationDomain";
+import AdminOrgDashboard from "./pages/admin/AdminOrgDashboard";
 import UserSettings from "./pages/UserSettings";
 import ModuleRetentionReview from "./pages/ModuleRetentionReview";
 import MFAVerify from "./pages/MFAVerify";
@@ -150,11 +151,12 @@ const App = () => (
               
               {/* Admin Routes - Protected & Admin Only with shared layout */}
               <Route path="/admin" element={
-                <ProtectedRoute requireAdmin>
+                <ProtectedRoute requireAdmin allowOrgAdmin>
                   <AdminLayout />
                 </ProtectedRoute>
               }>
                 <Route index element={<AdminDashboard />} />
+                <Route path="org-dashboard" element={<AdminOrgDashboard />} />
                 <Route path="modules" element={<AdminModules />} />
                 <Route path="modules/:moduleId/lessons" element={<AdminLessons />} />
                 <Route path="modules/:moduleId/lessons/:lessonId/exercises" element={<AdminExercises />} />

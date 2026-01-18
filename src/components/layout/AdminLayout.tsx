@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
+import { useOrganization } from '@/contexts/OrganizationContext';
 import { usePlatformSettings } from '@/hooks/usePlatformSettings';
 
 const AdminLayout: React.FC = () => {
@@ -25,11 +26,13 @@ const AdminLayout: React.FC = () => {
   const displayPlatformName = platformName?.split(' ').slice(0, 2).join(' ') || 'Offe Orunmila';
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, profile, signOut } = useAuth();
+  const { user, profile, signOut, isAdmin } = useAuth();
+  const { organization, isOrgAdmin } = useOrganization();
 
   const displayName = profile?.full_name || user?.email?.split('@')[0] || 'Admin';
 
-  const sidebarItems = [
+  // Itens do menu para admin global
+  const globalAdminItems = [
     { icon: LayoutDashboard, label: 'Visão Geral', path: '/admin' },
     { icon: BookOpen, label: 'Módulos', path: '/admin/modules' },
     { icon: FileText, label: 'Lições', path: '/admin/lessons' },
@@ -44,6 +47,19 @@ const AdminLayout: React.FC = () => {
     { icon: Settings, label: 'Configurações', path: '/admin/settings' },
   ];
 
+  // Itens do menu para org admin (não global)
+  const orgAdminItems = [
+    { icon: LayoutDashboard, label: 'Dashboard', path: '/admin/org-dashboard' },
+    { icon: BookOpen, label: 'Módulos', path: '/admin/modules' },
+    { icon: FileText, label: 'Lições', path: '/admin/lessons' },
+    { icon: Users, label: 'Usuários', path: '/admin/users' },
+    { icon: UserPlus, label: 'Convites', path: '/admin/invites' },
+    { icon: BarChart3, label: 'Relatórios', path: '/admin/reports' },
+  ];
+
+  // Usar menu apropriado baseado no tipo de admin
+  const sidebarItems = isAdmin ? globalAdminItems : orgAdminItems;
+
   const handleLogout = async () => {
     await signOut();
     navigate('/');
@@ -51,6 +67,7 @@ const AdminLayout: React.FC = () => {
 
   const isActive = (path: string) => {
     if (path === '/admin') return location.pathname === '/admin';
+    if (path === '/admin/org-dashboard') return location.pathname === '/admin/org-dashboard';
     return location.pathname.startsWith(path);
   };
 
@@ -66,8 +83,12 @@ const AdminLayout: React.FC = () => {
                 <span className="font-serif text-lg font-bold text-secondary">{displayPlatformName.charAt(0)}</span>
               </div>
               <div>
-                <h1 className="font-serif font-semibold text-sidebar-foreground">Admin</h1>
-                <p className="text-xs text-sidebar-foreground/60">{displayPlatformName}</p>
+                <h1 className="font-serif font-semibold text-sidebar-foreground">
+                  {isAdmin ? 'Admin' : 'Org Admin'}
+                </h1>
+                <p className="text-xs text-sidebar-foreground/60">
+                  {isAdmin ? displayPlatformName : (organization?.name || displayPlatformName)}
+                </p>
               </div>
             </Link>
           </div>
