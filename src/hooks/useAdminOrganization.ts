@@ -101,30 +101,29 @@ export const useAdminOrganization = (): UseAdminOrganizationReturn => {
     }
   }, []);
 
+  // Fetch organizations on mount
+  useEffect(() => {
+    fetchOrganizations();
+  }, [fetchOrganizations]);
+
   // Auto-sync quando navegando de /org/:slug para /admin
   useEffect(() => {
     const match = location.pathname.match(/^\/org\/([^/]+)/);
     if (match) {
       const orgSlug = match[1];
       // Buscar org por slug e sincronizar
-      const fetchOrgBySlug = async () => {
-        const { data } = await supabase
-          .from('organizations')
-          .select('id')
-          .eq('slug', orgSlug)
-          .single();
-        
-        if (data?.id) {
-          syncFromTenantContext(data.id);
-        }
-      };
-      fetchOrgBySlug();
+      supabase
+        .from('organizations')
+        .select('id')
+        .eq('slug', orgSlug)
+        .single()
+        .then(({ data }) => {
+          if (data?.id) {
+            syncFromTenantContext(data.id);
+          }
+        });
     }
   }, [location.pathname, syncFromTenantContext]);
-
-  useEffect(() => {
-    fetchOrganizations();
-  }, [fetchOrganizations]);
 
   const switchOrganization = useCallback((orgId: string) => {
     setActiveOrgId(orgId);
