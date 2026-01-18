@@ -1,16 +1,24 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useOrganization } from '@/contexts/OrganizationContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requireAdmin?: boolean;
+  // Se true, permite acesso também para org admins (não apenas global admins)
+  allowOrgAdmin?: boolean;
 }
 
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requireAdmin = false }) => {
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
+  children, 
+  requireAdmin = false,
+  allowOrgAdmin = false 
+}) => {
   const { isAuthenticated, isAdmin, loading } = useAuth();
+  const { isOrgAdmin, loading: orgLoading } = useOrganization();
   const location = useLocation();
   // Start as false to avoid unnecessary loading state for users without MFA
   const [mfaChecking, setMfaChecking] = useState(false);
@@ -65,7 +73,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requireAdmin 
     }
   };
 
-  if (loading || mfaChecking) {
+  if (loading || mfaChecking || orgLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
@@ -87,9 +95,15 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requireAdmin 
     return <Navigate to="/mfa-verify" state={{ from: location }} replace />;
   }
 
-  if (requireAdmin && !isAdmin) {
-    console.log('[ProtectedRoute] Admin required but not admin, redirecting to /dashboard');
-    return <Navigate to="/dashboard" replace />;
+  // Verificar permissões de admin
+  if (requireAdmin) {
+    // Se allowOrgAdmin é true, aceitar tanto admin global quanto org admin
+    const hasAccess = allowOrgAdmin ? (isAdmin || isOrgAdmin) : isAdmin;
+    
+    if (!hasAccess) {
+      console.log('[ProtectedRoute] Admin required but not authorized, redirecting to /dashboard');
+      return <Navigate to="/dashboard" replace />;
+    }
   }
 
   console.log('[ProtectedRoute] Access granted');
