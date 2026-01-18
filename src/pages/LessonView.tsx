@@ -82,6 +82,7 @@ const LessonView: React.FC = () => {
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
   const [completedExercises, setCompletedExercises] = useState<Set<string>>(new Set());
   const [showPhaseTransition, setShowPhaseTransition] = useState(false);
+  const [nextLesson, setNextLesson] = useState<{ id: string; title: string } | null>(null);
   
   // Audio state for TapComplete
   const [tapCompleteAudioLoading, setTapCompleteAudioLoading] = useState(false);
@@ -92,6 +93,31 @@ const LessonView: React.FC = () => {
       fetchLessonAndExercises();
     }
   }, [lessonId]);
+
+  // Fetch next lesson in the module
+  useEffect(() => {
+    const fetchNextLesson = async () => {
+      if (!moduleId || !lessonId) return;
+      
+      const { data: allLessons } = await supabase
+        .from('lessons')
+        .select('id, title, display_order')
+        .eq('module_id', moduleId)
+        .eq('is_published', true)
+        .order('display_order', { ascending: true });
+      
+      if (allLessons && allLessons.length > 0) {
+        const currentIndex = allLessons.findIndex(l => l.id === lessonId);
+        if (currentIndex >= 0 && currentIndex < allLessons.length - 1) {
+          setNextLesson(allLessons[currentIndex + 1]);
+        } else {
+          setNextLesson(null);
+        }
+      }
+    };
+    
+    fetchNextLesson();
+  }, [moduleId, lessonId]);
 
   const fetchLessonAndExercises = async () => {
     try {
@@ -496,20 +522,49 @@ const LessonView: React.FC = () => {
                   </ul>
                 </div>
                 
-                <div className="flex gap-4 justify-center">
-                  <Button variant="outline" onClick={handlePrevious}>
-                    <ArrowLeft className="w-4 h-4 mr-2" />
-                    Revisar Fase 1
-                  </Button>
-                  <Button 
-                    className="gradient-gold text-secondary shadow-gold"
-                    onClick={() => {
-                      setShowPhaseTransition(false);
-                      setCurrentExerciseIndex(currentExerciseIndex + 1);
-                    }}
+                <div className="flex flex-col gap-4">
+                  <div className="flex gap-4 justify-center">
+                    <Button variant="outline" onClick={handlePrevious}>
+                      <ArrowLeft className="w-4 h-4 mr-2" />
+                      Revisar Fase 1
+                    </Button>
+                    <Button 
+                      className="gradient-gold text-secondary shadow-gold"
+                      onClick={() => {
+                        setShowPhaseTransition(false);
+                        setCurrentExerciseIndex(currentExerciseIndex + 1);
+                      }}
+                    >
+                      Iniciar Fase 2
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                    </Button>
+                  </div>
+                  
+                  {nextLesson && (
+                    <>
+                      <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                        <div className="flex-1 h-px bg-border" />
+                        <span>ou</span>
+                        <div className="flex-1 h-px bg-border" />
+                      </div>
+                      
+                      <Button 
+                        variant="secondary"
+                        className="w-full"
+                        onClick={() => navigate(`/module/${moduleId}/lesson/${nextLesson.id}`)}
+                      >
+                        <BookOpen className="w-4 h-4 mr-2" />
+                        Ir para: {nextLesson.title}
+                      </Button>
+                    </>
+                  )}
+                  
+                  <Button
+                    variant="ghost"
+                    className="text-muted-foreground text-sm"
+                    onClick={() => navigate(`/module/${moduleId}`)}
                   >
-                    Iniciar Fase 2
-                    <ArrowRight className="w-4 h-4 ml-2" />
+                    Voltar ao Módulo
                   </Button>
                 </div>
               </div>
