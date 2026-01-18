@@ -10,15 +10,22 @@ import {
   Award,
   BarChart3,
   ArrowLeft,
-  Flame
+  Flame,
+  AlertTriangle
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import ContentProtection from '@/components/ContentProtection';
 import { useSpacedRepetition, SpacedRepetitionItem } from '@/hooks/useSpacedRepetition';
+import { useErrorStats } from '@/hooks/useErrorStats';
+import ErrorTypeDistribution from '@/components/stats/ErrorTypeDistribution';
+import ErrorStatsSummary from '@/components/stats/ErrorStatsSummary';
+import ErrorTrendChart from '@/components/stats/ErrorTrendChart';
+import PedagogicalInsights from '@/components/stats/PedagogicalInsights';
 import { 
   BarChart, 
   Bar, 
@@ -48,6 +55,7 @@ const COLORS = {
 const SpacedReviewStats: React.FC = () => {
   const navigate = useNavigate();
   const { allItems, dueCount, loading } = useSpacedRepetition();
+  const { errorStats, aggregatedStats, loading: errorStatsLoading } = useErrorStats();
 
   // Calculate statistics
   const calculateStats = () => {
@@ -205,182 +213,209 @@ const SpacedReviewStats: React.FC = () => {
                 </CardContent>
               </Card>
             ) : (
-              <>
-                {/* Summary Stats */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                  <Card>
-                    <CardContent className="p-4 text-center">
-                      <Brain className="w-6 h-6 text-primary mx-auto mb-1" />
-                      <p className="text-3xl font-bold">{stats.totalItems}</p>
-                      <p className="text-xs text-muted-foreground">Total de Itens</p>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="p-4 text-center">
-                      <Target className="w-6 h-6 text-green-500 mx-auto mb-1" />
-                      <p className="text-3xl font-bold">{stats.overallAccuracy}%</p>
-                      <p className="text-xs text-muted-foreground">Taxa de Acerto</p>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="p-4 text-center">
-                      <TrendingUp className="w-6 h-6 text-blue-500 mx-auto mb-1" />
-                      <p className="text-3xl font-bold">{stats.totalReviews}</p>
-                      <p className="text-xs text-muted-foreground">Total de Revisões</p>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="p-4 text-center">
-                      <Clock className="w-6 h-6 text-amber-500 mx-auto mb-1" />
-                      <p className="text-3xl font-bold">{dueCount}</p>
-                      <p className="text-xs text-muted-foreground">Pendentes Hoje</p>
-                    </CardContent>
-                  </Card>
-                </div>
+              <Tabs defaultValue="overview" className="space-y-6">
+                <TabsList className="grid w-full grid-cols-2 md:w-auto md:inline-flex">
+                  <TabsTrigger value="overview" className="flex items-center gap-2">
+                    <BarChart3 className="w-4 h-4" />
+                    Visão Geral
+                  </TabsTrigger>
+                  <TabsTrigger value="errors" className="flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4" />
+                    Análise de Erros
+                  </TabsTrigger>
+                </TabsList>
 
-                {/* Charts Row 1 */}
-                <div className="grid md:grid-cols-2 gap-6 mb-8">
-                  {/* Mastery Distribution Pie Chart */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <Award className="w-5 h-5" />
-                        Distribuição de Domínio
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      {masteryData.length > 0 ? (
+                <TabsContent value="overview" className="space-y-6">
+                  {/* Summary Stats */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <Card>
+                      <CardContent className="p-4 text-center">
+                        <Brain className="w-6 h-6 text-primary mx-auto mb-1" />
+                        <p className="text-3xl font-bold">{stats.totalItems}</p>
+                        <p className="text-xs text-muted-foreground">Total de Itens</p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-4 text-center">
+                        <Target className="w-6 h-6 text-green-500 mx-auto mb-1" />
+                        <p className="text-3xl font-bold">{stats.overallAccuracy}%</p>
+                        <p className="text-xs text-muted-foreground">Taxa de Acerto</p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-4 text-center">
+                        <TrendingUp className="w-6 h-6 text-blue-500 mx-auto mb-1" />
+                        <p className="text-3xl font-bold">{stats.totalReviews}</p>
+                        <p className="text-xs text-muted-foreground">Total de Revisões</p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-4 text-center">
+                        <Clock className="w-6 h-6 text-amber-500 mx-auto mb-1" />
+                        <p className="text-3xl font-bold">{dueCount}</p>
+                        <p className="text-xs text-muted-foreground">Pendentes Hoje</p>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Charts Row 1 */}
+                  <div className="grid md:grid-cols-2 gap-6">
+                    {/* Mastery Distribution Pie Chart */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          <Award className="w-5 h-5" />
+                          Distribuição de Domínio
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {masteryData.length > 0 ? (
+                          <div className="h-64">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <PieChart>
+                                <Pie
+                                  data={masteryData}
+                                  cx="50%"
+                                  cy="50%"
+                                  innerRadius={60}
+                                  outerRadius={80}
+                                  paddingAngle={5}
+                                  dataKey="value"
+                                  label={({ name, value }) => `${name}: ${value}`}
+                                >
+                                  {masteryData.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={entry.color} />
+                                  ))}
+                                </Pie>
+                                <Tooltip />
+                              </PieChart>
+                            </ResponsiveContainer>
+                          </div>
+                        ) : (
+                          <p className="text-center text-muted-foreground py-8">
+                            Sem dados suficientes
+                          </p>
+                        )}
+                        <div className="flex justify-center gap-4 mt-4">
+                          {masteryData.map((entry, index) => (
+                            <div key={index} className="flex items-center gap-2">
+                              <div 
+                                className="w-3 h-3 rounded-full" 
+                                style={{ backgroundColor: entry.color }}
+                              />
+                              <span className="text-sm text-muted-foreground">{entry.name}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Interval Distribution Bar Chart */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          <Calendar className="w-5 h-5" />
+                          Distribuição de Intervalos
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
                         <div className="h-64">
                           <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                              <Pie
-                                data={masteryData}
-                                cx="50%"
-                                cy="50%"
-                                innerRadius={60}
-                                outerRadius={80}
-                                paddingAngle={5}
-                                dataKey="value"
-                                label={({ name, value }) => `${name}: ${value}`}
-                              >
-                                {masteryData.map((entry, index) => (
-                                  <Cell key={`cell-${index}`} fill={entry.color} />
-                                ))}
-                              </Pie>
+                            <BarChart data={intervalData}>
+                              <CartesianGrid strokeDasharray="3 3" />
+                              <XAxis dataKey="range" tick={{ fontSize: 12 }} />
+                              <YAxis allowDecimals={false} />
                               <Tooltip />
-                            </PieChart>
+                              <Bar dataKey="count" fill={COLORS.primary} radius={[4, 4, 0, 0]} />
+                            </BarChart>
                           </ResponsiveContainer>
                         </div>
-                      ) : (
-                        <p className="text-center text-muted-foreground py-8">
-                          Sem dados suficientes
-                        </p>
-                      )}
-                      <div className="flex justify-center gap-4 mt-4">
-                        {masteryData.map((entry, index) => (
-                          <div key={index} className="flex items-center gap-2">
-                            <div 
-                              className="w-3 h-3 rounded-full" 
-                              style={{ backgroundColor: entry.color }}
-                            />
-                            <span className="text-sm text-muted-foreground">{entry.name}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
+                      </CardContent>
+                    </Card>
+                  </div>
 
-                  {/* Interval Distribution Bar Chart */}
+                  {/* Upcoming Reviews Chart */}
                   <Card>
                     <CardHeader>
                       <CardTitle className="text-lg flex items-center gap-2">
-                        <Calendar className="w-5 h-5" />
-                        Distribuição de Intervalos
+                        <TrendingUp className="w-5 h-5" />
+                        Revisões Próximas (14 dias)
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="h-64">
                         <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={intervalData}>
+                          <LineChart data={upcomingReviewsData}>
                             <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="range" tick={{ fontSize: 12 }} />
+                            <XAxis dataKey="date" tick={{ fontSize: 12 }} />
                             <YAxis allowDecimals={false} />
                             <Tooltip />
-                            <Bar dataKey="count" fill={COLORS.primary} radius={[4, 4, 0, 0]} />
-                          </BarChart>
+                            <Line 
+                              type="monotone" 
+                              dataKey="items" 
+                              stroke={COLORS.primary} 
+                              strokeWidth={2}
+                              dot={{ fill: COLORS.primary }}
+                              name="Itens"
+                            />
+                          </LineChart>
                         </ResponsiveContainer>
                       </div>
                     </CardContent>
                   </Card>
-                </div>
 
-                {/* Upcoming Reviews Chart */}
-                <Card className="mb-8">
-                  <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <TrendingUp className="w-5 h-5" />
-                      Revisões Próximas (14 dias)
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-64">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={upcomingReviewsData}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-                          <YAxis allowDecimals={false} />
-                          <Tooltip />
-                          <Line 
-                            type="monotone" 
-                            dataKey="items" 
-                            stroke={COLORS.primary} 
-                            strokeWidth={2}
-                            dot={{ fill: COLORS.primary }}
-                            name="Itens"
-                          />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </CardContent>
-                </Card>
+                  {/* Items with Lowest Accuracy */}
+                  {accuracyByItem.length > 0 && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          <Flame className="w-5 h-5 text-orange-500" />
+                          Itens que Precisam de Mais Atenção
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-3">
+                          {accuracyByItem.map((item, index) => (
+                            <div key={index} className="flex items-center gap-4">
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium truncate">{item.text}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {item.reviews} revisões
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2 w-32">
+                                <Progress 
+                                  value={item.accuracy} 
+                                  className="h-2 flex-1"
+                                />
+                                <span className={`text-sm font-medium ${
+                                  item.accuracy >= 80 ? 'text-green-600' :
+                                  item.accuracy >= 50 ? 'text-amber-600' : 'text-red-600'
+                                }`}>
+                                  {item.accuracy}%
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                </TabsContent>
 
-                {/* Items with Lowest Accuracy */}
-                {accuracyByItem.length > 0 && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <Flame className="w-5 h-5 text-orange-500" />
-                        Itens que Precisam de Mais Atenção
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
-                        {accuracyByItem.map((item, index) => (
-                          <div key={index} className="flex items-center gap-4">
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate">{item.text}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {item.reviews} revisões
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-2 w-32">
-                              <Progress 
-                                value={item.accuracy} 
-                                className="h-2 flex-1"
-                              />
-                              <span className={`text-sm font-medium ${
-                                item.accuracy >= 80 ? 'text-green-600' :
-                                item.accuracy >= 50 ? 'text-amber-600' : 'text-red-600'
-                              }`}>
-                                {item.accuracy}%
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
+                <TabsContent value="errors" className="space-y-6">
+                  {/* Error Stats Summary */}
+                  <ErrorStatsSummary stats={aggregatedStats} />
+
+                  {/* Error Charts */}
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <ErrorTypeDistribution stats={aggregatedStats} />
+                    <ErrorTrendChart errorStats={errorStats} />
+                  </div>
+
+                  {/* Pedagogical Insights */}
+                  <PedagogicalInsights stats={aggregatedStats} />
+                </TabsContent>
 
                 {/* Action Button */}
                 <div className="mt-8 text-center">
@@ -396,7 +431,7 @@ const SpacedReviewStats: React.FC = () => {
                     }
                   </Button>
                 </div>
-              </>
+              </Tabs>
             )}
           </div>
         </main>
