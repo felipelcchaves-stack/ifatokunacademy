@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Building2, Users, BookOpen, Globe, Palette, Loader2, Pencil, Trash2, Shield } from 'lucide-react';
+import { Plus, Building2, Users, BookOpen, Globe, Palette, Loader2, Pencil, Trash2, Shield, ExternalLink, Copy } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Organization, OrganizationBranding, OrganizationSettings } from '@/contexts/OrganizationContext';
@@ -222,6 +222,22 @@ const AdminOrganizations: React.FC = () => {
     }
   };
 
+  const getAccessUrl = (org: Organization) => {
+    // Use window.location for base URL
+    const baseUrl = window.location.origin;
+    return `${baseUrl}/org/${org.slug}/login`;
+  };
+
+  const copyAccessUrl = async (org: Organization) => {
+    const url = getAccessUrl(org);
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success('Link de acesso copiado!');
+    } catch (err) {
+      toast.error('Erro ao copiar link');
+    }
+  };
+
   const getPlanBadgeVariant = (plan: string) => {
     switch (plan) {
       case 'enterprise': return 'default';
@@ -379,7 +395,31 @@ const AdminOrganizations: React.FC = () => {
             <TableBody>
               {organizations.map((org) => (
                 <TableRow key={org.id}>
-                  <TableCell className="font-medium">{org.name}</TableCell>
+                  <TableCell className="font-medium">
+                    <div>
+                      <div>{org.name}</div>
+                      {org.slug !== 'ifatokun' && (
+                        <div className="flex items-center gap-1 mt-1">
+                          <a
+                            href={getAccessUrl(org)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-primary hover:underline flex items-center gap-1"
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                            Acessar plataforma
+                          </a>
+                          <button
+                            onClick={() => copyAccessUrl(org)}
+                            className="text-xs text-muted-foreground hover:text-foreground p-1"
+                            title="Copiar link de acesso"
+                          >
+                            <Copy className="w-3 h-3" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell>
                     <div className="space-y-1">
                       <div className="flex items-center gap-1 text-sm">
@@ -391,6 +431,9 @@ const AdminOrganizations: React.FC = () => {
                           {org.custom_domain}
                         </div>
                       )}
+                      <div className="text-xs text-primary">
+                        /org/{org.slug}/login
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell>
