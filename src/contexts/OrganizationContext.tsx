@@ -209,6 +209,38 @@ export const OrganizationProvider: React.FC<{ children: ReactNode }> = ({ childr
     }
   }, [organization?.branding]);
 
+  // Aplicar favicon dinâmico
+  useEffect(() => {
+    if (organization?.branding?.favicon_url) {
+      const faviconUrl = organization.branding.favicon_url;
+      
+      // Atualizar ou criar link do favicon
+      let link: HTMLLinkElement | null = document.querySelector("link[rel~='icon']");
+      if (!link) {
+        link = document.createElement('link');
+        link.rel = 'icon';
+        document.head.appendChild(link);
+      }
+      link.href = faviconUrl;
+      
+      // Também atualizar apple-touch-icon se existir
+      let appleLink: HTMLLinkElement | null = document.querySelector("link[rel='apple-touch-icon']");
+      if (!appleLink) {
+        appleLink = document.createElement('link');
+        appleLink.rel = 'apple-touch-icon';
+        document.head.appendChild(appleLink);
+      }
+      appleLink.href = faviconUrl;
+    }
+  }, [organization?.branding?.favicon_url]);
+
+  // Aplicar título dinâmico da página
+  useEffect(() => {
+    if (organization?.name) {
+      document.title = organization.name;
+    }
+  }, [organization?.name]);
+
   const refreshOrganization = async () => {
     await fetchOrganization();
   };
