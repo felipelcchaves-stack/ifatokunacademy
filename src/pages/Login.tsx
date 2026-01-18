@@ -48,7 +48,7 @@ const Login: React.FC = () => {
   const logoUrl = branding?.logo_url;
 
   const from = (location.state as any)?.from?.pathname || '/dashboard';
-
+  const safeFrom = from.startsWith('/admin') ? '/dashboard' : from;
   // Apply dynamic CSS variables for this page
   useEffect(() => {
     if (branding) {
@@ -79,13 +79,27 @@ const Login: React.FC = () => {
     }
   }, [branding]);
 
-  // Effect to handle post-login navigation
+  // Effect to handle post-login navigation - runs when isAuthenticated becomes true
   useEffect(() => {
-    if (isAuthenticated && !showMFA && loginInProgress.current && !hasCheckedMFA.current) {
-      hasCheckedMFA.current = true;
-      checkMFAStatus();
+    console.log('[Login] Auth state changed:', { isAuthenticated, showMFA, loginInProgress: loginInProgress.current, hasCheckedMFA: hasCheckedMFA.current });
+    
+    // If user is already authenticated when landing on login page (not from a login attempt), redirect immediately
+    if (isAuthenticated && !loginInProgress.current && !showMFA) {
+      console.log('[Login] Already authenticated, redirecting to:', safeFrom);
+      navigate(safeFrom, { replace: true });
+      return;
     }
-  }, [isAuthenticated, showMFA]);
+    
+    // Handle post-login navigation
+    if (isAuthenticated && loginInProgress.current && !hasCheckedMFA.current) {
+      console.log('[Login] Login completed, checking MFA...');
+      hasCheckedMFA.current = true;
+      // Small delay to ensure session is fully established
+      setTimeout(() => {
+        checkMFAStatus();
+      }, 100);
+    }
+  }, [isAuthenticated, showMFA, safeFrom, navigate]);
 
   // Parallax effect on mouse movement
   useEffect(() => {
@@ -106,7 +120,6 @@ const Login: React.FC = () => {
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
 
-  const safeFrom = from.startsWith('/admin') ? '/dashboard' : from;
   
   const checkMFAStatus = async () => {
     console.log('[Login] checkMFAStatus called, target:', safeFrom);
