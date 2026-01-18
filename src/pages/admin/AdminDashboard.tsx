@@ -6,7 +6,11 @@ import {
   Plus,
   ChevronRight,
   CheckCircle,
-  Clock
+  Clock,
+  Wrench,
+  Trash2,
+  FileText,
+  Settings
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
@@ -321,6 +325,49 @@ const AdminDashboard: React.FC = () => {
               ))
             )}
           </div>
+        </div>
+      </div>
+
+      {/* Tools Section */}
+      <div className="bg-card rounded-xl border border-border shadow-soft p-6 mb-8">
+        <h2 className="font-serif text-lg font-semibold text-foreground mb-4">Ferramentas</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <button
+            onClick={() => navigate('/admin/exercise-cleanup')}
+            className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg hover:bg-muted transition-colors text-left"
+          >
+            <div className="w-10 h-10 rounded-lg bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+              <Trash2 className="w-5 h-5 text-red-600 dark:text-red-400" />
+            </div>
+            <div>
+              <p className="font-medium text-foreground">Limpeza de Exercícios</p>
+              <p className="text-sm text-muted-foreground">Otimizar lições com excesso</p>
+            </div>
+          </button>
+          <button
+            onClick={() => navigate('/admin/reports')}
+            className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg hover:bg-muted transition-colors text-left"
+          >
+            <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+              <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <p className="font-medium text-foreground">Relatórios</p>
+              <p className="text-sm text-muted-foreground">Ver estatísticas detalhadas</p>
+            </div>
+          </button>
+          <button
+            onClick={() => navigate('/admin/settings')}
+            className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg hover:bg-muted transition-colors text-left"
+          >
+            <div className="w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+              <Settings className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+            </div>
+            <div>
+              <p className="font-medium text-foreground">Configurações</p>
+              <p className="text-sm text-muted-foreground">Ajustar plataforma</p>
+            </div>
+          </button>
         </div>
       </div>
 
