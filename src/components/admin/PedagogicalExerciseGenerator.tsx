@@ -146,12 +146,19 @@ const PedagogicalExerciseGenerator: React.FC<PedagogicalExerciseGeneratorProps> 
     return { items };
   };
 
-  // Generate all 11 exercises
+  // Generate TapComplete consolidated content from text
+  const generateTapCompleteContent = (text: string): { texts: string[] } => {
+    const lines = splitIntoLines(text);
+    // Take up to 5 lines for consolidated tap-complete
+    return { texts: lines.slice(0, 5) };
+  };
+
+  // Generate all 7 exercises (optimized structure)
   const generateExercises = (): GeneratedExercise[] => {
     const exercises: GeneratedExercise[] = [];
     let order = 0;
 
-    // ===== FASE 1 - Contexto (6 exercícios) =====
+    // ===== FASE 1 - Contexto (4 exercícios) =====
     
     // 0 - Reading: Contexto
     exercises.push({
@@ -169,25 +176,16 @@ const PedagogicalExerciseGenerator: React.FC<PedagogicalExerciseGeneratorProps> 
       display_order: order++,
     });
 
-    // 2 - Drag-drop: Contexto
-    const dragDropContexto = generateDragDropItems(contextoText);
+    // 2 - TapComplete Consolidado: Contexto (novo formato com múltiplos textos)
+    const tapCompleteContexto = generateTapCompleteContent(contextoText);
     exercises.push({
       title: `Fase 1 - Ordenar Contexto: ${lessonTitle}`,
-      type: 'drag-drop',
-      content: dragDropContexto,
+      type: 'tap-complete',
+      content: tapCompleteContexto,
       display_order: order++,
     });
 
-    // 3 - Fill-blanks: Contexto
-    const fillBlanksContexto = generateFillBlanks(contextoText);
-    exercises.push({
-      title: `Fase 1 - Completar Contexto: ${lessonTitle}`,
-      type: 'fill-blanks',
-      content: fillBlanksContexto,
-      display_order: order++,
-    });
-
-    // 4 - Flashcard: Contexto
+    // 3 - Flashcard: Contexto
     exercises.push({
       title: `Fase 1 - Revisão Contexto: ${lessonTitle}`,
       type: 'flashcard',
@@ -195,17 +193,9 @@ const PedagogicalExerciseGenerator: React.FC<PedagogicalExerciseGeneratorProps> 
       display_order: order++,
     });
 
-    // 5 - Memorization 2: Contexto (fixação)
-    exercises.push({
-      title: `Fase 1 - Fixação do Contexto: ${lessonTitle}`,
-      type: 'memorization',
-      content: { items: generateMemorizationItems(contextoText) },
-      display_order: order++,
-    });
+    // ===== FASE 2 - Verso Completo (3 exercícios) =====
 
-    // ===== FASE 2 - Verso Completo (5 exercícios) =====
-
-    // 6 - Reading: Verso Completo
+    // 4 - Reading: Verso Completo
     exercises.push({
       title: `Fase 2 - Verso Completo: ${lessonTitle}`,
       type: 'reading',
@@ -213,7 +203,7 @@ const PedagogicalExerciseGenerator: React.FC<PedagogicalExerciseGeneratorProps> 
       display_order: order++,
     });
 
-    // 7 - Memorization: Verso
+    // 5 - Memorization: Verso
     exercises.push({
       title: `Fase 2 - Memorizar Verso: ${lessonTitle}`,
       type: 'memorization',
@@ -221,29 +211,12 @@ const PedagogicalExerciseGenerator: React.FC<PedagogicalExerciseGeneratorProps> 
       display_order: order++,
     });
 
-    // 8 - Drag-drop: Verso
+    // 6 - Drag-drop Consolidado: Verso
     const dragDropVerso = generateDragDropItems(versoText);
     exercises.push({
-      title: `Fase 2 - Ordenar Verso Completo: ${lessonTitle}`,
+      title: `Fase 2 - Ordenar Verso: ${lessonTitle}`,
       type: 'drag-drop',
       content: dragDropVerso,
-      display_order: order++,
-    });
-
-    // 9 - Fill-blanks: Verso
-    const fillBlanksVerso = generateFillBlanks(versoText);
-    exercises.push({
-      title: `Fase 2 - Completar Verso: ${lessonTitle}`,
-      type: 'fill-blanks',
-      content: fillBlanksVerso,
-      display_order: order++,
-    });
-
-    // 10 - Flashcard: Verso
-    exercises.push({
-      title: `Fase 2 - Revisão Verso: ${lessonTitle}`,
-      type: 'flashcard',
-      content: { cards: generateFlashcards(versoText, false) },
       display_order: order++,
     });
 
@@ -326,15 +299,11 @@ const PedagogicalExerciseGenerator: React.FC<PedagogicalExerciseGeneratorProps> 
   const exerciseStructure = [
     { phase: 'Fase 1', name: 'Contexto (Leitura)', type: 'reading' },
     { phase: 'Fase 1', name: 'Memorizar Contexto', type: 'memorization' },
-    { phase: 'Fase 1', name: 'Ordenar Contexto', type: 'drag-drop' },
-    { phase: 'Fase 1', name: 'Completar Contexto', type: 'fill-blanks' },
+    { phase: 'Fase 1', name: 'Ordenar Contexto', type: 'tap-complete' },
     { phase: 'Fase 1', name: 'Revisão Contexto', type: 'flashcard' },
-    { phase: 'Fase 1', name: 'Fixação do Contexto', type: 'memorization' },
     { phase: 'Fase 2', name: 'Verso Completo (Leitura)', type: 'reading' },
     { phase: 'Fase 2', name: 'Memorizar Verso', type: 'memorization' },
     { phase: 'Fase 2', name: 'Ordenar Verso', type: 'drag-drop' },
-    { phase: 'Fase 2', name: 'Completar Verso', type: 'fill-blanks' },
-    { phase: 'Fase 2', name: 'Revisão Verso', type: 'flashcard' },
   ];
 
   return (
@@ -342,12 +311,12 @@ const PedagogicalExerciseGenerator: React.FC<PedagogicalExerciseGeneratorProps> 
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-4xl max-h-[90vh]">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-primary" />
               Gerar Método Pedagógico
             </DialogTitle>
             <DialogDescription>
-              Gere automaticamente os 11 exercícios do método pedagógico a partir de dois textos base.
+              Gere automaticamente os 7 exercícios otimizados do método pedagógico a partir de dois textos base.
             </DialogDescription>
           </DialogHeader>
 
@@ -372,7 +341,7 @@ const PedagogicalExerciseGenerator: React.FC<PedagogicalExerciseGeneratorProps> 
                   Texto Resumido (Contexto) - Fase 1
                 </Label>
                 <p className="text-sm text-muted-foreground">
-                  Este texto será usado para gerar os 6 exercícios da Fase 1 (contexto e preparação).
+                  Este texto será usado para gerar os 4 exercícios da Fase 1 (contexto e preparação).
                 </p>
                 <Textarea
                   id="contexto"
@@ -392,7 +361,7 @@ const PedagogicalExerciseGenerator: React.FC<PedagogicalExerciseGeneratorProps> 
                   Texto Completo (Verso) - Fase 2
                 </Label>
                 <p className="text-sm text-muted-foreground">
-                  Este texto será usado para gerar os 5 exercícios da Fase 2 (memorização profunda).
+                  Este texto será usado para gerar os 3 exercícios da Fase 2 (memorização profunda).
                 </p>
                 <Textarea
                   id="verso"
@@ -443,7 +412,7 @@ const PedagogicalExerciseGenerator: React.FC<PedagogicalExerciseGeneratorProps> 
 
               {/* Preview Structure */}
               <div className="space-y-3 pt-2 border-t">
-                <h4 className="font-medium">Estrutura que será gerada (11 exercícios)</h4>
+                <h4 className="font-medium">Estrutura que será gerada (7 exercícios)</h4>
                 <div className="grid grid-cols-2 gap-2">
                   {exerciseStructure.map((ex, i) => (
                     <div 
@@ -482,7 +451,7 @@ const PedagogicalExerciseGenerator: React.FC<PedagogicalExerciseGeneratorProps> 
               ) : (
                 <>
                   <Sparkles className="w-4 h-4 mr-2" />
-                  Gerar 11 Exercícios
+                  Gerar 7 Exercícios
                 </>
               )}
             </Button>

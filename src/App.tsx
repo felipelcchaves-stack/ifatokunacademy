@@ -28,6 +28,7 @@ import AdminExercises from "./pages/admin/AdminExercises";
 import AdminImportOdu from "./pages/admin/AdminImportOdu";
 import AdminGenerateTapComplete from "./pages/admin/AdminGenerateTapComplete";
 import AdminGenerateDragDrop from "./pages/admin/AdminGenerateDragDrop";
+import AdminExerciseCleanup from "./pages/admin/AdminExerciseCleanup";
 import AdminSettings from "./pages/admin/AdminSettings";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminInvites from "./pages/admin/AdminInvites";
@@ -153,6 +154,7 @@ const App = () => (
                 <Route path="import-odu" element={<AdminImportOdu />} />
                 <Route path="generate-tap-complete" element={<AdminGenerateTapComplete />} />
                 <Route path="generate-drag-drop" element={<AdminGenerateDragDrop />} />
+                <Route path="exercise-cleanup" element={<AdminExerciseCleanup />} />
                 
                 <Route path="users" element={<AdminUsers />} />
                 <Route path="invites" element={<AdminInvites />} />
