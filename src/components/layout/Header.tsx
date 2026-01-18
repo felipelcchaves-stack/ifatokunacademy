@@ -18,8 +18,8 @@ import {
 } from '@/components/ui/tooltip';
 import { Progress } from '@/components/ui/progress';
 import { useAuth } from '@/contexts/AuthContext';
+import { useOrganization } from '@/contexts/OrganizationContext';
 import { useExperience } from '@/hooks/useExperience';
-import { usePlatformSettings } from '@/hooks/usePlatformSettings';
 import { cn } from '@/lib/utils';
 
 // Links para alunos (logados)
@@ -34,13 +34,16 @@ const studentLinks = [
 const Header = forwardRef<HTMLElement>((_, ref) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, profile, isAuthenticated, isAdmin, signOut } = useAuth();
+  const { organization } = useOrganization();
   const { experience, getProgressToNextLevel, getXPForNextLevel } = useExperience();
-  const { platformName } = usePlatformSettings();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const displayPlatformName = platformName?.split(' ').slice(0, 2).join(' ') || 'Offe Orunmila';
-  const displayPlatformSuffix = platformName?.split(' ').slice(2).join(' ') || 'Learning';
+  const branding = organization?.branding;
+  const orgName = organization?.name || 'Offe Orunmila Learning';
+  const displayPlatformName = orgName.split(' ').slice(0, 2).join(' ') || 'Offe Orunmila';
+  const displayPlatformSuffix = orgName.split(' ').slice(2).join(' ') || 'Learning';
+  const logoUrl = branding?.logo_url;
 
   const displayName = profile?.full_name || user?.email?.split('@')[0] || 'Usuário';
   const levelProgress = getProgressToNextLevel();
@@ -68,9 +71,29 @@ const Header = forwardRef<HTMLElement>((_, ref) => {
         <div className="flex items-center justify-between h-16 md:h-20">
           {/* Logo */}
           <Link to={isAuthenticated ? '/dashboard' : '/login'} className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full gradient-gold flex items-center justify-center shadow-gold">
-              <span className="font-serif text-lg font-bold text-secondary">{displayPlatformName.charAt(0)}</span>
-            </div>
+            {logoUrl ? (
+              <img 
+                src={logoUrl} 
+                alt={orgName} 
+                className="w-10 h-10 rounded-full object-cover shadow-lg"
+              />
+            ) : (
+              <div 
+                className="w-10 h-10 rounded-full flex items-center justify-center shadow-lg"
+                style={{ 
+                  background: branding?.primary_color 
+                    ? `hsl(${branding.primary_color})` 
+                    : 'var(--gradient-gold, linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent))))'
+                }}
+              >
+                <span 
+                  className="font-serif text-lg font-bold"
+                  style={{ color: 'white' }}
+                >
+                  {displayPlatformName.charAt(0)}
+                </span>
+              </div>
+            )}
             <div className="hidden sm:block">
               <h1 className="font-serif text-lg font-semibold text-foreground">
                 {displayPlatformName}
