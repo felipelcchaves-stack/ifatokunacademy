@@ -1,21 +1,46 @@
 import React, { forwardRef } from 'react';
 import { Mail, Phone, MapPin } from 'lucide-react';
-import { usePlatformSettings } from '@/hooks/usePlatformSettings';
+import { useOrganization } from '@/contexts/OrganizationContext';
+
 const Footer = forwardRef<HTMLElement>((_, ref) => {
-  const {
-    platformName
-  } = usePlatformSettings();
-  const displayPlatformName = platformName?.split(' ').slice(0, 2).join(' ') || 'Offe Orunmila';
-  const displayPlatformSuffix = platformName?.split(' ').slice(2).join(' ') || 'Learning';
-  const fullPlatformName = platformName || 'Offe Orunmila Learning';
+  const { organization } = useOrganization();
+  
+  const branding = organization?.branding;
+  const orgName = organization?.name || 'Offe Orunmila Learning';
+  const displayPlatformName = orgName.split(' ').slice(0, 2).join(' ') || 'Offe Orunmila';
+  const displayPlatformSuffix = orgName.split(' ').slice(2).join(' ') || 'Learning';
+  const fullPlatformName = orgName;
+  const logoUrl = branding?.logo_url;
   return (
     <footer ref={ref} className="bg-card border-t border-border py-8">
       <div className="container mx-auto px-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div>
-            <h3 className="text-lg font-serif font-bold text-primary mb-4">
-              {displayPlatformName} <span className="text-foreground">{displayPlatformSuffix}</span>
-            </h3>
+            <div className="flex items-center gap-3 mb-4">
+              {logoUrl ? (
+                <img 
+                  src={logoUrl} 
+                  alt={fullPlatformName} 
+                  className="w-10 h-10 rounded-full object-cover"
+                />
+              ) : (
+                <div 
+                  className="w-10 h-10 rounded-full flex items-center justify-center"
+                  style={{ 
+                    background: branding?.primary_color 
+                      ? `hsl(${branding.primary_color})` 
+                      : 'hsl(var(--primary))'
+                  }}
+                >
+                  <span className="font-serif text-lg font-bold text-white">
+                    {displayPlatformName.charAt(0)}
+                  </span>
+                </div>
+              )}
+              <h3 className="text-lg font-serif font-bold text-primary">
+                {displayPlatformName} <span className="text-foreground">{displayPlatformSuffix}</span>
+              </h3>
+            </div>
             <p className="text-muted-foreground text-sm">
               Plataforma de estudos sagrados para aprofundamento nos conhecimentos tradicionais.
             </p>
