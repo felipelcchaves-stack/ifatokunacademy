@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
       )
     }
 
-    const { email, password, fullName, moduleIds, inviteId, organizationId } = await req.json()
+    // Variáveis já extraídas do body acima
 
     if (!email || !password) {
       return new Response(
