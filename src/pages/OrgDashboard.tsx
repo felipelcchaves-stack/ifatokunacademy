@@ -57,7 +57,21 @@ const OrgDashboard: React.FC = () => {
           return;
         }
 
-        // Check if user belongs to this organization
+        // Check if user belongs to this organization via membership table
+        const { data: membership } = await supabase
+          .from('organization_members')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('organization_id', orgData.id)
+          .maybeSingle();
+
+        if (membership) {
+          setHasAccess(true);
+          setLoading(false);
+          return;
+        }
+
+        // Fallback: Check if user belongs via profile.organization_id
         const { data: profile } = await supabase
           .from('profiles')
           .select('organization_id')

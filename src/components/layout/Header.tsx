@@ -21,6 +21,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useOrganization } from '@/contexts/OrganizationContext';
 import { useExperience } from '@/hooks/useExperience';
 import { cn } from '@/lib/utils';
+import OrganizationSwitcher from './OrganizationSwitcher';
 
 // Links para alunos (logados)
 const studentLinks = [
@@ -126,6 +127,7 @@ const Header = forwardRef<HTMLElement>((_, ref) => {
 
           {/* Auth Buttons */}
           <div className="hidden md:flex items-center gap-4">
+            {isAuthenticated && <OrganizationSwitcher />}
             {isAuthenticated ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
