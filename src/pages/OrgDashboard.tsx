@@ -19,6 +19,7 @@ const OrgDashboard: React.FC = () => {
   const [orgExists, setOrgExists] = useState(false);
   const [hasAccess, setHasAccess] = useState(false);
   const [orgName, setOrgName] = useState('');
+  const [orgId, setOrgId] = useState<string | null>(null);
 
   useEffect(() => {
     const validateOrgAndAccess = async () => {
@@ -43,6 +44,7 @@ const OrgDashboard: React.FC = () => {
 
         setOrgExists(true);
         setOrgName(orgData.name);
+        setOrgId(orgData.id);
 
         // If no user, redirect to login
         if (!user) {
@@ -158,7 +160,7 @@ const OrgDashboard: React.FC = () => {
     );
   }
 
-  return <Dashboard />;
+  return <Dashboard organizationId={orgId} orgName={orgName} />;
 };
 
 export default OrgDashboard;
