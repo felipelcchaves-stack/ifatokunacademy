@@ -13,6 +13,8 @@ export const useModulePermissions = () => {
   const [loading, setLoading] = useState(true);
 
   const fetchPermissions = useCallback(async () => {
+    console.log('[useModulePermissions] Starting fetch, user:', user?.id, 'isAdmin:', isAdmin);
+    
     if (!user) {
       setPermissions([]);
       setLoading(false);
@@ -21,6 +23,7 @@ export const useModulePermissions = () => {
 
     // Admins têm acesso a todos os módulos
     if (isAdmin) {
+      console.log('[useModulePermissions] User is admin, granting full access');
       setLoading(false);
       return;
     }

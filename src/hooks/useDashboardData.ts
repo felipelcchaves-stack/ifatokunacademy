@@ -52,6 +52,8 @@ export const useDashboardData = (user: User | null): DashboardData => {
 
       if (modulesError) throw modulesError;
 
+      console.log('[useDashboardData] Modules fetched:', modulesData?.length, modulesData);
+
       const modulesWithCount: Module[] = (modulesData || []).map((m: any) => ({
         ...m,
         type: m.type as 'proficiency' | 'thematic',
