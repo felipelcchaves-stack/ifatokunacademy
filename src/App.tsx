@@ -36,6 +36,7 @@ import AdminInvites from "./pages/admin/AdminInvites";
 import AdminReports from "./pages/admin/AdminReports";
 import AdminOrganizations from "./pages/admin/AdminOrganizations";
 import AdminOrganizationBranding from "./pages/admin/AdminOrganizationBranding";
+import AdminOrganizationAdmins from "./pages/admin/AdminOrganizationAdmins";
 import UserSettings from "./pages/UserSettings";
 import ModuleRetentionReview from "./pages/ModuleRetentionReview";
 import MFAVerify from "./pages/MFAVerify";
@@ -162,6 +163,7 @@ const App = () => (
                 
                 <Route path="organizations" element={<AdminOrganizations />} />
                 <Route path="organizations/:organizationId/branding" element={<AdminOrganizationBranding />} />
+                <Route path="organizations/:organizationId/admins" element={<AdminOrganizationAdmins />} />
                 
                 <Route path="users" element={<AdminUsers />} />
                 <Route path="invites" element={<AdminInvites />} />
