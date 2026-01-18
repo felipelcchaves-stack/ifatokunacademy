@@ -36,6 +36,7 @@ import { Progress } from '@/components/ui/progress';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { useAdminOrganization } from '@/hooks/useAdminOrganization';
 import { supabase } from '@/integrations/supabase/client';
 
 interface OduData {
@@ -65,6 +66,7 @@ interface ImportResult {
 const AdminImportOdu: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { activeOrg, loading: orgLoading } = useAdminOrganization();
   
   const [file, setFile] = useState<File | null>(null);
   const [oduList, setOduList] = useState<OduData[]>([]);
@@ -81,16 +83,22 @@ const AdminImportOdu: React.FC = () => {
     publishExercises: false,
   });
 
-  // Fetch modules on mount
+  // Fetch modules on mount - FILTERED BY ACTIVE ORG
   React.useEffect(() => {
-    fetchModules();
-  }, []);
+    if (!orgLoading && activeOrg) {
+      fetchModules();
+    }
+  }, [activeOrg, orgLoading]);
 
   const fetchModules = async () => {
+    if (!activeOrg) return;
+    
     try {
+      // MULTI-TENANT STRICT: Apenas módulos da organização ativa
       const { data, error } = await supabase
         .from('modules')
         .select('id, title, type')
+        .eq('organization_id', activeOrg.id)
         .order('display_order');
       
       if (error) throw error;

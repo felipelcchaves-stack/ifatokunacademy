@@ -2,11 +2,12 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useOrganization } from "@/contexts/OrganizationContext";
+import { useAdminOrganization } from "@/hooks/useAdminOrganization";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { validatePassword } from "@/lib/passwordValidation";
 import { PasswordStrengthIndicator } from "@/components/auth/PasswordStrengthIndicator";
-import { 
+import {
   Search, 
   Filter, 
   UserCheck, 
@@ -94,6 +95,7 @@ interface Module {
 export default function AdminUsers() {
   const { isAdmin, user } = useAuth();
   const { organization, isOrgAdmin } = useOrganization();
+  const { activeOrg, loading: orgLoading } = useAdminOrganization();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -129,25 +131,36 @@ export default function AdminUsers() {
       navigate('/dashboard');
       return;
     }
+    
+    // Aguardar org ativa carregar
+    if (orgLoading || !activeOrg) {
+      return;
+    }
+    
     fetchData();
-  }, [isAdmin, isOrgAdmin, navigate]);
+  }, [isAdmin, isOrgAdmin, navigate, activeOrg, orgLoading]);
 
   const fetchData = async () => {
+    if (!activeOrg) return;
+    
     try {
-      // Buscar perfis - filtrar por organização se for org admin e não global admin
-      let profilesQuery = supabase
-        .from('profiles')
-        .select('id, full_name, email, avatar_url, created_at, organization_id')
-        .order('created_at', { ascending: false });
+      // MULTI-TENANT STRICT: Buscar APENAS usuários da organização ativa via organization_members
+      const { data: membershipData, error: membershipError } = await supabase
+        .from('organization_members')
+        .select(`
+          user_id,
+          role,
+          profiles!inner (
+            id,
+            full_name,
+            email,
+            avatar_url,
+            created_at
+          )
+        `)
+        .eq('organization_id', activeOrg.id);
 
-      // Se não é admin global mas é org admin, filtrar pela organização
-      if (!isAdmin && isOrgAdmin && organization) {
-        profilesQuery = profilesQuery.eq('organization_id', organization.id);
-      }
-
-      const { data: profiles, error: profilesError } = await profilesQuery;
-
-      if (profilesError) throw profilesError;
+      if (membershipError) throw membershipError;
 
       // Buscar emails de admin (apenas admin global pode ver isso)
       let adminEmailSet = new Set<string>();
@@ -161,42 +174,45 @@ export default function AdminUsers() {
       }
       setAdminEmails(adminEmailSet);
 
-      // Buscar módulos - filtrar por organização se necessário
-      let modulesQuery = supabase
+      // MULTI-TENANT STRICT: Buscar APENAS módulos da organização ativa
+      const { data: modulesData, error: modulesError } = await supabase
         .from('modules')
         .select('id, title, type, level')
+        .eq('organization_id', activeOrg.id)
         .order('display_order');
-
-      if (!isAdmin && isOrgAdmin && organization) {
-        modulesQuery = modulesQuery.eq('organization_id', organization.id);
-      }
-
-      const { data: modulesData, error: modulesError } = await modulesQuery;
 
       if (modulesError) throw modulesError;
       setModules(modulesData || []);
 
-      // Buscar todas as permissões de módulos
-      const { data: permissions, error: permError } = await supabase
-        .from('user_module_permissions')
-        .select('user_id, module_id');
+      // Buscar permissões de módulos (apenas dos módulos da org)
+      const moduleIds = (modulesData || []).map(m => m.id);
+      let permissionsMap = new Map<string, string[]>();
+      
+      if (moduleIds.length > 0) {
+        const { data: permissions, error: permError } = await supabase
+          .from('user_module_permissions')
+          .select('user_id, module_id')
+          .in('module_id', moduleIds);
 
-      if (permError) throw permError;
+        if (permError) throw permError;
 
-      // Criar mapa de permissões por usuário
-      const permissionsMap = new Map<string, string[]>();
-      (permissions || []).forEach((p: { user_id: string; module_id: string }) => {
-        if (!permissionsMap.has(p.user_id)) {
-          permissionsMap.set(p.user_id, []);
-        }
-        permissionsMap.get(p.user_id)!.push(p.module_id);
-      });
+        (permissions || []).forEach((p: { user_id: string; module_id: string }) => {
+          if (!permissionsMap.has(p.user_id)) {
+            permissionsMap.set(p.user_id, []);
+          }
+          permissionsMap.get(p.user_id)!.push(p.module_id);
+        });
+      }
 
-      // Marcar usuários com status e permissões
-      const usersWithStatus = (profiles || []).map(profile => ({
-        ...profile,
-        isAdmin: profile.email ? adminEmailSet.has(profile.email.toLowerCase()) : false,
-        modulePermissions: permissionsMap.get(profile.id) || []
+      // Transformar dados de membership para UserProfile
+      const usersWithStatus = (membershipData || []).map((membership: any) => ({
+        id: membership.profiles.id,
+        full_name: membership.profiles.full_name,
+        email: membership.profiles.email,
+        avatar_url: membership.profiles.avatar_url,
+        created_at: membership.profiles.created_at,
+        isAdmin: membership.profiles.email ? adminEmailSet.has(membership.profiles.email.toLowerCase()) : false,
+        modulePermissions: permissionsMap.get(membership.profiles.id) || []
       }));
 
       setUsers(usersWithStatus);
@@ -230,7 +246,7 @@ export default function AdminUsers() {
           password: inviteForm.password,
           fullName: inviteForm.fullName,
           moduleIds: inviteForm.moduleIds,
-          organizationId: organization?.id
+          organizationId: activeOrg?.id // Usar org ativa do admin
         },
         headers: {
           Authorization: `Bearer ${session?.access_token}`

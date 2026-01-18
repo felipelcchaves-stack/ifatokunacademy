@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLocation } from 'react-router-dom';
 
 export interface AdminOrganization {
   id: string;
@@ -15,15 +16,16 @@ interface UseAdminOrganizationReturn {
   loading: boolean;
   switchOrganization: (orgId: string) => void;
   refetch: () => Promise<void>;
+  syncFromTenantContext: (orgId: string) => void;
 }
 
 const ADMIN_ACTIVE_ORG_KEY = 'admin_active_org';
 
 export const useAdminOrganization = (): UseAdminOrganizationReturn => {
-  const { user, isAdmin } = useAuth();
+  const { user } = useAuth();
+  const location = useLocation();
   const [organizations, setOrganizations] = useState<AdminOrganization[]>([]);
   const [activeOrgId, setActiveOrgId] = useState<string | null>(() => {
-    // Recuperar do localStorage se existir
     if (typeof window !== 'undefined') {
       return localStorage.getItem(ADMIN_ACTIVE_ORG_KEY);
     }
@@ -91,6 +93,35 @@ export const useAdminOrganization = (): UseAdminOrganizationReturn => {
     }
   }, [user]);
 
+  // Sincronizar org do contexto tenant (quando vem de /org/:slug)
+  const syncFromTenantContext = useCallback((orgId: string) => {
+    if (orgId) {
+      setActiveOrgId(orgId);
+      localStorage.setItem(ADMIN_ACTIVE_ORG_KEY, orgId);
+    }
+  }, []);
+
+  // Auto-sync quando navegando de /org/:slug para /admin
+  useEffect(() => {
+    const match = location.pathname.match(/^\/org\/([^/]+)/);
+    if (match) {
+      const orgSlug = match[1];
+      // Buscar org por slug e sincronizar
+      const fetchOrgBySlug = async () => {
+        const { data } = await supabase
+          .from('organizations')
+          .select('id')
+          .eq('slug', orgSlug)
+          .single();
+        
+        if (data?.id) {
+          syncFromTenantContext(data.id);
+        }
+      };
+      fetchOrgBySlug();
+    }
+  }, [location.pathname, syncFromTenantContext]);
+
   useEffect(() => {
     fetchOrganizations();
   }, [fetchOrganizations]);
@@ -110,5 +141,6 @@ export const useAdminOrganization = (): UseAdminOrganizationReturn => {
     loading,
     switchOrganization,
     refetch: fetchOrganizations,
+    syncFromTenantContext,
   };
 };

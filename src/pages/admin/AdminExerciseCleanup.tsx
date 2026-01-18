@@ -41,6 +41,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { useAdminOrganization } from '@/hooks/useAdminOrganization';
 import { supabase } from '@/integrations/supabase/client';
 
 interface LessonWithExercises {
@@ -81,6 +82,7 @@ const MAX_EXERCISES_PER_LESSON = 15;
 const AdminExerciseCleanup: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { activeOrg, loading: orgLoading } = useAdminOrganization();
   
   const [lessons, setLessons] = useState<LessonWithExercises[]>([]);
   const [selectedLessons, setSelectedLessons] = useState<Set<string>>(new Set());
@@ -98,8 +100,10 @@ const AdminExerciseCleanup: React.FC = () => {
   });
 
   useEffect(() => {
-    fetchLessonsWithExcess();
-  }, []);
+    if (!orgLoading && activeOrg) {
+      fetchLessonsWithExcess();
+    }
+  }, [activeOrg, orgLoading]);
 
   // Group lessons by module
   const groupedByModule = useMemo((): ModuleGroup[] => {
@@ -161,10 +165,12 @@ const AdminExerciseCleanup: React.FC = () => {
   };
 
   const fetchLessonsWithExcess = async () => {
+    if (!activeOrg) return;
+    
     try {
       setLoading(true);
       
-      // Fetch all lessons with their exercise counts
+      // MULTI-TENANT STRICT: Filtrar por organização via join com modules
       const { data: lessonsData, error: lessonsError } = await supabase
         .from('lessons')
         .select(`
@@ -172,7 +178,8 @@ const AdminExerciseCleanup: React.FC = () => {
           title,
           modules!inner (
             id,
-            title
+            title,
+            organization_id
           ),
           exercises (
             id,
@@ -181,6 +188,7 @@ const AdminExerciseCleanup: React.FC = () => {
             display_order
           )
         `)
+        .eq('modules.organization_id', activeOrg.id)
         .order('created_at', { ascending: false });
 
       if (lessonsError) throw lessonsError;
