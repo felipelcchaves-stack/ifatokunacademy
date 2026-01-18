@@ -101,8 +101,18 @@ const Dashboard: React.FC = () => {
 
   const { lockedModules, unlockRequirements, thematicsUnlocked, thematicProgress, activeThematicTitle, pendingPhase2Modules } = getLockedModulesAndThematicInfo();
 
+  console.log('[Dashboard] Data loaded:', {
+    modulesCount: modules.length,
+    isAdmin,
+    permissionsLoading,
+    loading,
+    hasAccessFn: typeof hasAccess,
+  });
+
   // Filtrar módulos por permissão (admin vê todos)
   const accessibleModules = modules.filter(m => hasAccess(m.id));
+  
+  console.log('[Dashboard] Accessible modules:', accessibleModules.length, 'of', modules.length);
 
   const modulesWithProgress = accessibleModules.map(m => ({
     ...m,
