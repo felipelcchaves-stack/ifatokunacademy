@@ -1004,6 +1004,7 @@ export type Database = {
           id: string
           invited_by_id: string
           invited_by_name: string | null
+          organization_id: string | null
           status: string
         }
         Insert: {
@@ -1015,6 +1016,7 @@ export type Database = {
           id?: string
           invited_by_id: string
           invited_by_name?: string | null
+          organization_id?: string | null
           status?: string
         }
         Update: {
@@ -1026,9 +1028,18 @@ export type Database = {
           id?: string
           invited_by_id?: string
           invited_by_name?: string | null
+          organization_id?: string | null
           status?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_invites_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_module_permissions: {
         Row: {

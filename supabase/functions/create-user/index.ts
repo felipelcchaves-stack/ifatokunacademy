@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
       )
     }
 
-    const { email, password, fullName, moduleIds, inviteId } = await req.json()
+    const { email, password, fullName, moduleIds, inviteId, organizationId } = await req.json()
 
     if (!email || !password) {
       return new Response(
@@ -114,6 +114,20 @@ Deno.serve(async (req) => {
     }
 
     const newUserId = data.user.id
+
+    // Atualizar o perfil com organization_id se fornecido
+    if (organizationId) {
+      const { error: profileError } = await supabaseAdmin
+        .from('profiles')
+        .update({ organization_id: organizationId })
+        .eq('id', newUserId)
+
+      if (profileError) {
+        console.error('Error updating profile organization:', profileError)
+      } else {
+        console.log(`Updated profile with organization_id: ${organizationId}`)
+      }
+    }
 
     // Inserir permissões de módulos
     if (moduleIds && moduleIds.length > 0) {

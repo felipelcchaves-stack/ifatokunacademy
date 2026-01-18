@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useOrganization } from "@/contexts/OrganizationContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { validatePassword } from "@/lib/passwordValidation";
@@ -77,6 +78,7 @@ interface Invite {
   created_at: string;
   expires_at: string;
   accepted_at: string | null;
+  organization_id: string | null;
 }
 
 interface Module {
@@ -88,6 +90,7 @@ interface Module {
 
 export default function AdminInvites() {
   const { isAdmin, user, profile } = useAuth();
+  const { organization, isOrgAdmin } = useOrganization();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [invites, setInvites] = useState<Invite[]>([]);
@@ -119,29 +122,43 @@ export default function AdminInvites() {
   const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
-    if (!isAdmin) {
+    // Permitir acesso tanto para admin global quanto org admin
+    if (!isAdmin && !isOrgAdmin) {
       navigate('/dashboard');
       return;
     }
     fetchData();
-  }, [isAdmin, navigate]);
+  }, [isAdmin, isOrgAdmin, navigate]);
 
   const fetchData = async () => {
     try {
-      // Buscar todos os convites
-      const { data: invitesData, error: invitesError } = await supabase
+      // Buscar convites - filtrar por organização se for org admin e não global admin
+      let invitesQuery = supabase
         .from('user_invites')
         .select('*')
         .order('created_at', { ascending: false });
 
+      // Se não é admin global mas é org admin, filtrar pela organização
+      if (!isAdmin && isOrgAdmin && organization) {
+        invitesQuery = invitesQuery.eq('organization_id', organization.id);
+      }
+
+      const { data: invitesData, error: invitesError } = await invitesQuery;
+
       if (invitesError) throw invitesError;
       setInvites(invitesData || []);
 
-      // Buscar todos os módulos
-      const { data: modulesData, error: modulesError } = await supabase
+      // Buscar módulos - filtrar por organização se necessário
+      let modulesQuery = supabase
         .from('modules')
         .select('id, title, type, level')
         .order('display_order');
+
+      if (!isAdmin && isOrgAdmin && organization) {
+        modulesQuery = modulesQuery.eq('organization_id', organization.id);
+      }
+
+      const { data: modulesData, error: modulesError } = await modulesQuery;
 
       if (modulesError) throw modulesError;
       setModules(modulesData || []);
@@ -166,9 +183,10 @@ export default function AdminInvites() {
         .insert({
           email: inviteForm.email,
           full_name: inviteForm.fullName || null,
-          invited_by_id: user?.id,
-          invited_by_name: profile?.full_name || user?.email,
-          status: 'pending'
+          invited_by_id: user?.id || '',
+          invited_by_name: profile?.full_name || user?.email || null,
+          status: 'pending',
+          organization_id: organization?.id || null
         });
 
       if (error) {
@@ -211,7 +229,8 @@ export default function AdminInvites() {
           password: activateForm.password,
           fullName: selectedInvite.full_name,
           moduleIds: activateForm.moduleIds,
-          inviteId: selectedInvite.id
+          inviteId: selectedInvite.id,
+          organizationId: selectedInvite.organization_id || organization?.id
         },
         headers: {
           Authorization: `Bearer ${session?.access_token}`
