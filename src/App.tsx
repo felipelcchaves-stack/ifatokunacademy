@@ -8,6 +8,7 @@ import { OrganizationProvider } from "@/contexts/OrganizationContext";
 import ContentProtection from "@/components/ContentProtection";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AdminLayout from "@/components/layout/AdminLayout";
+import { DomainRedirectProvider } from "@/hooks/useDomainRedirect";
 
 // Pages
 import { Navigate } from "react-router-dom";
@@ -53,12 +54,13 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <BrowserRouter>
-      <AuthProvider>
-        <OrganizationProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-          <ContentProtection>
+      <DomainRedirectProvider>
+        <AuthProvider>
+          <OrganizationProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
+              <ContentProtection>
             <Routes>
               {/* Public Routes */}
               <Route path="/" element={<Navigate to="/login" replace />} />
@@ -177,10 +179,11 @@ const App = () => (
               {/* Catch-all */}
               <Route path="*" element={<NotFound />} />
             </Routes>
-          </ContentProtection>
-          </TooltipProvider>
-        </OrganizationProvider>
-      </AuthProvider>
+              </ContentProtection>
+            </TooltipProvider>
+          </OrganizationProvider>
+        </AuthProvider>
+      </DomainRedirectProvider>
     </BrowserRouter>
   </QueryClientProvider>
 );
