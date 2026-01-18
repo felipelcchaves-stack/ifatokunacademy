@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, CheckCircle, BookOpen, Loader2, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle, BookOpen, Loader2, Sparkles, Zap } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import ContentProtection from '@/components/ContentProtection';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,8 @@ import QuizExercise from '@/components/exercises/QuizExercise';
 import TapComplete from '@/components/exercises/TapComplete';
 import FillBlanksExercise from '@/components/exercises/FillBlanksExercise';
 import InterpretationExercise from '@/components/exercises/InterpretationExercise';
+import StudyModeToggle from '@/components/study-mode/StudyModeToggle';
+import { useStudyMode } from '@/hooks/useStudyMode';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -23,6 +25,12 @@ import { useAchievements } from '@/hooks/useAchievements';
 import { useModulePhaseProgress } from '@/hooks/useModulePhaseProgress';
 import { showAchievementUnlockToast } from '@/components/achievements/AchievementUnlockToast';
 import { Badge } from '@/components/ui/badge';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface Exercise {
   id: string;
@@ -75,15 +83,21 @@ const LessonView: React.FC = () => {
   const { onExerciseComplete, onStudySessionStart } = useAchievementTriggers();
   const { checkAllAchievements } = useAchievements();
   const { checkAndMarkPhaseComplete } = useModulePhaseProgress();
+  const { mode, setMode, filterExercises, getModeInfo, isExpress } = useStudyMode();
   
   const [lesson, setLesson] = useState<Lesson | null>(null);
-  const [exercises, setExercises] = useState<Exercise[]>([]);
+  const [allExercises, setAllExercises] = useState<Exercise[]>([]);
   const [loading, setLoading] = useState(true);
   const [sessionStarted, setSessionStarted] = useState(false);
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
   const [completedExercises, setCompletedExercises] = useState<Set<string>>(new Set());
   const [showPhaseTransition, setShowPhaseTransition] = useState(false);
   const [nextLesson, setNextLesson] = useState<{ id: string; title: string } | null>(null);
+  
+  // Filter exercises based on study mode
+  const exercises = useMemo(() => {
+    return filterExercises(allExercises);
+  }, [allExercises, filterExercises]);
   
   // Audio state for TapComplete
   const [tapCompleteAudioLoading, setTapCompleteAudioLoading] = useState(false);
@@ -157,7 +171,7 @@ const LessonView: React.FC = () => {
         return a.display_order - b.display_order;
       });
       
-      setExercises(sortedExercises as Exercise[]);
+      setAllExercises(sortedExercises as Exercise[]);
 
       // Load already completed exercises
       if (user) {
@@ -597,7 +611,7 @@ const LessonView: React.FC = () => {
         <main className="pt-24 pb-16">
           <div className="container mx-auto px-4">
             {/* Header */}
-            <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
               <Button
                 variant="ghost"
                 onClick={() => navigate(`/module/${moduleId}`)}
@@ -606,23 +620,58 @@ const LessonView: React.FC = () => {
                 Voltar ao Módulo
               </Button>
 
-              {exercises.length > 0 && (
-                <div className="flex items-center gap-3">
-                  {/* Phase indicator */}
-                  {phaseInfo?.hasPhases && (
-                    <Badge 
-                      variant={phaseInfo.currentPhase === 1 ? "secondary" : "default"}
-                      className={phaseInfo.currentPhase === 2 ? "bg-primary text-primary-foreground" : ""}
-                    >
-                      Fase {phaseInfo.currentPhase}: {phaseInfo.currentPhase === 1 ? 'Contexto' : 'Completo'}
-                    </Badge>
-                  )}
-                  <span className="text-sm text-muted-foreground">
-                    Exercício {currentExerciseIndex + 1} de {exercises.length}
-                  </span>
-                </div>
-              )}
+              <div className="flex items-center gap-3">
+                {/* Study Mode Toggle */}
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div>
+                        <StudyModeToggle
+                          mode={mode}
+                          onModeChange={(newMode) => {
+                            setMode(newMode);
+                            setCurrentExerciseIndex(0); // Reset to first exercise when mode changes
+                          }}
+                          compact
+                        />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="max-w-xs">
+                      <p className="font-medium">{getModeInfo(mode).label}</p>
+                      <p className="text-xs text-muted-foreground">{getModeInfo(mode).description}</p>
+                      <p className="text-xs mt-1">~{getModeInfo(mode).estimatedMinutes} min</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+
+                {exercises.length > 0 && (
+                  <>
+                    {/* Phase indicator */}
+                    {phaseInfo?.hasPhases && (
+                      <Badge 
+                        variant={phaseInfo.currentPhase === 1 ? "secondary" : "default"}
+                        className={phaseInfo.currentPhase === 2 ? "bg-primary text-primary-foreground" : ""}
+                      >
+                        Fase {phaseInfo.currentPhase}: {phaseInfo.currentPhase === 1 ? 'Contexto' : 'Completo'}
+                      </Badge>
+                    )}
+                    <span className="text-sm text-muted-foreground">
+                      Exercício {currentExerciseIndex + 1} de {exercises.length}
+                    </span>
+                  </>
+                )}
+              </div>
             </div>
+
+            {/* Study mode info banner (show only in express mode) */}
+            {isExpress && exercises.length > 0 && (
+              <div className="mb-4 flex items-center gap-2 px-3 py-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg text-sm">
+                <Zap className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                <span className="text-amber-800 dark:text-amber-200">
+                  Modo Express: {exercises.length} exercícios essenciais ({allExercises.length} disponíveis)
+                </span>
+              </div>
+            )}
 
             {/* Progress */}
             <div className="mb-8">
