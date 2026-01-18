@@ -53,10 +53,12 @@ const OrgLogin: React.FC = () => {
   const [orgLoading, setOrgLoading] = useState(true);
   const [orgError, setOrgError] = useState<string | null>(null);
   
-  const { signIn, isAuthenticated } = useAuth();
+  const { signIn, isAuthenticated, user, isAdmin } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
+  const [accessDenied, setAccessDenied] = useState(false);
+  const [checkingAccess, setCheckingAccess] = useState(false);
 
   // Fetch organization by slug
   useEffect(() => {
@@ -157,20 +159,78 @@ const OrgLogin: React.FC = () => {
     }
   }, [branding]);
 
-  // Effect to handle post-login navigation
+  // Effect to handle post-login navigation with organization access check
   useEffect(() => {
-    if (isAuthenticated && !loginInProgress.current && !showMFA) {
-      navigate(safeFrom, { replace: true });
-      return;
-    }
+    const checkUserOrgAccess = async () => {
+      if (!user || !organization) return;
+      
+      setCheckingAccess(true);
+      try {
+        // Check if user is global admin
+        if (isAdmin) {
+          // Global admins have access to all orgs
+          return true;
+        }
+        
+        // Check if user belongs to this organization
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('organization_id')
+          .eq('id', user.id)
+          .single();
+        
+        if (profile?.organization_id === organization.id) {
+          return true;
+        }
+        
+        // Check if user is an org admin for this organization
+        const { data: orgAdminCheck } = await supabase
+          .from('organization_admins')
+          .select('id')
+          .eq('organization_id', organization.id)
+          .eq('user_id', user.id)
+          .maybeSingle();
+        
+        if (orgAdminCheck) {
+          return true;
+        }
+        
+        // User doesn't have access
+        return false;
+      } catch (err) {
+        console.error('Error checking org access:', err);
+        return false;
+      } finally {
+        setCheckingAccess(false);
+      }
+    };
 
-    if (isAuthenticated && loginInProgress.current && !hasCheckedMFA.current) {
-      hasCheckedMFA.current = true;
-      setTimeout(() => {
-        checkMFAStatus(safeFrom);
-      }, 100);
-    }
-  }, [isAuthenticated, showMFA, safeFrom, navigate]);
+    const handleNavigation = async () => {
+      if (!isAuthenticated || showMFA) return;
+      
+      // If just logged in, check MFA first
+      if (loginInProgress.current && !hasCheckedMFA.current) {
+        hasCheckedMFA.current = true;
+        setTimeout(() => {
+          checkMFAStatus(safeFrom);
+        }, 100);
+        return;
+      }
+      
+      // For already authenticated users, verify org access
+      if (!loginInProgress.current) {
+        const hasAccess = await checkUserOrgAccess();
+        
+        if (hasAccess) {
+          navigate(safeFrom, { replace: true });
+        } else {
+          setAccessDenied(true);
+        }
+      }
+    };
+
+    handleNavigation();
+  }, [isAuthenticated, showMFA, safeFrom, navigate, user, organization, isAdmin]);
 
   // Parallax effect on mouse movement
   useEffect(() => {
@@ -286,7 +346,7 @@ const OrgLogin: React.FC = () => {
   };
 
   // Loading state
-  if (orgLoading) {
+  if (orgLoading || checkingAccess) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
@@ -310,6 +370,37 @@ const OrgLogin: React.FC = () => {
           <Link to="/login">
             <Button variant="outline">Ir para a página principal</Button>
           </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Access denied - user is logged in but doesn't belong to this org
+  if (accessDenied) {
+    const handleLogoutAndStay = async () => {
+      await supabase.auth.signOut();
+      setAccessDenied(false);
+    };
+
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4 text-center max-w-md p-8">
+          <AlertCircle className="w-16 h-16 text-amber-500" />
+          <h1 className="text-2xl font-bold text-foreground">Acesso Restrito</h1>
+          <p className="text-muted-foreground">
+            Você está logado com uma conta que não pertence a esta organização ({organization?.name}).
+          </p>
+          <p className="text-muted-foreground text-sm">
+            Para acessar esta organização, faça logout e entre com uma conta autorizada.
+          </p>
+          <div className="flex gap-4 mt-4">
+            <Button variant="outline" onClick={() => navigate('/dashboard')}>
+              Voltar ao meu Dashboard
+            </Button>
+            <Button onClick={handleLogoutAndStay}>
+              Fazer Logout
+            </Button>
+          </div>
         </div>
       </div>
     );
