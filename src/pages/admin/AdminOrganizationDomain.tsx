@@ -525,7 +525,56 @@ const AdminOrganizationDomain: React.FC = () => {
           </div>
 
           <div className="space-y-4">
-            <h4 className="font-medium">Passo 4: Aguarde a propagação</h4>
+            <h4 className="font-medium">Passo 4: Configurar redirecionamento www (Opcional)</h4>
+            <p className="text-sm text-muted-foreground mb-3">
+              Para que tanto www.seusite.com quanto seusite.com funcionem, adicione ambos os registros:
+            </p>
+            
+            <div className="overflow-x-auto">
+              <table className="w-full border rounded-lg">
+                <thead className="bg-muted">
+                  <tr>
+                    <th className="text-left p-3 text-sm font-medium">Tipo</th>
+                    <th className="text-left p-3 text-sm font-medium">Nome/Host</th>
+                    <th className="text-left p-3 text-sm font-medium">Valor/Destino</th>
+                    <th className="text-left p-3 text-sm font-medium">TTL</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-t">
+                    <td className="p-3">
+                      <Badge variant="secondary">CNAME</Badge>
+                    </td>
+                    <td className="p-3 font-mono text-sm">www</td>
+                    <td className="p-3 font-mono text-sm">
+                      {targetDomain}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 ml-1"
+                        onClick={() => copyToClipboard(targetDomain)}
+                      >
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                    </td>
+                    <td className="p-3 text-sm text-muted-foreground">3600</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            
+            <Alert variant="default" className="border-green-500/20 bg-green-500/5">
+              <CheckCircle className="h-4 w-4 text-green-600" />
+              <AlertTitle className="text-green-700">Redirecionamento Automático</AlertTitle>
+              <AlertDescription className="text-green-600">
+                Nossa plataforma redireciona automaticamente acessos www para o domínio 
+                sem www (ou vice-versa), garantindo uma experiência consistente.
+              </AlertDescription>
+            </Alert>
+          </div>
+
+          <div className="space-y-4">
+            <h4 className="font-medium">Passo 5: Aguarde a propagação</h4>
             <p className="text-sm text-muted-foreground">
               Após configurar o DNS, aguarde algumas horas e clique em "Verificar" 
               para confirmar que tudo está funcionando.
@@ -534,10 +583,10 @@ const AdminOrganizationDomain: React.FC = () => {
 
           <Alert variant="default" className="border-primary/20 bg-primary/5">
             <Info className="h-4 w-4 text-primary" />
-            <AlertTitle className="text-primary">SSL Automático</AlertTitle>
+            <AlertTitle className="text-primary">SSL Automático + HTTPS</AlertTitle>
             <AlertDescription>
               O certificado SSL será provisionado automaticamente após a verificação 
-              do DNS. Seu site estará acessível via HTTPS.
+              do DNS. Acessos HTTP serão redirecionados automaticamente para HTTPS.
             </AlertDescription>
           </Alert>
         </CardContent>
