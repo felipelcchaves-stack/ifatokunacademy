@@ -6,6 +6,8 @@ export interface SpacedRepetitionItem {
   id: string;
   user_id: string;
   exercise_id: string | null;
+  lesson_id: string | null;
+  module_id: string | null;
   item_index: number;
   item_text: string;
   next_review_at: string;
