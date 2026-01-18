@@ -1293,6 +1293,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_module_organization_id: {
+        Args: { p_module_id: string }
+        Returns: string
+      }
       get_user_organization_id: { Args: { p_user_id: string }; Returns: string }
       is_admin: { Args: { user_id: string }; Returns: boolean }
       is_module_phase1_complete: {
