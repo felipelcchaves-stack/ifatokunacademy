@@ -7,7 +7,8 @@ import {
   Palette,
   RotateCcw,
   Pause,
-  Sparkles
+  Sparkles,
+  Brain
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -222,6 +223,41 @@ const AccessibilitySettings: React.FC<AccessibilitySettingsProps> = ({ trigger }
                   className="w-full"
                 />
               </div>
+            </div>
+          </div>
+
+          {/* Memorization Section */}
+          <div className="space-y-4">
+            <h3 className="font-medium text-sm text-muted-foreground flex items-center gap-2">
+              <Brain className="w-4 h-4" />
+              Memorização
+            </h3>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label htmlFor="contextPriorityMode">Modo Contexto Prioritário</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Prioriza memorização sobre ortografia perfeita. Ideal para aprendizado.
+                  </p>
+                </div>
+                <Switch
+                  id="contextPriorityMode"
+                  checked={preferences.contextPriorityMode}
+                  onCheckedChange={(checked) => updatePreferences({ contextPriorityMode: checked })}
+                />
+              </div>
+              
+              {preferences.contextPriorityMode && (
+                <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-xs text-green-800">
+                  <p className="font-medium mb-1">✓ Modo Contexto Ativo</p>
+                  <ul className="space-y-0.5 text-green-700">
+                    <li>• Threshold reduzido em 10%</li>
+                    <li>• Erros de acentuação são tolerados</li>
+                    <li>• Segunda chance automática para respostas próximas</li>
+                  </ul>
+                </div>
+              )}
             </div>
           </div>
 

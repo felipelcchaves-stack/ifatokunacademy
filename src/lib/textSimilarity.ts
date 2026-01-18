@@ -77,6 +77,87 @@ export function calculateSimilarity(original: string, typed: string): number {
 }
 
 /**
+ * Calcula threshold dinâmico baseado no tamanho do texto
+ * Textos curtos têm threshold menor pois um erro tem mais impacto
+ */
+export function getDynamicThreshold(text: string): number {
+  const words = text.split(/\s+/).filter(w => w.length > 0);
+  const wordCount = words.length;
+  
+  if (wordCount <= 5) return 65;      // Textos muito curtos: 65%
+  if (wordCount <= 10) return 70;     // Textos curtos: 70%
+  if (wordCount <= 20) return 75;     // Textos médios: 75%
+  return 80;                          // Textos longos: 80%
+}
+
+/**
+ * Verifica se a diferença entre textos é apenas de acentuação
+ * Retorna true se textos são iguais ignorando acentos
+ */
+export function isOnlyAccentDifference(original: string, typed: string): boolean {
+  const normalizedOriginal = normalizeText(original);
+  const normalizedTyped = normalizeText(typed);
+  return normalizedOriginal === normalizedTyped;
+}
+
+/**
+ * Retorna feedback graduado baseado na similaridade
+ */
+export type SimilarityFeedback = {
+  level: 'perfect' | 'excellent' | 'good' | 'close' | 'needs_review';
+  label: string;
+  emoji: string;
+  color: string;
+  allowSecondChance: boolean;
+};
+
+export function getSimilarityFeedback(similarity: number, threshold: number): SimilarityFeedback {
+  if (similarity >= 95) {
+    return { level: 'perfect', label: 'Perfeito!', emoji: '🎯', color: 'text-green-600', allowSecondChance: false };
+  }
+  if (similarity >= 85) {
+    return { level: 'excellent', label: 'Excelente!', emoji: '✨', color: 'text-green-500', allowSecondChance: false };
+  }
+  if (similarity >= threshold) {
+    return { level: 'good', label: 'Muito bom!', emoji: '👍', color: 'text-blue-500', allowSecondChance: false };
+  }
+  if (similarity >= threshold - 15) {
+    return { level: 'close', label: 'Quase! Você está perto.', emoji: '💪', color: 'text-yellow-600', allowSecondChance: true };
+  }
+  return { level: 'needs_review', label: 'Precisa revisar', emoji: '📚', color: 'text-orange-500', allowSecondChance: false };
+}
+
+/**
+ * Calcula similaridade com análise detalhada
+ */
+export interface DetailedSimilarity {
+  similarity: number;
+  isOnlyAccentError: boolean;
+  dynamicThreshold: number;
+  feedback: SimilarityFeedback;
+  isCorrect: boolean;
+}
+
+export function calculateDetailedSimilarity(original: string, typed: string, baseThresholdModifier: number = 0): DetailedSimilarity {
+  const similarity = calculateSimilarity(original, typed);
+  const isOnlyAccentError = similarity < 100 && isOnlyAccentDifference(original, typed);
+  const dynamicThreshold = Math.max(50, getDynamicThreshold(original) - baseThresholdModifier);
+  
+  // Se for apenas erro de acento, considera correto com feedback específico
+  const effectiveSimilarity = isOnlyAccentError ? 100 : similarity;
+  const isCorrect = effectiveSimilarity >= dynamicThreshold;
+  const feedback = getSimilarityFeedback(effectiveSimilarity, dynamicThreshold);
+  
+  return {
+    similarity: effectiveSimilarity,
+    isOnlyAccentError,
+    dynamicThreshold,
+    feedback,
+    isCorrect,
+  };
+}
+
+/**
  * Extrai o restante do texto após as primeiras N palavras
  */
 export function getTextRemainder(text: string, startWordCount: number = 3): string {

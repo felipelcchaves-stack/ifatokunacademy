@@ -25,7 +25,16 @@ import {
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
-import { calculateSimilarity, getTextRemainder, getTextStart } from '@/lib/textSimilarity';
+import { 
+  calculateSimilarity, 
+  calculateDetailedSimilarity, 
+  getDynamicThreshold,
+  getSimilarityFeedback,
+  getTextRemainder, 
+  getTextStart,
+  type SimilarityFeedback,
+  type DetailedSimilarity
+} from '@/lib/textSimilarity';
 import { 
   splitIntoChunks, 
   generateScaffoldLevels, 
@@ -153,9 +162,13 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
     similarity: number;
     isCorrect: boolean;
     showResult: boolean;
+    feedback?: SimilarityFeedback;
+    isOnlyAccentError?: boolean;
+    isSecondChance?: boolean;
   } | null>(null);
   const [attempts, setAttempts] = useState(0);
   const [hintPenalty, setHintPenalty] = useState(0);
+  const [secondChanceUsed, setSecondChanceUsed] = useState(false);
   
   // Audio state
   const [audioLoading, setAudioLoading] = useState(false);
@@ -341,23 +354,31 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
     }
   }, [currentItem, studyMode, progressiveLevel, getProgressiveText, scaffoldLevel, scaffoldLevels, chunks, currentChunkIndex, chainSequence, chainStep, isShortText]);
 
-  // Get similarity threshold based on mode and level
-  const getSimilarityThreshold = useCallback(() => {
+  // Get similarity threshold based on mode, level, and context priority setting
+  const getSimilarityThreshold = useCallback((textToCheck?: string) => {
     const basePenalty = hintPenalty;
-    let baseThreshold = 80;
+    
+    // Contexto Prioritário: reduz threshold em 10% adicionais
+    const contextPriorityBonus = preferences.contextPriorityMode ? 10 : 0;
+    
+    // Base dinâmica calculada pelo tamanho do texto
+    const text = textToCheck || currentItem?.text || '';
+    let baseThreshold = getDynamicThreshold(text);
 
+    // Ajustes por modo de estudo
     if (studyMode === 'progressive') {
       // Thresholds mais baixos para níveis iniciais
-      baseThreshold = progressiveLevel === 1 ? 70 : progressiveLevel === 2 ? 75 : 80;
+      const levelAdjust = progressiveLevel === 1 ? -10 : progressiveLevel === 2 ? -5 : 0;
+      baseThreshold = Math.max(50, baseThreshold + levelAdjust);
     } else if (studyMode === 'scaffold') {
       // Lower threshold for early scaffold levels
-      baseThreshold = 60 + (scaffoldLevel * 5);
+      baseThreshold = Math.max(50, 60 + (scaffoldLevel * 5));
     } else if (studyMode === 'chunk') {
-      baseThreshold = 75;
+      baseThreshold = Math.max(50, baseThreshold - 5);
     }
 
-    return Math.max(50, baseThreshold - basePenalty);
-  }, [studyMode, progressiveLevel, scaffoldLevel, hintPenalty]);
+    return Math.max(50, baseThreshold - basePenalty - contextPriorityBonus);
+  }, [studyMode, progressiveLevel, scaffoldLevel, hintPenalty, currentItem, preferences.contextPriorityMode]);
 
   const expectedText = getExpectedText();
   const visibleText = getVisibleText();
@@ -382,6 +403,7 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
     setValidationResult(null);
     setAttempts(0);
     setHintPenalty(0);
+    setSecondChanceUsed(false);
     setScaffoldLevel(0);
     setCurrentChunkIndex(0);
     setMasteredChunks(new Set());
@@ -476,19 +498,60 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
   const handleValidate = async () => {
     if (!userInput.trim()) return;
     
-    const similarity = calculateSimilarity(expectedText, userInput);
-    const adjustedThreshold = similarityThreshold;
-    const isCorrect = similarity >= adjustedThreshold;
+    // Usa análise detalhada de similaridade com threshold dinâmico
+    const thresholdModifier = hintPenalty + (preferences.contextPriorityMode ? 10 : 0);
+    const detailedResult = calculateDetailedSimilarity(expectedText, userInput, thresholdModifier);
+    
+    // Se é "quase" correto e ainda não usou segunda chance, oferece segunda chance
+    if (!detailedResult.isCorrect && detailedResult.feedback.allowSecondChance && !secondChanceUsed) {
+      setValidationResult({
+        similarity: detailedResult.similarity,
+        isCorrect: false,
+        showResult: true,
+        feedback: detailedResult.feedback,
+        isOnlyAccentError: detailedResult.isOnlyAccentError,
+        isSecondChance: true
+      });
+      setSecondChanceUsed(true);
+      
+      toast({
+        title: `${detailedResult.feedback.emoji} ${detailedResult.feedback.label}`,
+        description: detailedResult.isOnlyAccentError 
+          ? "Apenas diferença de acentuação. Tente novamente!" 
+          : "Você está perto! Uma segunda chance sem penalidade.",
+        duration: 3000,
+      });
+      return; // Não incrementa tentativas nem adiciona ao spaced rep
+    }
+    
+    const isCorrect = detailedResult.isCorrect;
     
     setValidationResult({
-      similarity,
+      similarity: detailedResult.similarity,
       isCorrect,
-      showResult: true
+      showResult: true,
+      feedback: detailedResult.feedback,
+      isOnlyAccentError: detailedResult.isOnlyAccentError,
     });
     
     setAttempts(prev => prev + 1);
     
     if (isCorrect) {
+      // Toast com feedback graduado
+      if (detailedResult.similarity >= 95) {
+        toast({
+          title: "🎯 Perfeito!",
+          description: "Memória impecável!",
+          duration: 2000,
+        });
+      } else if (detailedResult.isOnlyAccentError) {
+        toast({
+          title: "✓ Correto!",
+          description: "Pequena diferença de acentuação, mas o contexto está correto.",
+          duration: 2500,
+        });
+      }
+      
       // Handle progression based on mode
       if (studyMode === 'progressive') {
         // Mark current level as mastered
@@ -500,6 +563,7 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
             setProgressiveLevel(prev => (prev + 1) as 1 | 2 | 3);
             setUserInput('');
             setValidationResult(null);
+            setSecondChanceUsed(false);
           }, 1500);
         } else {
           // Completed all 3 levels
@@ -514,6 +578,7 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
             setScaffoldLevel(prev => prev + 1);
             setUserInput('');
             setValidationResult(null);
+            setSecondChanceUsed(false);
           }, 1500);
         } else {
           // Completed all scaffold levels
@@ -529,6 +594,7 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
             setCurrentChunkIndex(prev => prev + 1);
             setUserInput('');
             setValidationResult(null);
+            setSecondChanceUsed(false);
           }, 1500);
         } else {
           setMasteredItems(prev => new Set([...prev, currentIndex]));
@@ -541,6 +607,7 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
             setChainStep(prev => prev + 1);
             setUserInput('');
             setValidationResult(null);
+            setSecondChanceUsed(false);
           }, 1500);
         } else {
           setMasteredItems(prev => new Set([...prev, currentIndex]));
@@ -570,6 +637,7 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
   const handleTryAgain = () => {
     setUserInput('');
     setValidationResult(null);
+    // Não reseta secondChanceUsed para evitar múltiplas segundas chances
   };
 
   const handleToggleHint = () => {
@@ -1287,31 +1355,65 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
                 </div>
               )}
 
-              {/* Validation Result */}
+              {/* Validation Result - Feedback Graduado */}
               {validationResult?.showResult && !validationResult.isCorrect && (
                 <div className="mb-4 w-full">
-                  <div className="flex items-center justify-center gap-2 text-amber-600 mb-2">
-                    <AlertCircle className="w-5 h-5" />
+                  <div className={cn(
+                    "flex items-center justify-center gap-2 mb-2",
+                    validationResult.feedback?.color || "text-amber-600"
+                  )}>
+                    <span className="text-xl">{validationResult.feedback?.emoji || '⚠️'}</span>
                     <span className="font-medium">
-                      {validationResult.similarity}% de acurácia - Tente novamente!
+                      {validationResult.feedback?.label || `${validationResult.similarity}% de acurácia`}
                     </span>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    Mínimo necessário: {similarityThreshold}%
-                    {hintPenalty > 0 && ` (ajustado por dicas: -${hintPenalty}%)`}
-                  </p>
+                  
+                  {validationResult.isSecondChance && (
+                    <p className="text-sm text-primary font-medium mb-2">
+                      💪 Segunda chance! Tente novamente sem penalidade.
+                    </p>
+                  )}
+                  
+                  {validationResult.isOnlyAccentError && !validationResult.isSecondChance && (
+                    <p className="text-sm text-blue-600 mb-2">
+                      ℹ️ Apenas diferença de acentuação detectada
+                    </p>
+                  )}
+                  
+                  <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
+                    <span>Sua precisão: {validationResult.similarity}%</span>
+                    <span>•</span>
+                    <span>Mínimo: {similarityThreshold}%</span>
+                    {preferences.contextPriorityMode && (
+                      <>
+                        <span>•</span>
+                        <span className="text-green-600">Modo Contexto ativo</span>
+                      </>
+                    )}
+                  </div>
                 </div>
               )}
 
               {validationResult?.isCorrect && (studyMode === 'scaffold' || studyMode === 'chunk' || studyMode === 'chain' || studyMode === 'progressive') && (
-                <div className="mb-4 flex items-center gap-2 text-green-600">
-                  <CheckCircle className="w-5 h-5" />
-                  <span className="font-medium">
+                <div className="mb-4 flex flex-col items-center gap-1">
+                  <div className={cn(
+                    "flex items-center gap-2",
+                    validationResult.feedback?.color || "text-green-600"
+                  )}>
+                    <span className="text-xl">{validationResult.feedback?.emoji || '✓'}</span>
+                    <span className="font-medium">{validationResult.feedback?.label || 'Correto!'}</span>
+                  </div>
+                  <span className="text-sm text-muted-foreground">
                     {studyMode === 'progressive' && progressiveLevel < 3 
                       ? `Nível ${progressiveLevel} dominado! Avançando para o nível ${progressiveLevel + 1}...`
-                      : 'Correto! Avançando...'
+                      : `${validationResult.similarity}% de precisão`
                     }
                   </span>
+                  {validationResult.isOnlyAccentError && (
+                    <span className="text-xs text-blue-500">
+                      (pequena diferença de acentuação)
+                    </span>
+                  )}
                 </div>
               )}
 
@@ -1372,11 +1474,22 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
           ) : (
             <>
               {validationResult?.isCorrect && (
-                <div className="mb-4 flex items-center gap-2 text-green-600">
-                  <CheckCircle className="w-6 h-6" />
-                  <span className="font-medium text-lg">
-                    Excelente! {validationResult.similarity}% de acurácia
+                <div className="mb-4 flex flex-col items-center gap-1">
+                  <div className={cn(
+                    "flex items-center gap-2",
+                    validationResult.feedback?.color || "text-green-600"
+                  )}>
+                    <span className="text-2xl">{validationResult.feedback?.emoji || '✓'}</span>
+                    <span className="font-medium text-lg">{validationResult.feedback?.label || 'Correto!'}</span>
+                  </div>
+                  <span className="text-sm text-muted-foreground">
+                    {validationResult.similarity}% de precisão
                   </span>
+                  {validationResult.isOnlyAccentError && (
+                    <span className="text-xs text-blue-500">
+                      (pequena diferença de acentuação aceita)
+                    </span>
+                  )}
                 </div>
               )}
 
