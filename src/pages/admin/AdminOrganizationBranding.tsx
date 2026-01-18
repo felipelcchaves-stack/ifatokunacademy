@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Palette, Save, Loader2, Eye } from 'lucide-react';
+import { ArrowLeft, Palette, Save, Loader2, Eye, Upload, X, Image } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Organization, OrganizationBranding, OrganizationSettings } from '@/contexts/OrganizationContext';
@@ -18,6 +18,164 @@ const defaultBranding: OrganizationBranding = {
   accent_color: '45 93% 47%',
   font_family: 'Inter',
   login_background_url: null,
+};
+
+interface ImageUploadProps {
+  label: string;
+  value: string | null;
+  onChange: (url: string | null) => void;
+  organizationId: string;
+  folder: string;
+  aspectRatio?: 'square' | 'wide';
+}
+
+const ImageUpload: React.FC<ImageUploadProps> = ({
+  label,
+  value,
+  onChange,
+  organizationId,
+  folder,
+  aspectRatio = 'square',
+}) => {
+  const [uploading, setUploading] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validar tipo de arquivo
+    if (!file.type.startsWith('image/')) {
+      toast.error('Por favor, selecione uma imagem');
+      return;
+    }
+
+    // Validar tamanho (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('A imagem deve ter no máximo 5MB');
+      return;
+    }
+
+    try {
+      setUploading(true);
+
+      // Gerar nome único
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${organizationId}/${folder}/${Date.now()}.${fileExt}`;
+
+      // Upload para o storage
+      const { error: uploadError, data } = await supabase.storage
+        .from('organization-assets')
+        .upload(fileName, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Obter URL pública
+      const { data: { publicUrl } } = supabase.storage
+        .from('organization-assets')
+        .getPublicUrl(fileName);
+
+      onChange(publicUrl);
+      toast.success('Imagem enviada com sucesso');
+    } catch (error) {
+      console.error('Error uploading:', error);
+      toast.error('Erro ao enviar imagem');
+    } finally {
+      setUploading(false);
+      if (inputRef.current) {
+        inputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleRemove = async () => {
+    if (!value) return;
+    
+    try {
+      // Extrair caminho do arquivo da URL
+      const urlParts = value.split('/organization-assets/');
+      if (urlParts[1]) {
+        await supabase.storage
+          .from('organization-assets')
+          .remove([urlParts[1]]);
+      }
+      
+      onChange(null);
+      toast.success('Imagem removida');
+    } catch (error) {
+      console.error('Error removing:', error);
+      // Mesmo com erro, limpar a referência
+      onChange(null);
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <Label>{label}</Label>
+      <div className="space-y-3">
+        {value ? (
+          <div className="relative inline-block">
+            <img
+              src={value}
+              alt={label}
+              className={`object-cover rounded-lg border ${
+                aspectRatio === 'wide' ? 'w-full h-32' : 'w-24 h-24'
+              }`}
+            />
+            <Button
+              size="icon"
+              variant="destructive"
+              className="absolute -top-2 -right-2 w-6 h-6"
+              onClick={handleRemove}
+            >
+              <X className="w-3 h-3" />
+            </Button>
+          </div>
+        ) : (
+          <div
+            className={`border-2 border-dashed border-muted-foreground/25 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 transition-colors ${
+              aspectRatio === 'wide' ? 'w-full h-32' : 'w-24 h-24'
+            }`}
+            onClick={() => inputRef.current?.click()}
+          >
+            {uploading ? (
+              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            ) : (
+              <>
+                <Image className="w-6 h-6 text-muted-foreground mb-1" />
+                <span className="text-xs text-muted-foreground">Upload</span>
+              </>
+            )}
+          </div>
+        )}
+        
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => inputRef.current?.click()}
+            disabled={uploading}
+          >
+            {uploading ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Upload className="w-4 h-4 mr-2" />
+            )}
+            {value ? 'Trocar' : 'Enviar'}
+          </Button>
+          
+          <Input
+            ref={inputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleUpload}
+            className="hidden"
+          />
+        </div>
+      </div>
+    </div>
+  );
 };
 
 const AdminOrganizationBranding: React.FC = () => {
@@ -279,24 +437,24 @@ const AdminOrganizationBranding: React.FC = () => {
               Logo, favicon e tipografia
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>URL do Logo</Label>
-              <Input
-                value={branding.logo_url || ''}
-                onChange={(e) => setBranding({ ...branding, logo_url: e.target.value || null })}
-                placeholder="https://exemplo.com/logo.png"
-              />
-            </div>
+          <CardContent className="space-y-6">
+            <ImageUpload
+              label="Logo"
+              value={branding.logo_url}
+              onChange={(url) => setBranding({ ...branding, logo_url: url })}
+              organizationId={organizationId || ''}
+              folder="logo"
+              aspectRatio="square"
+            />
 
-            <div className="space-y-2">
-              <Label>URL do Favicon</Label>
-              <Input
-                value={branding.favicon_url || ''}
-                onChange={(e) => setBranding({ ...branding, favicon_url: e.target.value || null })}
-                placeholder="https://exemplo.com/favicon.ico"
-              />
-            </div>
+            <ImageUpload
+              label="Favicon"
+              value={branding.favicon_url}
+              onChange={(url) => setBranding({ ...branding, favicon_url: url })}
+              organizationId={organizationId || ''}
+              folder="favicon"
+              aspectRatio="square"
+            />
 
             <div className="space-y-2">
               <Label>Fonte Principal</Label>
@@ -307,14 +465,14 @@ const AdminOrganizationBranding: React.FC = () => {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label>Imagem de Fundo do Login</Label>
-              <Input
-                value={branding.login_background_url || ''}
-                onChange={(e) => setBranding({ ...branding, login_background_url: e.target.value || null })}
-                placeholder="https://exemplo.com/background.jpg"
-              />
-            </div>
+            <ImageUpload
+              label="Imagem de Fundo do Login"
+              value={branding.login_background_url}
+              onChange={(url) => setBranding({ ...branding, login_background_url: url })}
+              organizationId={organizationId || ''}
+              folder="background"
+              aspectRatio="wide"
+            />
           </CardContent>
         </Card>
 
