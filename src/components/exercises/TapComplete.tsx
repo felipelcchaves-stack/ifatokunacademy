@@ -5,18 +5,24 @@ import {
   RotateCcw, 
   Volume2,
   Shuffle,
-  ArrowRight
+  ArrowRight,
+  Layers
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { splitIntoChunks } from '@/lib/textChunking';
 
 interface TapCompleteProps {
   text: string;
   onComplete: (correct: boolean) => void;
   onPlayAudio?: () => void;
   audioLoading?: boolean;
+}
+
+interface WordItem {
+  content: string;
+  originalIndex: number;
 }
 
 // Fisher-Yates shuffle
@@ -29,6 +35,8 @@ function shuffleArray<T>(array: T[]): T[] {
   return shuffled;
 }
 
+const CHUNK_THRESHOLD = 12; // Words threshold for auto-chunk mode
+
 const TapComplete: React.FC<TapCompleteProps> = ({
   text,
   onComplete,
@@ -36,114 +44,171 @@ const TapComplete: React.FC<TapCompleteProps> = ({
   audioLoading
 }) => {
   const { toast } = useToast();
-  const [selectedWords, setSelectedWords] = useState<string[]>([]);
+  const [selectedItems, setSelectedItems] = useState<WordItem[]>([]);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [attempts, setAttempts] = useState(0);
+  const [useChunkMode, setUseChunkMode] = useState<boolean>(false);
   
-  // Split text into words and create shuffled options
-  const { words, shuffledWords } = useMemo(() => {
-    const wordList = text.split(/\s+/).filter(w => w.length > 0);
-    return {
-      words: wordList,
-      shuffledWords: shuffleArray(wordList.map((w, i) => ({ word: w, originalIndex: i })))
-    };
+  // Count words to determine if chunk mode should be available/default
+  const wordCount = useMemo(() => {
+    return text.split(/\s+/).filter(w => w.length > 0).length;
   }, [text]);
 
-  // Track which words have been used
-  const [availableWords, setAvailableWords] = useState(shuffledWords);
-  
+  // Auto-enable chunk mode for long texts
   useEffect(() => {
-    setAvailableWords(shuffledWords);
-    setSelectedWords([]);
-    setIsCorrect(null);
-  }, [shuffledWords]);
+    if (wordCount > CHUNK_THRESHOLD) {
+      setUseChunkMode(true);
+    }
+  }, [wordCount]);
 
-  const handleWordTap = useCallback((wordData: { word: string; originalIndex: number }, tapIndex: number) => {
-    // Add word to selected
-    setSelectedWords(prev => [...prev, wordData.word]);
+  // Create items based on mode (words or chunks)
+  const { items, shuffledItems } = useMemo(() => {
+    let itemList: WordItem[];
+    
+    if (useChunkMode) {
+      // Use chunks (small phrases) for easier ordering
+      const chunks = splitIntoChunks(text, 4); // ~4 words per chunk
+      itemList = chunks.map((chunk, i) => ({
+        content: chunk.text,
+        originalIndex: i
+      }));
+    } else {
+      // Use individual words
+      const wordList = text.split(/\s+/).filter(w => w.length > 0);
+      itemList = wordList.map((word, i) => ({
+        content: word,
+        originalIndex: i
+      }));
+    }
+    
+    return {
+      items: itemList,
+      shuffledItems: shuffleArray([...itemList])
+    };
+  }, [text, useChunkMode]);
+
+  // Track which items are still available
+  const [availableItems, setAvailableItems] = useState<WordItem[]>([]);
+  
+  // Reset when items change
+  useEffect(() => {
+    setAvailableItems(shuffledItems);
+    setSelectedItems([]);
+    setIsCorrect(null);
+  }, [shuffledItems]);
+
+  const handleItemTap = useCallback((item: WordItem, tapIndex: number) => {
+    // Add item to selected (preserving originalIndex)
+    setSelectedItems(prev => [...prev, item]);
     
     // Remove from available
-    setAvailableWords(prev => prev.filter((_, i) => i !== tapIndex));
+    setAvailableItems(prev => prev.filter((_, i) => i !== tapIndex));
   }, []);
 
   const handleUndo = useCallback(() => {
-    if (selectedWords.length === 0) return;
+    if (selectedItems.length === 0) return;
     
-    const lastWord = selectedWords[selectedWords.length - 1];
-    const originalIndex = words.indexOf(lastWord);
+    const lastItem = selectedItems[selectedItems.length - 1];
     
-    setSelectedWords(prev => prev.slice(0, -1));
-    setAvailableWords(prev => [...prev, { word: lastWord, originalIndex }]);
-  }, [selectedWords, words]);
+    setSelectedItems(prev => prev.slice(0, -1));
+    setAvailableItems(prev => [...prev, lastItem]);
+  }, [selectedItems]);
 
   const handleReset = useCallback(() => {
-    setSelectedWords([]);
-    setAvailableWords(shuffleArray(words.map((w, i) => ({ word: w, originalIndex: i }))));
+    setSelectedItems([]);
+    setAvailableItems(shuffleArray([...items]));
     setIsCorrect(null);
-  }, [words]);
+  }, [items]);
 
   const handleValidate = useCallback(() => {
-    const isMatch = selectedWords.join(' ') === words.join(' ');
-    setIsCorrect(isMatch);
+    // Validate by checking if indices are in correct sequence: 0, 1, 2, 3...
+    const isSequenceCorrect = selectedItems.every(
+      (item, index) => item.originalIndex === index
+    );
+    
+    setIsCorrect(isSequenceCorrect);
     setAttempts(prev => prev + 1);
     
-    if (isMatch) {
+    if (isSequenceCorrect) {
       toast({
         title: "Perfeito! 🎉",
         description: "Você ordenou corretamente!",
       });
       setTimeout(() => onComplete(true), 1500);
     }
-  }, [selectedWords, words, onComplete, toast]);
+  }, [selectedItems, onComplete, toast]);
 
-  const isComplete = selectedWords.length === words.length;
+  const toggleChunkMode = useCallback(() => {
+    setUseChunkMode(prev => !prev);
+  }, []);
+
+  const isComplete = selectedItems.length === items.length;
+  const showChunkToggle = wordCount > 6; // Show toggle if text has more than 6 words
 
   return (
     <div className="space-y-6">
       {/* Instructions */}
       <div className="text-center">
         <p className="text-sm text-muted-foreground mb-2">
-          Toque nas palavras na ordem correta para formar o texto
+          Toque {useChunkMode ? 'nas frases' : 'nas palavras'} na ordem correta para formar o texto
         </p>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onPlayAudio}
-          disabled={audioLoading}
-          className="text-primary"
-        >
-          <Volume2 className={cn("w-4 h-4 mr-2", audioLoading && "animate-pulse")} />
-          {audioLoading ? 'Carregando...' : 'Ouvir texto'}
-        </Button>
+        <div className="flex items-center justify-center gap-2 flex-wrap">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onPlayAudio}
+            disabled={audioLoading}
+            className="text-primary"
+          >
+            <Volume2 className={cn("w-4 h-4 mr-2", audioLoading && "animate-pulse")} />
+            {audioLoading ? 'Carregando...' : 'Ouvir texto'}
+          </Button>
+          
+          {showChunkToggle && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleChunkMode}
+              className={cn(
+                "transition-colors",
+                useChunkMode && "bg-primary/10 border-primary"
+              )}
+            >
+              <Layers className="w-4 h-4 mr-2" />
+              {useChunkMode ? 'Modo frases' : 'Modo palavras'}
+            </Button>
+          )}
+        </div>
       </div>
 
-      {/* Selected Words Area */}
+      {/* Selected Items Area */}
       <div 
         className={cn(
           "min-h-[100px] p-4 rounded-xl border-2 border-dashed",
           "flex flex-wrap gap-2 items-start content-start",
           "transition-all duration-300",
-          isCorrect === true && "bg-green-50 border-green-300",
-          isCorrect === false && "bg-red-50 border-red-300",
+          isCorrect === true && "bg-green-50 border-green-300 dark:bg-green-950/30",
+          isCorrect === false && "bg-red-50 border-red-300 dark:bg-red-950/30",
           isCorrect === null && "bg-muted/30 border-border"
         )}
       >
-        {selectedWords.length === 0 ? (
+        {selectedItems.length === 0 ? (
           <p className="text-muted-foreground text-sm w-full text-center py-4">
-            Toque nas palavras abaixo para começar...
+            Toque {useChunkMode ? 'nas frases' : 'nas palavras'} abaixo para começar...
           </p>
         ) : (
-          selectedWords.map((word, index) => (
+          selectedItems.map((item, index) => (
             <span
-              key={`selected-${index}`}
+              key={`selected-${item.originalIndex}-${index}`}
               className={cn(
-                "px-3 py-2 rounded-lg font-serif text-lg",
+                "px-3 py-2 rounded-lg font-serif",
+                useChunkMode ? "text-base" : "text-lg",
                 "bg-primary/10 text-primary border border-primary/20",
                 "animate-fade-in-up"
               )}
               style={{ animationDelay: `${index * 50}ms` }}
             >
-              {word}
+              {item.content}
             </span>
           ))
         )}
@@ -169,15 +234,16 @@ const TapComplete: React.FC<TapCompleteProps> = ({
         </div>
       )}
 
-      {/* Available Words */}
+      {/* Available Items */}
       <div className="flex flex-wrap gap-2 justify-center">
-        {availableWords.map((wordData, index) => (
+        {availableItems.map((item, index) => (
           <button
-            key={`available-${index}-${wordData.originalIndex}`}
-            onClick={() => handleWordTap(wordData, index)}
+            key={`available-${item.originalIndex}-${index}`}
+            onClick={() => handleItemTap(item, index)}
             disabled={isCorrect === true}
             className={cn(
-              "px-4 py-3 rounded-xl font-serif text-lg",
+              "px-4 py-3 rounded-xl font-serif",
+              useChunkMode ? "text-base" : "text-lg",
               "bg-card border-2 border-border",
               "hover:border-primary hover:bg-primary/5",
               "active:scale-95 transition-all duration-150",
@@ -185,7 +251,7 @@ const TapComplete: React.FC<TapCompleteProps> = ({
               "shadow-soft hover:shadow-forest"
             )}
           >
-            {wordData.word}
+            {item.content}
           </button>
         ))}
       </div>
@@ -195,7 +261,7 @@ const TapComplete: React.FC<TapCompleteProps> = ({
         <Button
           variant="outline"
           onClick={handleUndo}
-          disabled={selectedWords.length === 0 || isCorrect === true}
+          disabled={selectedItems.length === 0 || isCorrect === true}
         >
           <RotateCcw className="w-4 h-4 mr-2" />
           Desfazer
