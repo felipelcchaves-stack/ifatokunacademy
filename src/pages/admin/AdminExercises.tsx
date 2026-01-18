@@ -19,7 +19,8 @@ import {
   Video,
   Brain,
   HelpCircle,
-  Sparkles
+  Sparkles,
+  MessageSquare
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -65,7 +66,7 @@ import AdminErrorBoundary from '@/components/errors/AdminErrorBoundary';
 interface Exercise {
   id: string;
   lesson_id: string;
-  type: 'reading' | 'drag-drop' | 'fill-columns' | 'flashcard' | 'video' | 'memorization' | 'quiz' | 'tap-complete';
+  type: 'reading' | 'drag-drop' | 'fill-columns' | 'flashcard' | 'video' | 'memorization' | 'quiz' | 'tap-complete' | 'interpretation';
   title: string;
   content: Record<string, any>;
   display_order: number;
@@ -93,6 +94,7 @@ const exerciseTypes = [
   { value: 'memorization', label: 'Memorização', icon: Brain, description: 'Técnicas de memorização' },
   { value: 'quiz', label: 'Quiz', icon: HelpCircle, description: 'Questionário com múltipla escolha' },
   { value: 'tap-complete', label: 'Ordenar Palavras', icon: MousePointer, description: 'Ordenar palavras para formar texto' },
+  { value: 'interpretation', label: 'Interpretação', icon: MessageSquare, description: 'Escrever conselhos baseados no texto (orientador)' },
 ];
 
 const AdminExercises: React.FC = () => {
@@ -239,6 +241,13 @@ const AdminExercises: React.FC = () => {
         };
       case 'tap-complete':
         return { text: '', audioUrl: '' };
+      case 'interpretation':
+        return { 
+          text: '', 
+          title: 'Exercício de Interpretação',
+          minCounsels: 5,
+          isOptional: true
+        };
       default:
         return {};
     }
