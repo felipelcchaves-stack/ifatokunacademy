@@ -13,7 +13,8 @@ import {
   Home,
   UserPlus,
   MousePointer,
-  GripVertical
+  GripVertical,
+  Building2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
@@ -37,6 +38,7 @@ const AdminLayout: React.FC = () => {
     { icon: GripVertical, label: 'Gerar Drag & Drop', path: '/admin/generate-drag-drop' },
     { icon: Users, label: 'Usuários', path: '/admin/users' },
     { icon: UserPlus, label: 'Convites', path: '/admin/invites' },
+    { icon: Building2, label: 'Organizações', path: '/admin/organizations' },
     { icon: CreditCard, label: 'Pagamentos', path: '/admin/payments' },
     { icon: BarChart3, label: 'Relatórios', path: '/admin/reports' },
     { icon: Settings, label: 'Configurações', path: '/admin/settings' },
