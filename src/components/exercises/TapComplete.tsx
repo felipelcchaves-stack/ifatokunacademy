@@ -14,7 +14,10 @@ import { useToast } from '@/hooks/use-toast';
 import { splitIntoChunks } from '@/lib/textChunking';
 
 interface TapCompleteProps {
-  text: string;
+  // Single text (legacy support)
+  text?: string;
+  // Multiple texts (new consolidated format)
+  texts?: string[];
   onComplete: (correct: boolean) => void;
   onPlayAudio?: () => void;
   audioLoading?: boolean;
@@ -42,6 +45,7 @@ const CHUNK_THRESHOLD = 12; // Words threshold for auto-chunk mode
 
 const TapComplete: React.FC<TapCompleteProps> = ({
   text,
+  texts,
   onComplete,
   onPlayAudio,
   audioLoading,
@@ -54,10 +58,16 @@ const TapComplete: React.FC<TapCompleteProps> = ({
   const [attempts, setAttempts] = useState(0);
   const [useChunkMode, setUseChunkMode] = useState<boolean>(false);
   
+  // Support for multiple texts - track current text index
+  const textList = texts && texts.length > 0 ? texts : (text ? [text] : []);
+  const [currentTextIndex, setCurrentTextIndex] = useState(0);
+  const currentText = textList[currentTextIndex] || '';
+  const hasMultipleTexts = textList.length > 1;
+  
   // Count words to determine if chunk mode should be available/default
   const wordCount = useMemo(() => {
-    return text.split(/\s+/).filter(w => w.length > 0).length;
-  }, [text]);
+    return currentText.split(/\s+/).filter(w => w.length > 0).length;
+  }, [currentText]);
 
   // Auto-enable chunk mode for long texts or when preferChunkMode is set
   useEffect(() => {
@@ -74,14 +84,14 @@ const TapComplete: React.FC<TapCompleteProps> = ({
     
     if (useChunkMode) {
       // Use chunks (small phrases) for easier ordering
-      const chunks = splitIntoChunks(text, chunkSize); // Use provided chunkSize or default
+      const chunks = splitIntoChunks(currentText, chunkSize); // Use provided chunkSize or default
       itemList = chunks.map((chunk, i) => ({
         content: chunk.text,
         originalIndex: i
       }));
     } else {
       // Use individual words
-      const wordList = text.split(/\s+/).filter(w => w.length > 0);
+      const wordList = currentText.split(/\s+/).filter(w => w.length > 0);
       itemList = wordList.map((word, i) => ({
         content: word,
         originalIndex: i
@@ -92,7 +102,7 @@ const TapComplete: React.FC<TapCompleteProps> = ({
       items: itemList,
       shuffledItems: shuffleArray([...itemList])
     };
-  }, [text, useChunkMode, chunkSize]);
+  }, [currentText, useChunkMode, chunkSize]);
 
   // Track which items are still available
   const [availableItems, setAvailableItems] = useState<WordItem[]>([]);
@@ -139,11 +149,25 @@ const TapComplete: React.FC<TapCompleteProps> = ({
     if (isSequenceCorrect) {
       toast({
         title: "Perfeito! 🎉",
-        description: "Você ordenou corretamente!",
+        description: hasMultipleTexts 
+          ? `Texto ${currentTextIndex + 1} de ${textList.length} completo!`
+          : "Você ordenou corretamente!",
       });
-      setTimeout(() => onComplete(true), 1500);
+      
+      // Check if there are more texts
+      if (hasMultipleTexts && currentTextIndex < textList.length - 1) {
+        // Move to next text after delay
+        setTimeout(() => {
+          setCurrentTextIndex(prev => prev + 1);
+          setSelectedItems([]);
+          setIsCorrect(null);
+        }, 1500);
+      } else {
+        // All texts completed
+        setTimeout(() => onComplete(true), 1500);
+      }
     }
-  }, [selectedItems, onComplete, toast]);
+  }, [selectedItems, onComplete, toast, hasMultipleTexts, currentTextIndex, textList.length]);
 
   const toggleChunkMode = useCallback(() => {
     setUseChunkMode(prev => !prev);
@@ -151,9 +175,34 @@ const TapComplete: React.FC<TapCompleteProps> = ({
 
   const isComplete = selectedItems.length === items.length;
   const showChunkToggle = wordCount > 6; // Show toggle if text has more than 6 words
+  const progressPercentage = hasMultipleTexts 
+    ? ((currentTextIndex) / textList.length) * 100 
+    : 0;
 
   return (
     <div className="space-y-6">
+      {/* Multi-text progress indicator */}
+      {hasMultipleTexts && (
+        <div className="flex items-center gap-3 p-3 bg-primary/5 rounded-lg">
+          <div className="flex-1">
+            <div className="flex items-center justify-between text-sm mb-1">
+              <span className="text-muted-foreground">
+                Texto {currentTextIndex + 1} de {textList.length}
+              </span>
+              <span className="font-medium text-primary">
+                {Math.round(progressPercentage)}% concluído
+              </span>
+            </div>
+            <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-primary transition-all duration-500"
+                style={{ width: `${progressPercentage}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Instructions */}
       <div className="text-center">
         <p className="text-sm text-muted-foreground mb-2">
