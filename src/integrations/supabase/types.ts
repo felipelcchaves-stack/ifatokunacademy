@@ -578,6 +578,85 @@ export type Database = {
         }
         Relationships: []
       }
+      review_error_stats: {
+        Row: {
+          accent_errors: number
+          created_at: string
+          exercise_id: string | null
+          id: string
+          insertion_errors: number
+          last_review_at: string | null
+          last_typed_text: string | null
+          module_id: string | null
+          omission_errors: number
+          original_text: string | null
+          other_errors: number
+          review_count: number
+          spaced_item_id: string | null
+          updated_at: string
+          user_id: string
+          word_swap_errors: number
+        }
+        Insert: {
+          accent_errors?: number
+          created_at?: string
+          exercise_id?: string | null
+          id?: string
+          insertion_errors?: number
+          last_review_at?: string | null
+          last_typed_text?: string | null
+          module_id?: string | null
+          omission_errors?: number
+          original_text?: string | null
+          other_errors?: number
+          review_count?: number
+          spaced_item_id?: string | null
+          updated_at?: string
+          user_id: string
+          word_swap_errors?: number
+        }
+        Update: {
+          accent_errors?: number
+          created_at?: string
+          exercise_id?: string | null
+          id?: string
+          insertion_errors?: number
+          last_review_at?: string | null
+          last_typed_text?: string | null
+          module_id?: string | null
+          omission_errors?: number
+          original_text?: string | null
+          other_errors?: number
+          review_count?: number
+          spaced_item_id?: string | null
+          updated_at?: string
+          user_id?: string
+          word_swap_errors?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "review_error_stats_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "review_error_stats_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "review_error_stats_spaced_item_id_fkey"
+            columns: ["spaced_item_id"]
+            isOneToOne: false
+            referencedRelation: "spaced_repetition_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       spaced_repetition_items: {
         Row: {
           correct_reviews: number

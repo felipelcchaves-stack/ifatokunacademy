@@ -58,6 +58,7 @@ import AccessibilitySettings from './AccessibilitySettings';
 import { ProgressiveLevelIndicator, AudioSourceSelector, AudioSource } from './ProgressiveLevelSelector';
 import { useSpacedRepetition } from '@/hooks/useSpacedRepetition';
 import { useAccessibilityPreferences } from '@/hooks/useAccessibilityPreferences';
+import { useErrorStats } from '@/hooks/useErrorStats';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
@@ -175,6 +176,7 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
 
   const { addItem } = useSpacedRepetition(exerciseId);
+  const { recordError } = useErrorStats();
   const { toast } = useToast();
   const { preferences } = useAccessibilityPreferences();
 
@@ -621,6 +623,13 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
       }
     } else {
       await addToSpacedRepetition(currentIndex, currentItem.text, false);
+      // Record detailed error statistics for pedagogical analysis
+      await recordError({
+        exerciseId,
+        moduleId,
+        originalText: expectedText,
+        typedText: userInput
+      });
     }
   };
 
