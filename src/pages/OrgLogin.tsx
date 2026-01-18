@@ -256,31 +256,75 @@ const OrgLogin: React.FC = () => {
       const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
 
       if (error || !data) {
-        toast({
-          title: 'Bem-vindo!',
-          description: 'Login realizado com sucesso.',
-        });
-        navigate(targetPath, { replace: true });
+        // Check org access before navigating
+        await checkAndNavigate(targetPath);
         return;
       }
 
       if (data.currentLevel === 'aal1' && data.nextLevel === 'aal2') {
         setShowMFA(true);
       } else {
-        toast({
-          title: 'Bem-vindo!',
-          description: 'Login realizado com sucesso.',
-        });
-        navigate(targetPath, { replace: true });
+        await checkAndNavigate(targetPath);
       }
     } catch (error) {
       console.error('Error checking MFA status:', error);
+      await checkAndNavigate(targetPath);
+    }
+  };
+
+  const checkAndNavigate = async (targetPath: string) => {
+    // Check if user has access to this org
+    if (!user || !organization) {
+      navigate(targetPath, { replace: true });
+      return;
+    }
+    
+    // Check org membership
+    const { data: membership } = await supabase
+      .from('organization_members')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('organization_id', organization.id)
+      .maybeSingle();
+    
+    if (membership) {
       toast({
         title: 'Bem-vindo!',
         description: 'Login realizado com sucesso.',
       });
       navigate(targetPath, { replace: true });
+      return;
     }
+
+    // Check if user belongs via profile.organization_id
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('organization_id')
+      .eq('id', user.id)
+      .single();
+
+    if (profile?.organization_id === organization.id) {
+      toast({
+        title: 'Bem-vindo!',
+        description: 'Login realizado com sucesso.',
+      });
+      navigate(targetPath, { replace: true });
+      return;
+    }
+
+    // Check global admin
+    const { data: isGlobalAdmin } = await supabase.rpc('is_admin', { user_id: user.id });
+    if (isGlobalAdmin) {
+      toast({
+        title: 'Bem-vindo!',
+        description: 'Login realizado com sucesso.',
+      });
+      navigate(targetPath, { replace: true });
+      return;
+    }
+
+    // No access
+    setAccessDenied(true);
   };
 
   const handleMFAVerified = () => {
