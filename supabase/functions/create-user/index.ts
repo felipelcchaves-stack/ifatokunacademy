@@ -40,9 +40,24 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Verificar se é admin
+    // Verificar se é admin global
     const { data: isAdminData } = await supabaseAdmin.rpc('is_admin', { user_id: callerUser.id })
-    if (!isAdminData) {
+    
+    // Ler o body para verificar organizationId (precisamos fazer isso antes de consumir o stream)
+    const body = await req.json()
+    const { email, password, fullName, moduleIds, inviteId, organizationId } = body
+    
+    // Verificar se é org admin para a organização específica (se não for admin global)
+    let canCreate = isAdminData
+    if (!canCreate && organizationId) {
+      const { data: isOrgAdminData } = await supabaseAdmin.rpc('is_organization_admin', { 
+        p_user_id: callerUser.id, 
+        p_organization_id: organizationId 
+      })
+      canCreate = isOrgAdminData
+    }
+    
+    if (!canCreate) {
       return new Response(
         JSON.stringify({ error: 'Only admins can create users' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
