@@ -9,7 +9,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { User, Calendar, Lock, Save, Camera, Loader2, AlertTriangle, Trash2, Eye, EyeOff } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { User, Calendar, Lock, Save, Camera, Loader2, AlertTriangle, Trash2, Eye, EyeOff, Settings2, Zap, BookOpen, Clock } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -17,6 +18,7 @@ import { AvailabilitySelector } from '@/components/study-plan/AvailabilitySelect
 import { StudyPlanPreview } from '@/components/study-plan/StudyPlanPreview';
 import { WeeklyScheduleView } from '@/components/study-plan/WeeklyScheduleView';
 import { useStudyPlan } from '@/hooks/useStudyPlan';
+import { useStudyMode, StudyMode } from '@/hooks/useStudyMode';
 import { useSearchParams } from 'react-router-dom';
 import MFASetup from '@/components/auth/MFASetup';
 
@@ -57,6 +59,8 @@ const UserSettings = () => {
     saveStudyPlan, 
     calculatePlan 
   } = useStudyPlan();
+
+  const { mode, setMode, saving: savingMode, getModeInfo } = useStudyMode();
 
   const getInitials = (name: string | null) => {
     if (!name) return 'U';
@@ -254,10 +258,14 @@ const UserSettings = () => {
           </p>
 
           <Tabs defaultValue={defaultTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-3 lg:w-[500px]">
+            <TabsList className="grid w-full grid-cols-4 lg:w-[600px]">
               <TabsTrigger value="profile" className="flex items-center gap-2">
                 <User className="h-4 w-4" />
                 <span className="hidden sm:inline">Perfil</span>
+              </TabsTrigger>
+              <TabsTrigger value="preferences" className="flex items-center gap-2">
+                <Settings2 className="h-4 w-4" />
+                <span className="hidden sm:inline">Preferências</span>
               </TabsTrigger>
               <TabsTrigger value="security" className="flex items-center gap-2">
                 <Lock className="h-4 w-4" />
@@ -265,7 +273,7 @@ const UserSettings = () => {
               </TabsTrigger>
               <TabsTrigger value="study-plan" className="flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
-                <span className="hidden sm:inline">Plano de Estudos</span>
+                <span className="hidden sm:inline">Plano</span>
               </TabsTrigger>
             </TabsList>
 
@@ -388,6 +396,144 @@ const UserSettings = () => {
                     <Trash2 className="h-4 w-4 mr-2" />
                     {resetting ? 'Zerando...' : 'Zerar Todo Meu Progresso'}
                   </Button>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Tab Preferências */}
+            <TabsContent value="preferences" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <BookOpen className="h-5 w-5" />
+                    Modo de Estudo
+                  </CardTitle>
+                  <CardDescription>
+                    Escolha como deseja estudar as lições. Sua preferência será sincronizada em todos os dispositivos.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Current mode indicator */}
+                  <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                      mode === 'express' 
+                        ? 'bg-gradient-to-br from-amber-500 to-orange-600' 
+                        : 'bg-gradient-to-br from-blue-500 to-indigo-600'
+                    }`}>
+                      {mode === 'express' ? (
+                        <Zap className="w-6 h-6 text-white" />
+                      ) : (
+                        <BookOpen className="w-6 h-6 text-white" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-foreground">
+                        Modo atual: {getModeInfo(mode).label}
+                        {savingMode && <span className="text-muted-foreground ml-2">(salvando...)</span>}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {getModeInfo(mode).description} • ~{getModeInfo(mode).estimatedMinutes} min por lição
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Mode selection */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Complete Mode */}
+                    <button
+                      onClick={() => setMode('complete')}
+                      disabled={savingMode}
+                      className={`p-6 rounded-xl border-2 transition-all text-left ${
+                        mode === 'complete'
+                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/30 shadow-lg'
+                          : 'border-border hover:border-blue-300 hover:bg-blue-50/50 dark:hover:bg-blue-950/20'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                          mode === 'complete' 
+                            ? 'bg-blue-500 text-white' 
+                            : 'bg-blue-100 dark:bg-blue-900/30 text-blue-600'
+                        }`}>
+                          <BookOpen className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h3 className={`font-semibold ${mode === 'complete' ? 'text-blue-700 dark:text-blue-400' : 'text-foreground'}`}>
+                            Modo Completo
+                          </h3>
+                          {mode === 'complete' && (
+                            <Badge variant="secondary" className="mt-1">Ativo</Badge>
+                          )}
+                        </div>
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-3">
+                        Experiência completa de aprendizado com todos os tipos de exercício para máxima retenção.
+                      </p>
+                      <div className="flex items-center gap-4 text-sm">
+                        <span className="flex items-center gap-1 text-muted-foreground">
+                          <BookOpen className="w-4 h-4" />
+                          7-9 exercícios
+                        </span>
+                        <span className="flex items-center gap-1 text-muted-foreground">
+                          <Clock className="w-4 h-4" />
+                          ~15 min/lição
+                        </span>
+                      </div>
+                    </button>
+
+                    {/* Express Mode */}
+                    <button
+                      onClick={() => setMode('express')}
+                      disabled={savingMode}
+                      className={`p-6 rounded-xl border-2 transition-all text-left ${
+                        mode === 'express'
+                          ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/30 shadow-lg'
+                          : 'border-border hover:border-amber-300 hover:bg-amber-50/50 dark:hover:bg-amber-950/20'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                          mode === 'express' 
+                            ? 'bg-amber-500 text-white' 
+                            : 'bg-amber-100 dark:bg-amber-900/30 text-amber-600'
+                        }`}>
+                          <Zap className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h3 className={`font-semibold ${mode === 'express' ? 'text-amber-700 dark:text-amber-400' : 'text-foreground'}`}>
+                            Modo Express
+                          </h3>
+                          {mode === 'express' && (
+                            <Badge variant="secondary" className="mt-1 bg-amber-100 text-amber-700">Ativo</Badge>
+                          )}
+                        </div>
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-3">
+                        Versão otimizada focando apenas nos exercícios essenciais. Ideal para revisão rápida.
+                      </p>
+                      <div className="flex items-center gap-4 text-sm">
+                        <span className="flex items-center gap-1 text-muted-foreground">
+                          <Zap className="w-4 h-4" />
+                          4-5 exercícios
+                        </span>
+                        <span className="flex items-center gap-1 text-muted-foreground">
+                          <Clock className="w-4 h-4" />
+                          ~5 min/lição
+                        </span>
+                      </div>
+                    </button>
+                  </div>
+
+                  {/* Info */}
+                  <Alert>
+                    <Settings2 className="h-4 w-4" />
+                    <AlertTitle>Sobre os modos de estudo</AlertTitle>
+                    <AlertDescription>
+                      O modo de estudo afeta quantos exercícios você verá em cada lição. 
+                      Você pode alternar entre os modos a qualquer momento, inclusive durante uma lição.
+                      Sua escolha é salva automaticamente e sincronizada em todos os dispositivos.
+                    </AlertDescription>
+                  </Alert>
                 </CardContent>
               </Card>
             </TabsContent>
