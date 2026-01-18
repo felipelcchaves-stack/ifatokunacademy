@@ -432,28 +432,42 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
     }
   };
 
+  // Track items that were added to spaced repetition for visual feedback
+  const [itemsAddedToReview, setItemsAddedToReview] = useState<Set<number>>(new Set());
+
   const addToSpacedRepetition = async (itemIndex: number, itemText: string, wasCorrect: boolean) => {
     if (!exerciseId) return;
     
+    // Only add incorrect answers to spaced repetition (automatic review)
+    if (wasCorrect) return;
+    
     try {
-      let easeFactor = 2.5;
-      if (!wasCorrect) {
-        easeFactor = attempts > 0 ? 2.0 : 1.5;
+      // Calculate ease factor based on attempts - more attempts = lower ease = more frequent reviews
+      let easeFactor: number;
+      if (attempts >= 3) {
+        easeFactor = 1.3; // Very difficult - minimum ease, review frequently
+      } else if (attempts >= 2) {
+        easeFactor = 1.5; // Difficult
+      } else if (hintPenalty > 0) {
+        easeFactor = 1.8; // Used hints - slightly lower ease
+      } else {
+        easeFactor = 2.0; // First attempt wrong - standard ease for errors
       }
       
-      await addItem(exerciseId, itemIndex, itemText, {
+      await addItem(exerciseId, itemIndex, itemText.substring(0, 200), {
         lessonId,
         moduleId,
         easeFactor,
       });
       
-      if (!wasCorrect) {
-        toast({
-          title: "Adicionado à revisão",
-          description: "Este item será revisado novamente em breve.",
-          duration: 3000,
-        });
-      }
+      // Track that this item was added to review
+      setItemsAddedToReview(prev => new Set([...prev, itemIndex]));
+      
+      toast({
+        title: "📚 Adicionado à Revisão Espaçada",
+        description: `Este item será revisado automaticamente. ${attempts >= 2 ? 'Revisões mais frequentes agendadas.' : 'Você verá isso novamente em breve.'}`,
+        duration: 4000,
+      });
     } catch (error) {
       console.error('Error adding to spaced repetition:', error);
     }
@@ -940,9 +954,12 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
       <div className="bg-card rounded-xl border border-border shadow-soft p-6">
         <TapComplete
           text={currentItem.text}
-          onComplete={(correct) => {
+          onComplete={async (correct) => {
             if (correct) {
               setMasteredItems(prev => new Set([...prev, currentIndex]));
+            } else {
+              // Add to spaced repetition on error
+              await addToSpacedRepetition(currentIndex, currentItem.text, false);
             }
             handleNext();
           }}
@@ -972,9 +989,12 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
       <div className="bg-card rounded-xl border border-border shadow-soft p-6">
         <VisualBuilder
           text={currentItem.text}
-          onComplete={(correct) => {
+          onComplete={async (correct) => {
             if (correct) {
               setMasteredItems(prev => new Set([...prev, currentIndex]));
+            } else {
+              // Add to spaced repetition on error
+              await addToSpacedRepetition(currentIndex, currentItem.text, false);
             }
             handleNext();
           }}
@@ -990,9 +1010,12 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
       <div className="bg-card rounded-xl border border-border shadow-soft p-6">
         <ListenRepeatMode
           text={currentItem.text}
-          onComplete={(correct) => {
+          onComplete={async (correct) => {
             if (correct) {
               setMasteredItems(prev => new Set([...prev, currentIndex]));
+            } else {
+              // Add to spaced repetition on error
+              await addToSpacedRepetition(currentIndex, currentItem.text, false);
             }
             handleNext();
           }}
@@ -1077,6 +1100,12 @@ const MemorizationExercise: React.FC<MemorizationExerciseProps> = ({
         
         <div className="flex justify-between text-xs text-muted-foreground mt-1">
           <span>{masteredItems.size} dominados</span>
+          {itemsAddedToReview.size > 0 && (
+            <span className="flex items-center gap-1 text-amber-600">
+              <RotateCcw className="w-3 h-3" />
+              {itemsAddedToReview.size} para revisão
+            </span>
+          )}
           {modeProgress && <span>{modeProgress.label}</span>}
           <span>{sortedItems.length - masteredItems.size} restantes</span>
         </div>
