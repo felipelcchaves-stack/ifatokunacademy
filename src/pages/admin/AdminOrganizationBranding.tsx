@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Palette, Save, Loader2, Eye, Upload, X, Image, Mail, Lock, Monitor, Smartphone } from 'lucide-react';
+import { ArrowLeft, Palette, Save, Loader2, Eye, Upload, X, Image, Mail, Lock, Monitor, Smartphone, LayoutDashboard, Brain, Trophy, Mic, BarChart3, ChevronDown, Phone, MapPin } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Organization, OrganizationBranding, OrganizationSettings } from '@/contexts/OrganizationContext';
@@ -670,6 +670,191 @@ const AdminOrganizationBranding: React.FC = () => {
                 >
                   Badge Destaque
                 </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Preview do Header */}
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-lg">Preview do Header</CardTitle>
+            <CardDescription>
+              Visualização do cabeçalho para usuários logados
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="rounded-lg border overflow-hidden">
+              {/* Header Preview */}
+              <div 
+                className="px-4 py-3 flex items-center justify-between"
+                style={{ backgroundColor: 'hsl(var(--background))' }}
+              >
+                {/* Logo Section */}
+                <div className="flex items-center gap-3">
+                  {branding.logo_url ? (
+                    <img 
+                      src={branding.logo_url} 
+                      alt="Logo" 
+                      className="w-10 h-10 rounded-full object-cover shadow-md"
+                    />
+                  ) : (
+                    <div 
+                      className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shadow-md"
+                      style={{ backgroundColor: `hsl(${branding.primary_color})` }}
+                    >
+                      {organization.name.charAt(0)}
+                    </div>
+                  )}
+                  <div>
+                    <h1 
+                      className="text-sm font-semibold"
+                      style={{ color: 'hsl(var(--foreground))' }}
+                    >
+                      {organization.name.split(' ').slice(0, 2).join(' ')}
+                    </h1>
+                    <p className="text-xs text-muted-foreground -mt-0.5">
+                      {organization.name.split(' ').slice(2).join(' ') || 'Learning'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Navigation Links */}
+                <nav className="hidden md:flex items-center gap-4">
+                  {[
+                    { label: 'Dashboard', icon: LayoutDashboard },
+                    { label: 'Revisar', icon: Brain },
+                    { label: 'Desafios', icon: Trophy },
+                    { label: 'Gravar', icon: Mic },
+                    { label: 'Estatísticas', icon: BarChart3 },
+                  ].map((item, idx) => (
+                    <div 
+                      key={idx}
+                      className="flex items-center gap-1.5 text-xs font-medium"
+                      style={{ 
+                        color: idx === 0 
+                          ? `hsl(${branding.primary_color})` 
+                          : 'hsl(var(--muted-foreground))'
+                      }}
+                    >
+                      <item.icon className="w-3.5 h-3.5" />
+                      {item.label}
+                    </div>
+                  ))}
+                </nav>
+
+                {/* User Avatar */}
+                <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <div 
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium"
+                      style={{ 
+                        backgroundColor: `hsl(${branding.primary_color} / 0.2)`,
+                        color: `hsl(${branding.primary_color})`
+                      }}
+                    >
+                      US
+                    </div>
+                    <div 
+                      className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold text-white"
+                      style={{ 
+                        background: `linear-gradient(135deg, hsl(${branding.primary_color}), hsl(${branding.accent_color}))`
+                      }}
+                    >
+                      5
+                    </div>
+                  </div>
+                  <span className="text-xs font-medium hidden sm:block">Usuário</span>
+                  <ChevronDown className="w-3 h-3 text-muted-foreground" />
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Preview do Footer */}
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-lg">Preview do Footer</CardTitle>
+            <CardDescription>
+              Visualização do rodapé da plataforma
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div 
+              className="rounded-lg border overflow-hidden p-6"
+              style={{ backgroundColor: 'hsl(var(--card))' }}
+            >
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Logo e Descrição */}
+                <div>
+                  <div className="flex items-center gap-3 mb-3">
+                    {branding.logo_url ? (
+                      <img 
+                        src={branding.logo_url} 
+                        alt="Logo" 
+                        className="w-8 h-8 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div 
+                        className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm"
+                        style={{ backgroundColor: `hsl(${branding.primary_color})` }}
+                      >
+                        {organization.name.charAt(0)}
+                      </div>
+                    )}
+                    <h3 className="text-sm font-bold">
+                      <span style={{ color: `hsl(${branding.primary_color})` }}>
+                        {organization.name.split(' ').slice(0, 2).join(' ')}
+                      </span>
+                      {' '}
+                      <span style={{ color: 'hsl(var(--foreground))' }}>
+                        {organization.name.split(' ').slice(2).join(' ') || 'Learning'}
+                      </span>
+                    </h3>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Plataforma de estudos sagrados para aprofundamento nos conhecimentos tradicionais.
+                  </p>
+                </div>
+
+                {/* Contato */}
+                <div>
+                  <h4 className="font-semibold text-sm mb-2" style={{ color: 'hsl(var(--foreground))' }}>
+                    Contato
+                  </h4>
+                  <ul className="space-y-1.5 text-xs text-muted-foreground">
+                    <li className="flex items-center gap-2">
+                      <Mail className="w-3 h-3" />
+                      <span>contato@{organization.slug}.com</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Phone className="w-3 h-3" />
+                      <span>(11) 99999-9999</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <MapPin className="w-3 h-3" />
+                      <span>São Paulo, Brasil</span>
+                    </li>
+                  </ul>
+                </div>
+
+                {/* Legal */}
+                <div>
+                  <h4 className="font-semibold text-sm mb-2" style={{ color: 'hsl(var(--foreground))' }}>
+                    Legal
+                  </h4>
+                  <ul className="space-y-1.5 text-xs text-muted-foreground">
+                    <li>Termos de Uso</li>
+                    <li>Política de Privacidade</li>
+                    <li>LGPD</li>
+                  </ul>
+                </div>
+              </div>
+
+              {/* Copyright */}
+              <div className="border-t border-border mt-4 pt-4 text-center text-xs text-muted-foreground">
+                <p>© {new Date().getFullYear()} {organization.name}. Todos os direitos reservados.</p>
               </div>
             </div>
           </CardContent>
