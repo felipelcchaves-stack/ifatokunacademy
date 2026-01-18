@@ -381,6 +381,9 @@ const AdminLessons: React.FC = () => {
 
   interface TextWithPhase { text: string; phase: 1 | 2; }
 
+  // Threshold for auto-enabling chunk mode in TapComplete
+  const CHUNK_MODE_THRESHOLD = 12;
+
   const generateTapCompleteForLesson = async (lessonId: string, textsWithPhase: TextWithPhase[]) => {
     try {
       // Get max display_order for this lesson
@@ -395,20 +398,33 @@ const AdminLessons: React.FC = () => {
       let createdCount = 0;
 
       for (const { text, phase } of textsWithPhase) {
-        if (!text || text.split(/\s+/).filter(Boolean).length < 3) continue;
+        const words = text.split(/\s+/).filter(Boolean);
+        if (!text || words.length < 3) continue;
 
         maxOrder++;
         const phaseLabel = phase === 1 ? 'Fase 1' : 'Fase 2';
+        
+        // Determine preferred mode based on text length
+        const preferChunkMode = words.length > CHUNK_MODE_THRESHOLD;
+        const modeLabel = preferChunkMode ? '(frases)' : '(palavras)';
 
         const { error: insertError } = await supabase
           .from('exercises')
           .insert({
             lesson_id: lessonId,
             type: 'tap-complete',
-            title: `${phaseLabel} - Ordenar: ${text.substring(0, 40)}${text.length > 40 ? '...' : ''}`,
-            content: { text, audioUrl: '' },
+            title: `${phaseLabel} - Ordenar ${modeLabel}: ${text.substring(0, 35)}${text.length > 35 ? '...' : ''}`,
+            content: { 
+              text, 
+              audioUrl: '',
+              // Metadata for frontend to use preferred mode
+              preferChunkMode,
+              chunkSize: preferChunkMode ? 4 : undefined,
+              wordCount: words.length
+            },
             display_order: maxOrder,
             is_published: true,
+            phase: phase === 1 ? 'phase1' : 'phase2',
           });
 
         if (!insertError) createdCount++;

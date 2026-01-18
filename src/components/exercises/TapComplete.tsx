@@ -18,6 +18,9 @@ interface TapCompleteProps {
   onComplete: (correct: boolean) => void;
   onPlayAudio?: () => void;
   audioLoading?: boolean;
+  // Optional metadata from exercise content
+  preferChunkMode?: boolean;
+  chunkSize?: number;
 }
 
 interface WordItem {
@@ -41,7 +44,9 @@ const TapComplete: React.FC<TapCompleteProps> = ({
   text,
   onComplete,
   onPlayAudio,
-  audioLoading
+  audioLoading,
+  preferChunkMode,
+  chunkSize = 4
 }) => {
   const { toast } = useToast();
   const [selectedItems, setSelectedItems] = useState<WordItem[]>([]);
@@ -54,12 +59,14 @@ const TapComplete: React.FC<TapCompleteProps> = ({
     return text.split(/\s+/).filter(w => w.length > 0).length;
   }, [text]);
 
-  // Auto-enable chunk mode for long texts
+  // Auto-enable chunk mode for long texts or when preferChunkMode is set
   useEffect(() => {
-    if (wordCount > CHUNK_THRESHOLD) {
+    if (preferChunkMode !== undefined) {
+      setUseChunkMode(preferChunkMode);
+    } else if (wordCount > CHUNK_THRESHOLD) {
       setUseChunkMode(true);
     }
-  }, [wordCount]);
+  }, [wordCount, preferChunkMode]);
 
   // Create items based on mode (words or chunks)
   const { items, shuffledItems } = useMemo(() => {
@@ -67,7 +74,7 @@ const TapComplete: React.FC<TapCompleteProps> = ({
     
     if (useChunkMode) {
       // Use chunks (small phrases) for easier ordering
-      const chunks = splitIntoChunks(text, 4); // ~4 words per chunk
+      const chunks = splitIntoChunks(text, chunkSize); // Use provided chunkSize or default
       itemList = chunks.map((chunk, i) => ({
         content: chunk.text,
         originalIndex: i
@@ -85,7 +92,7 @@ const TapComplete: React.FC<TapCompleteProps> = ({
       items: itemList,
       shuffledItems: shuffleArray([...itemList])
     };
-  }, [text, useChunkMode]);
+  }, [text, useChunkMode, chunkSize]);
 
   // Track which items are still available
   const [availableItems, setAvailableItems] = useState<WordItem[]>([]);
