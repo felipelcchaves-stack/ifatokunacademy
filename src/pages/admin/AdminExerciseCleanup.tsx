@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, 
@@ -8,7 +8,9 @@ import {
   AlertTriangle,
   Search,
   Eye,
-  RotateCcw
+  RotateCcw,
+  FolderOpen,
+  ChevronDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,12 +33,20 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
 interface LessonWithExercises {
   lessonId: string;
   lessonTitle: string;
+  moduleId: string;
   moduleTitle: string;
   totalExercises: number;
   exercises: {
@@ -47,6 +57,13 @@ interface LessonWithExercises {
   }[];
   toDelete: string[]; // IDs to delete
   toKeep: string[]; // IDs to keep
+}
+
+interface ModuleGroup {
+  moduleId: string;
+  moduleTitle: string;
+  lessons: LessonWithExercises[];
+  totalToDelete: number;
 }
 
 // Optimal structure per lesson (7 exercises)
@@ -72,6 +89,7 @@ const AdminExerciseCleanup: React.FC = () => {
   const [progress, setProgress] = useState(0);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedModuleFilter, setSelectedModuleFilter] = useState<string>('all');
   const [stats, setStats] = useState({ 
     totalLessons: 0, 
     lessonsWithExcess: 0, 
@@ -82,6 +100,36 @@ const AdminExerciseCleanup: React.FC = () => {
   useEffect(() => {
     fetchLessonsWithExcess();
   }, []);
+
+  // Group lessons by module
+  const groupedByModule = useMemo((): ModuleGroup[] => {
+    const groups: Record<string, ModuleGroup> = {};
+    
+    lessons.forEach(lesson => {
+      const key = lesson.moduleId;
+      if (!groups[key]) {
+        groups[key] = {
+          moduleId: lesson.moduleId,
+          moduleTitle: lesson.moduleTitle,
+          lessons: [],
+          totalToDelete: 0,
+        };
+      }
+      groups[key].lessons.push(lesson);
+      groups[key].totalToDelete += lesson.toDelete.length;
+    });
+    
+    return Object.values(groups).sort((a, b) => b.totalToDelete - a.totalToDelete);
+  }, [lessons]);
+
+  // Get unique modules for filter dropdown
+  const moduleOptions = useMemo(() => {
+    return groupedByModule.map(g => ({
+      id: g.moduleId,
+      title: g.moduleTitle,
+      count: g.lessons.length,
+    }));
+  }, [groupedByModule]);
 
   const calculateOptimalDeletions = (exercises: LessonWithExercises['exercises']): { toDelete: string[], toKeep: string[] } => {
     const toKeep: string[] = [];
@@ -123,6 +171,7 @@ const AdminExerciseCleanup: React.FC = () => {
           id,
           title,
           modules!inner (
+            id,
             title
           ),
           exercises (
@@ -151,6 +200,7 @@ const AdminExerciseCleanup: React.FC = () => {
           processed.push({
             lessonId: lesson.id,
             lessonTitle: lesson.title,
+            moduleId: (lesson.modules as any)?.id || '',
             moduleTitle: (lesson.modules as any)?.title || 'Sem módulo',
             totalExercises: exerciseList.length,
             exercises: exerciseList,
@@ -201,12 +251,77 @@ const AdminExerciseCleanup: React.FC = () => {
     }
   };
 
-  const filteredLessons = searchQuery
-    ? lessons.filter(l => 
+  // Select/deselect all lessons in a module
+  const toggleModuleSelection = (moduleId: string) => {
+    const moduleLessons = lessons.filter(l => l.moduleId === moduleId);
+    const allSelected = moduleLessons.every(l => selectedLessons.has(l.lessonId));
+    
+    setSelectedLessons(prev => {
+      const newSet = new Set(prev);
+      moduleLessons.forEach(l => {
+        if (allSelected) {
+          newSet.delete(l.lessonId);
+        } else {
+          newSet.add(l.lessonId);
+        }
+      });
+      return newSet;
+    });
+  };
+
+  // Check if all lessons in module are selected
+  const isModuleFullySelected = (moduleId: string) => {
+    const moduleLessons = lessons.filter(l => l.moduleId === moduleId);
+    return moduleLessons.length > 0 && moduleLessons.every(l => selectedLessons.has(l.lessonId));
+  };
+
+  // Check if some (but not all) lessons in module are selected
+  const isModulePartiallySelected = (moduleId: string) => {
+    const moduleLessons = lessons.filter(l => l.moduleId === moduleId);
+    const selectedCount = moduleLessons.filter(l => selectedLessons.has(l.lessonId)).length;
+    return selectedCount > 0 && selectedCount < moduleLessons.length;
+  };
+
+  // Apply both filters: module and search
+  const filteredLessons = useMemo(() => {
+    let result = lessons;
+    
+    // Filter by module
+    if (selectedModuleFilter !== 'all') {
+      result = result.filter(l => l.moduleId === selectedModuleFilter);
+    }
+    
+    // Filter by search
+    if (searchQuery) {
+      result = result.filter(l => 
         l.lessonTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
         l.moduleTitle.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : lessons;
+      );
+    }
+    
+    return result;
+  }, [lessons, selectedModuleFilter, searchQuery]);
+
+  // Group filtered lessons by module for display
+  const filteredGroupedByModule = useMemo((): ModuleGroup[] => {
+    const groups: Record<string, ModuleGroup> = {};
+    
+    filteredLessons.forEach(lesson => {
+      const key = lesson.moduleId;
+      if (!groups[key]) {
+        groups[key] = {
+          moduleId: lesson.moduleId,
+          moduleTitle: lesson.moduleTitle,
+          lessons: [],
+          totalToDelete: 0,
+        };
+      }
+      groups[key].lessons.push(lesson);
+      groups[key].totalToDelete += lesson.toDelete.length;
+    });
+    
+    return Object.values(groups).sort((a, b) => b.totalToDelete - a.totalToDelete);
+  }, [filteredLessons]);
 
   const handleCleanup = async () => {
     const selectedList = lessons.filter(l => selectedLessons.has(l.lessonId));
@@ -362,7 +477,8 @@ const AdminExerciseCleanup: React.FC = () => {
       {/* Lessons list */}
       {lessons.length > 0 && (
         <div className="bg-card border border-border rounded-xl p-4">
-          <div className="flex items-center justify-between mb-4">
+          {/* Filters and actions bar */}
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
             <div className="flex items-center gap-3">
               <Checkbox 
                 checked={selectedLessons.size === filteredLessons.length && filteredLessons.length > 0}
@@ -372,16 +488,35 @@ const AdminExerciseCleanup: React.FC = () => {
                 {selectedLessons.size} de {filteredLessons.length} selecionadas
               </span>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Module filter dropdown */}
+              <Select value={selectedModuleFilter} onValueChange={setSelectedModuleFilter}>
+                <SelectTrigger className="w-[220px]">
+                  <FolderOpen className="w-4 h-4 mr-2 text-muted-foreground" />
+                  <SelectValue placeholder="Filtrar por módulo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os módulos ({lessons.length})</SelectItem>
+                  {moduleOptions.map(m => (
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.title} ({m.count})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              
+              {/* Search */}
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   placeholder="Buscar lição..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 w-64"
+                  className="pl-9 w-56"
                 />
               </div>
+              
+              {/* Clean button */}
               <Button
                 onClick={() => setShowConfirmDialog(true)}
                 disabled={cleaning || selectedLessons.size === 0}
@@ -402,82 +537,116 @@ const AdminExerciseCleanup: React.FC = () => {
             </div>
           </div>
 
-          <Accordion type="multiple" className="space-y-2">
-            {filteredLessons.map(lesson => (
-              <AccordionItem 
-                key={lesson.lessonId} 
-                value={lesson.lessonId}
-                className="border border-border rounded-lg px-4"
-              >
-                <div className="flex items-center gap-3 py-3">
+          {/* Grouped lessons by module */}
+          <div className="space-y-4">
+            {filteredGroupedByModule.map(moduleGroup => (
+              <div key={moduleGroup.moduleId} className="border border-border rounded-lg overflow-hidden">
+                {/* Module header with selection */}
+                <div 
+                  className="flex items-center gap-3 p-3 bg-muted/50 cursor-pointer hover:bg-muted/70 transition-colors"
+                  onClick={() => toggleModuleSelection(moduleGroup.moduleId)}
+                >
                   <Checkbox 
-                    checked={selectedLessons.has(lesson.lessonId)}
-                    onCheckedChange={() => toggleLesson(lesson.lessonId)}
+                    checked={isModuleFullySelected(moduleGroup.moduleId)}
+                    // @ts-ignore - indeterminate is valid
+                    data-state={isModulePartiallySelected(moduleGroup.moduleId) ? 'indeterminate' : undefined}
+                    className={isModulePartiallySelected(moduleGroup.moduleId) ? 'data-[state=indeterminate]:bg-primary/50' : ''}
                     onClick={(e) => e.stopPropagation()}
+                    onCheckedChange={() => toggleModuleSelection(moduleGroup.moduleId)}
                   />
-                  <AccordionTrigger className="flex-1 hover:no-underline py-0">
-                    <div className="flex items-center gap-3 flex-1">
-                      <div className="text-left flex-1">
-                        <p className="font-medium text-foreground">{lesson.lessonTitle}</p>
-                        <p className="text-sm text-muted-foreground">{lesson.moduleTitle}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="destructive">
-                          {lesson.totalExercises} exercícios
-                        </Badge>
-                        <Badge variant="outline" className="text-red-600 border-red-300">
-                          -{lesson.toDelete.length}
-                        </Badge>
-                        <Badge variant="outline" className="text-green-600 border-green-300">
-                          ={lesson.toKeep.length} restantes
-                        </Badge>
-                      </div>
-                    </div>
-                  </AccordionTrigger>
-                </div>
-                <AccordionContent>
-                  <div className="pb-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      {/* To Keep */}
-                      <div>
-                        <h4 className="font-medium text-green-600 mb-2 flex items-center gap-2">
-                          <CheckCircle className="w-4 h-4" />
-                          Manter ({lesson.toKeep.length})
-                        </h4>
-                        <div className="space-y-1">
-                          {lesson.exercises
-                            .filter(e => lesson.toKeep.includes(e.id))
-                            .map(ex => (
-                              <div key={ex.id} className="text-sm p-2 bg-green-50 dark:bg-green-950/30 rounded flex items-center gap-2">
-                                <Badge variant="outline" className="text-xs">{ex.type}</Badge>
-                                <span className="truncate">{ex.title}</span>
-                              </div>
-                            ))}
-                        </div>
-                      </div>
-                      {/* To Delete */}
-                      <div>
-                        <h4 className="font-medium text-red-600 mb-2 flex items-center gap-2">
-                          <Trash2 className="w-4 h-4" />
-                          Remover ({lesson.toDelete.length})
-                        </h4>
-                        <div className="space-y-1 max-h-60 overflow-y-auto">
-                          {lesson.exercises
-                            .filter(e => lesson.toDelete.includes(e.id))
-                            .map(ex => (
-                              <div key={ex.id} className="text-sm p-2 bg-red-50 dark:bg-red-950/30 rounded flex items-center gap-2">
-                                <Badge variant="outline" className="text-xs">{ex.type}</Badge>
-                                <span className="truncate">{ex.title}</span>
-                              </div>
-                            ))}
-                        </div>
-                      </div>
+                  <FolderOpen className="w-4 h-4 text-primary" />
+                  <div className="flex-1 flex items-center justify-between">
+                    <span className="font-medium text-foreground">{moduleGroup.moduleTitle}</span>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary">
+                        {moduleGroup.lessons.length} lições
+                      </Badge>
+                      <Badge variant="outline" className="text-red-600 border-red-300">
+                        -{moduleGroup.totalToDelete} exercícios
+                      </Badge>
                     </div>
                   </div>
-                </AccordionContent>
-              </AccordionItem>
+                </div>
+                
+                {/* Lessons in this module */}
+                <Accordion type="multiple" className="border-t border-border">
+                  {moduleGroup.lessons.map(lesson => (
+                    <AccordionItem 
+                      key={lesson.lessonId} 
+                      value={lesson.lessonId}
+                      className="border-b border-border last:border-b-0"
+                    >
+                      <div className="flex items-center gap-3 py-3 px-4">
+                        <Checkbox 
+                          checked={selectedLessons.has(lesson.lessonId)}
+                          onCheckedChange={() => toggleLesson(lesson.lessonId)}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                        <AccordionTrigger className="flex-1 hover:no-underline py-0">
+                          <div className="flex items-center gap-3 flex-1">
+                            <div className="text-left flex-1">
+                              <p className="font-medium text-foreground">{lesson.lessonTitle}</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="destructive">
+                                {lesson.totalExercises} exercícios
+                              </Badge>
+                              <Badge variant="outline" className="text-red-600 border-red-300">
+                                -{lesson.toDelete.length}
+                              </Badge>
+                              <Badge variant="outline" className="text-green-600 border-green-300">
+                                ={lesson.toKeep.length} restantes
+                              </Badge>
+                            </div>
+                          </div>
+                        </AccordionTrigger>
+                      </div>
+                      <AccordionContent>
+                        <div className="pb-4 px-4">
+                          <div className="grid grid-cols-2 gap-4">
+                            {/* To Keep */}
+                            <div>
+                              <h4 className="font-medium text-green-600 mb-2 flex items-center gap-2">
+                                <CheckCircle className="w-4 h-4" />
+                                Manter ({lesson.toKeep.length})
+                              </h4>
+                              <div className="space-y-1">
+                                {lesson.exercises
+                                  .filter(e => lesson.toKeep.includes(e.id))
+                                  .map(ex => (
+                                    <div key={ex.id} className="text-sm p-2 bg-green-50 dark:bg-green-950/30 rounded flex items-center gap-2">
+                                      <Badge variant="outline" className="text-xs">{ex.type}</Badge>
+                                      <span className="truncate">{ex.title}</span>
+                                    </div>
+                                  ))}
+                              </div>
+                            </div>
+                            {/* To Delete */}
+                            <div>
+                              <h4 className="font-medium text-red-600 mb-2 flex items-center gap-2">
+                                <Trash2 className="w-4 h-4" />
+                                Remover ({lesson.toDelete.length})
+                              </h4>
+                              <div className="space-y-1 max-h-60 overflow-y-auto">
+                                {lesson.exercises
+                                  .filter(e => lesson.toDelete.includes(e.id))
+                                  .map(ex => (
+                                    <div key={ex.id} className="text-sm p-2 bg-red-50 dark:bg-red-950/30 rounded flex items-center gap-2">
+                                      <Badge variant="outline" className="text-xs">{ex.type}</Badge>
+                                      <span className="truncate">{ex.title}</span>
+                                    </div>
+                                  ))}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  ))}
+                </Accordion>
+              </div>
             ))}
-          </Accordion>
+          </div>
         </div>
       )}
 
