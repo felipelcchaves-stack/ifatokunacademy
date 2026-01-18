@@ -282,6 +282,83 @@ export type Database = {
         }
         Relationships: []
       }
+      interpretation_responses: {
+        Row: {
+          average_ranking: number | null
+          completed_at: string | null
+          counsels: Json
+          created_at: string | null
+          exercise_id: string
+          id: string
+          lesson_id: string | null
+          module_id: string | null
+          original_text: string
+          relevant_counsels: number
+          total_counsels: number
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          average_ranking?: number | null
+          completed_at?: string | null
+          counsels?: Json
+          created_at?: string | null
+          exercise_id: string
+          id?: string
+          lesson_id?: string | null
+          module_id?: string | null
+          original_text: string
+          relevant_counsels?: number
+          total_counsels?: number
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          average_ranking?: number | null
+          completed_at?: string | null
+          counsels?: Json
+          created_at?: string | null
+          exercise_id?: string
+          id?: string
+          lesson_id?: string | null
+          module_id?: string | null
+          original_text?: string
+          relevant_counsels?: number
+          total_counsels?: number
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interpretation_responses_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interpretation_responses_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interpretation_responses_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interpretation_responses_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lessons: {
         Row: {
           created_at: string

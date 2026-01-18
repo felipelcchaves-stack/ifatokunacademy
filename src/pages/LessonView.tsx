@@ -14,6 +14,7 @@ import MemorizationExercise from '@/components/exercises/MemorizationExercise';
 import QuizExercise from '@/components/exercises/QuizExercise';
 import TapComplete from '@/components/exercises/TapComplete';
 import FillBlanksExercise from '@/components/exercises/FillBlanksExercise';
+import InterpretationExercise from '@/components/exercises/InterpretationExercise';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -26,7 +27,7 @@ import { Badge } from '@/components/ui/badge';
 interface Exercise {
   id: string;
   lesson_id: string;
-  type: 'reading' | 'drag-drop' | 'fill-columns' | 'fill-blanks' | 'flashcard' | 'video' | 'memorization' | 'quiz' | 'tap-complete';
+  type: 'reading' | 'drag-drop' | 'fill-columns' | 'fill-blanks' | 'flashcard' | 'video' | 'memorization' | 'quiz' | 'tap-complete' | 'interpretation';
   title: string;
   content: Record<string, any>;
   display_order: number;
@@ -466,6 +467,19 @@ const LessonView: React.FC = () => {
           <FillBlanksExercise
             items={content.items || []}
             onComplete={handleExerciseComplete}
+          />
+        );
+      case 'interpretation':
+        return (
+          <InterpretationExercise
+            text={content.text || ''}
+            title={content.title || exercise.title}
+            minCounsels={content.minCounsels || 5}
+            exerciseId={exercise.id}
+            lessonId={lessonId}
+            moduleId={moduleId}
+            onComplete={handleExerciseComplete}
+            isOptional={content.isOptional !== false}
           />
         );
       default:
