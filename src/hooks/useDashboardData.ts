@@ -31,7 +31,7 @@ interface DashboardData {
   refetch: () => Promise<void>;
 }
 
-export const useDashboardData = (user: User | null): DashboardData => {
+export const useDashboardData = (user: User | null, organizationId?: string | null): DashboardData => {
   const [modules, setModules] = useState<Module[]>([]);
   const [completions, setCompletions] = useState<ModuleCompletion[]>([]);
   const [userProgress, setUserProgress] = useState<Record<string, number>>({});
@@ -43,12 +43,18 @@ export const useDashboardData = (user: User | null): DashboardData => {
       setLoading(true);
       setError(null);
 
-      // Query 1: Fetch all published modules with lesson count
-      const { data: modulesData, error: modulesError } = await supabase
+      // Query 1: Fetch published modules with lesson count, filtered by organization if specified
+      let modulesQuery = supabase
         .from('modules')
         .select(`*, lessons:lessons(count)`)
-        .eq('is_published', true)
-        .order('display_order', { ascending: true });
+        .eq('is_published', true);
+
+      // Filter by organization if organizationId is provided
+      if (organizationId) {
+        modulesQuery = modulesQuery.eq('organization_id', organizationId);
+      }
+
+      const { data: modulesData, error: modulesError } = await modulesQuery.order('display_order', { ascending: true });
 
       if (modulesError) throw modulesError;
 
@@ -157,7 +163,7 @@ export const useDashboardData = (user: User | null): DashboardData => {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, organizationId]);
 
   useEffect(() => {
     fetchData();

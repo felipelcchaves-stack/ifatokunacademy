@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookOpen as GuideIcon } from 'lucide-react';
+import { BookOpen as GuideIcon, Building2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { BookOpen, Clock, Award, TrendingUp, Loader2, Brain, Zap, Sparkles, FlaskConical, Mic } from 'lucide-react';
 import Header from '@/components/layout/Header';
@@ -30,12 +30,17 @@ import { useDashboardData } from '@/hooks/useDashboardData';
 import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { useModulePhaseProgress } from '@/hooks/useModulePhaseProgress';
 
-const Dashboard: React.FC = () => {
+interface DashboardProps {
+  organizationId?: string | null;
+  orgName?: string;
+}
+
+const Dashboard: React.FC<DashboardProps> = ({ organizationId, orgName }) => {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
   
-  // Use optimized hook for dashboard data
-  const { modules, completions, userProgress, loading } = useDashboardData(user);
+  // Use optimized hook for dashboard data, filtered by organization if provided
+  const { modules, completions, userProgress, loading } = useDashboardData(user, organizationId);
   
   const { dueCount } = useSpacedRepetition();
   const { streak, loading: streakLoading } = useStreak();
@@ -163,8 +168,14 @@ const Dashboard: React.FC = () => {
             <div className="absolute top-4 left-0 right-0 z-20">
               <div className="container mx-auto px-4">
                 <div className="flex items-center justify-between">
-                  {/* Left: Streak Risk Alert */}
-                  <div className="flex-1">
+                  {/* Left: Organization indicator or Streak Risk Alert */}
+                  <div className="flex-1 flex items-center gap-3">
+                    {orgName && (
+                      <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 border border-primary/20 rounded-full">
+                        <Building2 className="w-4 h-4 text-primary" />
+                        <span className="text-sm font-medium text-primary">{orgName}</span>
+                      </div>
+                    )}
                     <StreakRiskAlert />
                   </div>
                   
