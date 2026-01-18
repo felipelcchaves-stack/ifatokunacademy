@@ -82,21 +82,23 @@ const Login: React.FC = () => {
   // Effect to handle post-login navigation - runs when isAuthenticated becomes true
   useEffect(() => {
     console.log('[Login] Auth state changed:', { isAuthenticated, showMFA, loginInProgress: loginInProgress.current, hasCheckedMFA: hasCheckedMFA.current });
-    
+
     // If user is already authenticated when landing on login page (not from a login attempt), redirect immediately
     if (isAuthenticated && !loginInProgress.current && !showMFA) {
       console.log('[Login] Already authenticated, redirecting to:', safeFrom);
       navigate(safeFrom, { replace: true });
       return;
     }
-    
+
     // Handle post-login navigation
     if (isAuthenticated && loginInProgress.current && !hasCheckedMFA.current) {
       console.log('[Login] Login completed, checking MFA...');
       hasCheckedMFA.current = true;
+
+      const targetPath = safeFrom;
       // Small delay to ensure session is fully established
       setTimeout(() => {
-        checkMFAStatus();
+        checkMFAStatus(targetPath);
       }, 100);
     }
   }, [isAuthenticated, showMFA, safeFrom, navigate]);
@@ -121,32 +123,32 @@ const Login: React.FC = () => {
   }, []);
 
   
-  const checkMFAStatus = async () => {
-    console.log('[Login] checkMFAStatus called, target:', safeFrom);
+  const checkMFAStatus = async (targetPath: string) => {
+    console.log('[Login] checkMFAStatus called, target:', targetPath);
     try {
       const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
       console.log('[Login] MFA check result:', { data, error: error?.message });
-      
+
       if (error || !data) {
-        console.log('[Login] MFA check error or no data, proceeding to:', safeFrom);
+        console.log('[Login] MFA check error or no data, proceeding to:', targetPath);
         toast({
           title: 'Bem-vindo de volta!',
           description: 'Login realizado com sucesso.',
         });
-        navigate(safeFrom, { replace: true });
+        navigate(targetPath, { replace: true });
         return;
       }
-      
+
       if (data.currentLevel === 'aal1' && data.nextLevel === 'aal2') {
         console.log('[Login] MFA required, showing verification');
         setShowMFA(true);
       } else {
-        console.log('[Login] No MFA required, navigating to:', safeFrom);
+        console.log('[Login] No MFA required, navigating to:', targetPath);
         toast({
           title: 'Bem-vindo de volta!',
           description: 'Login realizado com sucesso.',
         });
-        navigate(safeFrom, { replace: true });
+        navigate(targetPath, { replace: true });
       }
     } catch (error) {
       console.error('[Login] Error checking MFA status:', error);
@@ -154,7 +156,7 @@ const Login: React.FC = () => {
         title: 'Bem-vindo de volta!',
         description: 'Login realizado com sucesso.',
       });
-      navigate(safeFrom, { replace: true });
+      navigate(targetPath, { replace: true });
     }
   };
 
