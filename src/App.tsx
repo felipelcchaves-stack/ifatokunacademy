@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { OrganizationProvider } from "@/contexts/OrganizationContext";
 import ContentProtection from "@/components/ContentProtection";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AdminLayout from "@/components/layout/AdminLayout";
@@ -33,6 +34,8 @@ import AdminSettings from "./pages/admin/AdminSettings";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminInvites from "./pages/admin/AdminInvites";
 import AdminReports from "./pages/admin/AdminReports";
+import AdminOrganizations from "./pages/admin/AdminOrganizations";
+import AdminOrganizationBranding from "./pages/admin/AdminOrganizationBranding";
 import UserSettings from "./pages/UserSettings";
 import ModuleRetentionReview from "./pages/ModuleRetentionReview";
 import MFAVerify from "./pages/MFAVerify";
@@ -49,9 +52,10 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <BrowserRouter>
       <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
+        <OrganizationProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
           <ContentProtection>
             <Routes>
               {/* Public Routes */}
@@ -156,6 +160,9 @@ const App = () => (
                 <Route path="generate-drag-drop" element={<AdminGenerateDragDrop />} />
                 <Route path="exercise-cleanup" element={<AdminExerciseCleanup />} />
                 
+                <Route path="organizations" element={<AdminOrganizations />} />
+                <Route path="organizations/:organizationId/branding" element={<AdminOrganizationBranding />} />
+                
                 <Route path="users" element={<AdminUsers />} />
                 <Route path="invites" element={<AdminInvites />} />
                 <Route path="payments" element={<AdminDashboard />} />
@@ -167,7 +174,8 @@ const App = () => (
               <Route path="*" element={<NotFound />} />
             </Routes>
           </ContentProtection>
-        </TooltipProvider>
+          </TooltipProvider>
+        </OrganizationProvider>
       </AuthProvider>
     </BrowserRouter>
   </QueryClientProvider>
