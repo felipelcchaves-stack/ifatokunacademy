@@ -50,6 +50,10 @@ import RecordingStudio from "./pages/RecordingStudio";
 import NotFound from "./pages/NotFound";
 import AuthDebug from "./pages/AuthDebug";
 
+// Organization-specific pages
+import OrgLogin from "./pages/OrgLogin";
+import OrgDashboard from "./pages/OrgDashboard";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -71,6 +75,42 @@ const App = () => (
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/mfa-verify" element={<MFAVerify />} />
               <Route path="/auth-debug" element={<AuthDebug />} />
+              
+              {/* Organization-specific Public Routes */}
+              <Route path="/org/:orgSlug/login" element={<OrgLogin />} />
+              <Route path="/org/:orgSlug" element={<Navigate to="login" replace />} />
+              
+              {/* Organization-specific Protected Routes */}
+              <Route path="/org/:orgSlug/dashboard" element={
+                <ProtectedRoute>
+                  <OrgDashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/org/:orgSlug/module/:moduleId" element={
+                <ProtectedRoute>
+                  <ModuleView />
+                </ProtectedRoute>
+              } />
+              <Route path="/org/:orgSlug/module/:moduleId/lesson/:lessonId" element={
+                <ProtectedRoute>
+                  <LessonView />
+                </ProtectedRoute>
+              } />
+              <Route path="/org/:orgSlug/module/:moduleId/quiz" element={
+                <ProtectedRoute>
+                  <ModuleQuiz />
+                </ProtectedRoute>
+              } />
+              <Route path="/org/:orgSlug/review" element={
+                <ProtectedRoute>
+                  <SpacedReview />
+                </ProtectedRoute>
+              } />
+              <Route path="/org/:orgSlug/settings" element={
+                <ProtectedRoute>
+                  <UserSettings />
+                </ProtectedRoute>
+              } />
               
               {/* Student Routes - Protected */}
               <Route path="/dashboard" element={
