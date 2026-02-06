@@ -75,8 +75,13 @@ const AdminLayout: React.FC = () => {
     { icon: BarChart3, label: 'Relatórios', path: '/admin/reports' },
   ];
 
-  // Usar menu apropriado baseado no tipo de admin
-  const sidebarItems = isAdmin ? globalAdminItems : orgAdminItems;
+  // Usar menu apropriado baseado no tipo de admin e org ativa
+  const isPrimaryOrg = !activeOrg || activeOrg.slug === 'ifatokun';
+  const sidebarItems = isAdmin && isPrimaryOrg 
+    ? globalAdminItems 
+    : isAdmin 
+      ? [...orgAdminItems, { icon: Settings, label: 'Configurações', path: '/admin/settings' }]
+      : orgAdminItems;
 
   const handleLogout = async () => {
     await signOut();
