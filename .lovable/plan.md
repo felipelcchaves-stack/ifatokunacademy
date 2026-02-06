@@ -1,116 +1,86 @@
 
-## Correcao: Admin nao carrega o slug correto + validacao de acesso
+
+## Correcao: Menu admin nao carrega a org correta (Ijo Ifa Dola)
 
 ### Problema raiz
 
-Existem **dois problemas separados** que se combinam para quebrar o isolamento no admin:
+Dois bugs combinados:
 
-**Problema 1: OrganizationContext ignora o switcher do admin**
+1. **Link "Painel Admin" no Header ignora a org atual**: Nas linhas 206 e 299 do `Header.tsx`, o link sempre navega para `/admin` fixo. Quando o usuario esta em `/org/ijoifadola/dashboard`, deveria navegar para `/org/ijoifadola/admin` para acionar a sincronizacao.
 
-O `OrganizationContext` detecta a organizacao via pathname (`/org/:slug`) ou hostname. Quando o admin esta em `/admin`, nao ha slug no path, entao ele sempre resolve para o tenant do hostname (que e sempre `ifatokun` no dominio principal). Mesmo que o admin troque de org no switcher (`useAdminOrganization`), o `OrganizationContext` continua mostrando "Ifatokun Academy".
+2. **AdminOrgRedirect tem race condition**: O componente faz uma query async ao banco para buscar o ID da org pelo slug, mas retorna `<Navigate to="/admin">` imediatamente, antes da query terminar. O `/admin` carrega com o ID antigo no localStorage.
 
-Isso significa que:
-- O branding no sidebar (nome da org, cores) nao muda
-- O `isOrgAdmin` nao reflete a org selecionada
-- Qualquer componente que use `useOrganization()` pega dados da org errada
+### Correcao
 
-**Problema 2: Nao existe rota /org/:slug/admin**
+#### 1. Header.tsx - Link "Painel Admin" deve usar o slug da org atual
 
-O `App.tsx` so define rotas admin em `/admin/*`. Acessar `/org/ijoifadola/admin` cai no catch-all `*` e mostra 404. Nao ha validacao de acesso por org na area admin alem do que `ProtectedRoute` faz (que so verifica `isAdmin || isOrgAdmin` globalmente).
+Nas linhas 206 e 299, trocar `navigate('/admin')` por `navigate(getOrgPath('/admin'))`. O hook `useOrgNavigate` ja detecta se o usuario esta em `/org/:slug` e prefixa automaticamente.
 
-### Solucao
+Isso fara com que:
+- Em `/org/ijoifadola/dashboard` -> navega para `/org/ijoifadola/admin`
+- Em `/dashboard` (sem org) -> navega para `/admin`
 
-A arquitetura atual do admin usa um **switcher centralizado** (`useAdminOrganization`) em vez de rotas por org. Isso e valido e ja funciona para filtrar dados. O problema e que o `OrganizationContext` nao sincroniza com o switcher.
+#### 2. AdminOrgRedirect - Esperar a sincronizacao antes de redirecionar
 
-#### Correcao 1: Sincronizar OrganizationContext com o switcher do admin
-
-**Arquivo: `src/contexts/OrganizationContext.tsx`**
-
-Adicionar uma funcao `setOrganizationById(orgId)` exposta no contexto que permite ao admin switcher forcar a mudanca de org no contexto global. Isso garante que branding, nome e `isOrgAdmin` reflitam a org ativa.
-
-Mudancas:
-- Expor `setOrganizationById` no contexto
-- Criar funcao que busca e seta a org pelo ID
-
-#### Correcao 2: AdminLayout sincroniza org ao trocar
-
-**Arquivo: `src/components/layout/AdminLayout.tsx`**
-
-Quando o `activeOrg` do `useAdminOrganization` muda, chamar `setOrganizationById(activeOrg.id)` para manter o `OrganizationContext` em sincronia.
-
-#### Correcao 3: Redirecionar /org/:slug/admin para /admin (com sincronizacao)
-
-**Arquivo: `src/App.tsx`**
-
-Em vez de registrar todas as rotas admin duplicadas sob `/org/:slug/admin/*`, adicionar uma unica rota catch-all que redireciona `/org/:slug/admin` para `/admin` e sincroniza o slug. Isso evita 404 e garante que o contexto correto seja carregado.
-
-Alternativa mais simples: adicionar uma rota `/org/:orgSlug/admin` que renderiza um componente de redirect que sincroniza a org e redireciona para `/admin`.
+Trocar o redirect imediato por um redirect condicional que so acontece apos a query ao banco terminar e o localStorage ser atualizado. Usar um state `ready` que comeca como `false` e vira `true` apos a query.
 
 ### Secao tecnica
 
-**Arquivo: `src/contexts/OrganizationContext.tsx`**
+**Arquivo: `src/components/layout/Header.tsx`**
 
+Linha 206:
 ```
-// Adicionar ao contexto:
-setOrganizationById: (orgId: string) => Promise<void>;
-
-// Implementacao:
-const setOrganizationById = async (orgId: string) => {
-  const { data } = await supabase
-    .from('organizations')
-    .select('*')
-    .eq('id', orgId)
-    .single();
-  if (data) {
-    // aplicar branding e setar state (mesma logica do fetchOrganization)
-    setOrganization({ ...data, branding: merged, settings: merged });
-  }
-};
+// Antes:
+navigate('/admin')
+// Depois:
+navigate(getOrgPath('/admin'))
 ```
 
-**Arquivo: `src/components/layout/AdminLayout.tsx`**
-
+Linha 299:
 ```
-// Importar refreshOrganization ou novo setOrganizationById
-const { setOrganizationById } = useOrganization();
-
-// Sincronizar quando activeOrg muda
-useEffect(() => {
-  if (activeOrg?.id) {
-    setOrganizationById(activeOrg.id);
-  }
-}, [activeOrg?.id]);
+// Antes:
+navigate('/admin')
+// Depois:
+navigate(getOrgPath('/admin'))
 ```
 
-**Arquivo: `src/App.tsx`**
+**Arquivo: `src/App.tsx`** (AdminOrgRedirect, linhas 64-84)
 
-```
-// Adicionar componente de redirect + sync
+```typescript
 const AdminOrgRedirect = () => {
-  const { orgSlug } = useParams();
-  // Busca org por slug, sincroniza useAdminOrganization, e redireciona para /admin
+  const { orgSlug } = useParams<{ orgSlug: string }>();
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    if (orgSlug) {
+      supabase
+        .from('organizations')
+        .select('id')
+        .eq('slug', orgSlug)
+        .single()
+        .then(({ data }) => {
+          if (data?.id) {
+            localStorage.setItem('admin_active_org', data.id);
+          }
+          setReady(true);
+        })
+        .catch(() => setReady(true));
+    } else {
+      setReady(true);
+    }
+  }, [orgSlug]);
+
+  if (!ready) return null; // ou um spinner
   return <Navigate to="/admin" replace />;
 };
-
-// Rota:
-<Route path="/org/:orgSlug/admin/*" element={
-  <ProtectedRoute requireAdmin allowOrgAdmin>
-    <AdminOrgRedirect />
-  </ProtectedRoute>
-} />
 ```
 
-**Arquivo: `src/hooks/useAdminOrganization.ts`**
-
-Adicionar funcao `switchOrganizationBySlug(slug)` que busca o ID pelo slug e chama `switchOrganization(id)` sem reload (o reload atual e agressivo demais e pode ser substituido por invalidacao de cache do React Query).
-
-### Validacao de acesso
-
-O `OrgDashboard` ja valida se o usuario tem acesso a organizacao (via membership, profile, ou org_admin). Para o admin, o `ProtectedRoute` verifica `isAdmin || isOrgAdmin`. Um org admin que nao pertence a uma org nao consegue ver dados dela porque as queries filtram por `activeOrg.id` (que so lista orgs onde ele e membro).
+Adicionar import de `useState` na linha 1 do App.tsx (ja tem `useEffect`, so adicionar `useState`).
 
 ### Resultado esperado
 
-1. Ao trocar de org no switcher do admin, o nome e branding mudam no sidebar e em toda a pagina
-2. Acessar `/org/ijoifadola/admin` redireciona para `/admin` com a org "Ijo Ifa Dola" selecionada automaticamente
-3. Todas as queries admin continuam filtradas por `activeOrg.id`
-4. Org admins so veem organizacoes das quais sao membros
+1. Usuario em `/org/ijoifadola/dashboard` clica em "Painel Admin" -> navega para `/org/ijoifadola/admin`
+2. `AdminOrgRedirect` busca o ID de "ijoifadola", salva no localStorage, e so entao redireciona para `/admin`
+3. `/admin` carrega com `useAdminOrganization` lendo o ID correto do localStorage
+4. `AdminLayout` sincroniza o `OrganizationContext` via `setOrganizationById`
+5. Sidebar mostra "Ijo Ifa Dola" com branding correto
