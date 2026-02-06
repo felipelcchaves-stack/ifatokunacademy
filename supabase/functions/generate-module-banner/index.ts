@@ -51,6 +51,29 @@ function getContextualElements(title: string, description: string): string {
   return "";
 }
 
+function buildCustomPrompt(bannerPrompt: string, title: string, description: string, isRetry: boolean = false): string {
+  // Replace placeholders in the org's custom prompt
+  let prompt = bannerPrompt
+    .replace(/\{title\}/g, title)
+    .replace(/\{description\}/g, description || "Educational module");
+
+  const contextualElements = getContextualElements(title, description);
+
+  prompt += `${contextualElements}
+
+TECHNICAL REQUIREMENTS (always apply):
+- Horizontal banner format (16:9 aspect ratio)
+- Ultra high resolution quality
+- NO TEXT, NO LETTERS, NO WORDS in the image
+- Subtle, artistic representation - not literal or cartoonish`;
+
+  if (isRetry) {
+    prompt += "\n\nIMPORTANT: Generate the actual visual image now. Do not describe it - CREATE the image directly.";
+  }
+
+  return prompt;
+}
+
 function buildPrompt(title: string, description: string, isRetry: boolean = false): string {
   const contextualElements = getContextualElements(title, description);
   
@@ -192,6 +215,25 @@ serve(async (req) => {
 
     console.log("generate-module-banner: Generating banner for module:", title);
 
+    // Fetch organization's custom banner prompt
+    let customBannerPrompt: string | null = null;
+    const { data: moduleOrgData } = await supabase
+      .from("modules")
+      .select("organization_id")
+      .eq("id", moduleId)
+      .single();
+
+    if (moduleOrgData?.organization_id) {
+      const { data: orgData } = await supabase
+        .from("organizations")
+        .select("branding")
+        .eq("id", moduleOrgData.organization_id)
+        .single();
+      
+      customBannerPrompt = (orgData?.branding as any)?.banner_prompt || null;
+      console.log("generate-module-banner: Custom prompt found:", !!customBannerPrompt);
+    }
+
     // Generate image with retry logic
     let imageData: string | null = null;
     let lastError: string | null = null;
@@ -200,7 +242,9 @@ serve(async (req) => {
       console.log(`generate-module-banner: Attempt ${attempt}/${MAX_RETRIES}`);
 
       const isRetry = attempt > 1;
-      const prompt = buildPrompt(title, description || "", isRetry);
+      const prompt = customBannerPrompt
+        ? buildCustomPrompt(customBannerPrompt, title, description || "", isRetry)
+        : buildPrompt(title, description || "", isRetry);
 
       try {
         console.log("generate-module-banner: Calling AI Gateway");
