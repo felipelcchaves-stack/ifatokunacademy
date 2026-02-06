@@ -1,0 +1,23 @@
+{
+  "name": "Offe Orunmila Learning",
+  "short_name": "Offe Learning",
+  "description": "Plataforma de estudos e conhecimentos do Oluwo Ifatokun",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a1a2e",
+  "theme_color": "#8B5CF6",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "/favicon.ico",
+      "sizes": "192x192",
+      "type": "image/x-icon",
+      "purpose": "any maskable"
+    }
+  ]
+}

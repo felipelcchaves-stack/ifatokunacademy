@@ -32,9 +32,11 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import ContentProtection from '@/components/ContentProtection';
+import OfflineIndicator from '@/components/OfflineIndicator';
 import StreakDisplay from '@/components/streak/StreakDisplay';
 import { useSpacedRepetition, SpacedRepetitionItem } from '@/hooks/useSpacedRepetition';
 import { useStreak } from '@/hooks/useStreak';
+import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { useAchievements } from '@/hooks/useAchievements';
 import { useAchievementTriggers } from '@/hooks/useAchievementTriggers';
 import { showAchievementUnlockToast } from '@/components/achievements/AchievementUnlockToast';
@@ -65,6 +67,7 @@ const SpacedReview: React.FC = () => {
   const { streak, recordDailyReview } = useStreak();
   const { checkAndUnlockAchievements } = useAchievements();
   const { onReviewComplete, onStudySessionStart } = useAchievementTriggers();
+  const { isOnline, isSyncing, pendingCount } = useOfflineSync();
   
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userInput, setUserInput] = useState('');
@@ -321,6 +324,8 @@ const SpacedReview: React.FC = () => {
         
         <main className="flex-1 container mx-auto px-4 py-8">
           <div className="max-w-4xl mx-auto">
+            {/* Offline Indicator */}
+            <OfflineIndicator isOnline={isOnline} isSyncing={isSyncing} pendingCount={pendingCount} />
             {/* Header */}
             <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
