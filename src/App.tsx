@@ -1,17 +1,18 @@
+import { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useParams, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { OrganizationProvider } from "@/contexts/OrganizationContext";
 import ContentProtection from "@/components/ContentProtection";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AdminLayout from "@/components/layout/AdminLayout";
 import { DomainRedirectProvider } from "@/hooks/useDomainRedirect";
+import { supabase } from "@/integrations/supabase/client";
 
 // Pages
-import { Navigate } from "react-router-dom";
 import DashboardRedirect from "./components/DashboardRedirect";
 import Login from "./pages/Login";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -55,6 +56,32 @@ import AuthDebug from "./pages/AuthDebug";
 // Organization-specific pages
 import OrgLogin from "./pages/OrgLogin";
 import OrgDashboard from "./pages/OrgDashboard";
+
+/**
+ * Componente que redireciona /org/:slug/admin para /admin
+ * sincronizando a org ativa via localStorage para o useAdminOrganization
+ */
+const AdminOrgRedirect = () => {
+  const { orgSlug } = useParams<{ orgSlug: string }>();
+
+  useEffect(() => {
+    if (orgSlug) {
+      // Buscar org por slug e salvar no localStorage para o switcher captar
+      supabase
+        .from('organizations')
+        .select('id')
+        .eq('slug', orgSlug)
+        .single()
+        .then(({ data }) => {
+          if (data?.id) {
+            localStorage.setItem('admin_active_org', data.id);
+          }
+        });
+    }
+  }, [orgSlug]);
+
+  return <Navigate to="/admin" replace />;
+};
 
 const queryClient = new QueryClient();
 
@@ -257,6 +284,13 @@ const App = () => (
                 <Route path="settings" element={<AdminSettings />} />
               </Route>
               
+              {/* Redirect /org/:slug/admin to /admin with org sync */}
+              <Route path="/org/:orgSlug/admin/*" element={
+                <ProtectedRoute requireAdmin allowOrgAdmin>
+                  <AdminOrgRedirect />
+                </ProtectedRoute>
+              } />
+
               {/* Catch-all */}
               <Route path="*" element={<NotFound />} />
             </Routes>
