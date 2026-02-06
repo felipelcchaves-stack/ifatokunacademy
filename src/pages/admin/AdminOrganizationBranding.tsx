@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Palette, Save, Loader2, Eye, Upload, X, Image, Mail, Lock, Monitor, Smartphone, LayoutDashboard, Brain, Trophy, Mic, BarChart3, ChevronDown, Phone, MapPin } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { ArrowLeft, Palette, Save, Loader2, Eye, Upload, X, Image, Mail, Lock, Monitor, Smartphone, LayoutDashboard, Brain, Trophy, Mic, BarChart3, ChevronDown, Phone, MapPin, Wand2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Organization, OrganizationBranding, OrganizationSettings } from '@/contexts/OrganizationContext';
@@ -473,6 +474,33 @@ const AdminOrganizationBranding: React.FC = () => {
               folder="background"
               aspectRatio="wide"
             />
+          </CardContent>
+        </Card>
+
+        {/* Prompt de Geração de Banner IA */}
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Wand2 className="w-5 h-5" />
+              Prompt de Geração de Banner IA
+            </CardTitle>
+            <CardDescription>
+              Este texto será usado como instrução para a IA gerar banners dos módulos desta organização.
+              Use placeholders <code>{'{title}'}</code> e <code>{'{description}'}</code> para incluir dados do módulo.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Textarea
+              value={branding.banner_prompt || ''}
+              onChange={(e) => setBranding({ ...branding, banner_prompt: e.target.value })}
+              placeholder="Descreva o estilo visual, elementos culturais, cores e atmosfera desejada para os banners..."
+              rows={8}
+              className="font-mono text-sm"
+            />
+            <p className="text-xs text-muted-foreground">
+              Dica: Descreva o estilo visual, elementos culturais, paleta de cores e atmosfera desejada. 
+              A IA adicionará automaticamente instruções técnicas (formato 16:9, sem texto, alta resolução).
+            </p>
           </CardContent>
         </Card>
 

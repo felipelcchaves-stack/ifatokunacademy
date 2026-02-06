@@ -10,6 +10,7 @@ export interface OrganizationBranding {
   accent_color: string;
   font_family: string;
   login_background_url: string | null;
+  banner_prompt?: string | null;
 }
 
 export interface OrganizationSettings {
