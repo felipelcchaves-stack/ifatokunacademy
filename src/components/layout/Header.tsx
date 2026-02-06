@@ -203,7 +203,7 @@ const Header = forwardRef<HTMLElement>((_, ref) => {
                   {isAdmin && (
                     <>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => navigate('/admin')} className="py-2.5">
+                      <DropdownMenuItem onClick={() => navigate(getOrgPath('/admin'))} className="py-2.5">
                         <Shield className="w-4 h-4 mr-2" />
                         Painel Admin
                       </DropdownMenuItem>
@@ -296,7 +296,7 @@ const Header = forwardRef<HTMLElement>((_, ref) => {
                       <Button 
                         variant="ghost" 
                         className="w-full justify-start"
-                        onClick={() => { navigate('/admin'); setMobileMenuOpen(false); }}
+                        onClick={() => { navigate(getOrgPath('/admin')); setMobileMenuOpen(false); }}
                       >
                         <Shield className="w-4 h-4 mr-2" />
                         Painel Admin
