@@ -132,28 +132,31 @@ serve(async (req) => {
 
     const token = authHeader.replace("Bearer ", "");
     
-    // Validate user with anon client
+    // Validate user with getClaims (works with signing-keys)
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const supabaseAnon = createClient(supabaseUrl, supabaseAnonKey);
+    const supabaseAnon = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
     
-    const { data: { user }, error: userError } = await supabaseAnon.auth.getUser(token);
+    const { data: claimsData, error: claimsError } = await supabaseAnon.auth.getClaims(token);
     
-    if (userError || !user) {
-      console.log("generate-module-banner: User validation failed:", userError?.message);
+    if (claimsError || !claimsData?.claims) {
+      console.log("generate-module-banner: User validation failed:", claimsError?.message);
       return new Response(
         JSON.stringify({ error: "Sessão expirada. Faça login novamente." }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
     
-    console.log("generate-module-banner: User validated:", user.id);
+    const userId = claimsData.claims.sub as string;
+    console.log("generate-module-banner: User validated:", userId);
 
     // Check if user is admin using service role client
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    const { data: isAdmin, error: adminError } = await supabase.rpc("is_admin", { user_id: user.id });
+    const { data: isAdmin, error: adminError } = await supabase.rpc("is_admin", { user_id: userId });
     
     if (adminError) {
       console.log("generate-module-banner: Admin check failed:", adminError.message);
