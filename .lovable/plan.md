@@ -1,105 +1,53 @@
 
+## Correcao: Navegacao do Dashboard quebra isolamento de organizacao
 
-## Correcao: Isolamento de Organizacao no Admin
+### Problema
 
-### Problema identificado
+O `Dashboard.tsx` tem **5 chamadas `navigate()` com paths fixos** que ignoram o prefixo `/org/:slug`. Quando o usuario esta em `/org/ifatokun/dashboard` e clica em qualquer botao (Revisao, Desafio, Memorizacao, Gravacao), ele e levado para rotas sem prefixo de org (ex: `/review` em vez de `/org/ifatokun/review`), perdendo o contexto da organizacao.
 
-Analisando os dados do banco:
+Linhas afetadas:
+- Linha 241: `navigate('/review')`
+- Linha 269: `navigate('/challenge')`
+- Linha 300: `navigate('/memorization-guide')`
+- Linha 308: `navigate('/test-memorization')`
+- Linha 337: `navigate('/recording-studio')`
 
-| Organizacao | Slug | Modulos |
-|-------------|------|---------|
-| Ifatokun Academy | ifatokun | 52 |
-| Ijo Ifatokun | ijoifatokun | 0 |
-| Ijo Ifadola | ijoifadola | 0 |
+Nota sobre o admin: As paginas admin (AdminModules, AdminLessons, AdminInvites, etc.) ja filtram corretamente por `activeOrg.id` usando o hook `useAdminOrganization`. O switcher de organizacoes tambem ja funciona corretamente apos a correcao anterior. O problema e exclusivamente na area do aluno (Dashboard).
 
-**Memberships do admin:**
-- O usuario admin (`ifatokun@ileaseifatokun.com.br`) so e membro de **Ifatokun Academy**
-- Nao e membro de Ijo Ifatokun nem Ijo Ifadola
+### Correcao
 
-Isso causa dois problemas:
-1. No admin, o seletor de organizacao so mostra "Ifatokun Academy" (a unica org do usuario)
-2. As outras organizacoes nao aparecem no switcher, entao o admin sempre ve os 52 modulos de Ifatokun Academy
-3. As outras orgs tem 0 modulos, entao mesmo que funcionasse o filtro, nao haveria conteudo
+**Arquivo: `src/pages/Dashboard.tsx`**
 
-### Correcao em 3 partes
+1. Importar `useOrgNavigate` (hook ja existente)
+2. Substituir as 5 chamadas `navigate()` hardcoded por `navigate(getOrgPath('/path'))`
 
-#### Parte 1 — Admins globais devem ver TODAS as organizacoes no switcher
+Mudancas concretas:
 
-O `useAdminOrganization` atualmente busca organizacoes apenas pela tabela `organization_members`. Para admins globais (que estao na tabela `admin_emails`), devemos buscar **todas** as organizacoes ativas, nao apenas aquelas onde sao membros.
-
-**Arquivo:** `src/hooks/useAdminOrganization.ts`
-
-Mudanca: Se o usuario for admin global (`isAdmin` do AuthContext), buscar diretamente da tabela `organizations` em vez de filtrar por `organization_members`.
-
-```text
-Se isAdmin:
-  -> buscar TODAS de organizations WHERE is_active = true
-Senao:
-  -> buscar via organization_members (comportamento atual)
-```
-
-#### Parte 2 — Adicionar admin como membro das outras organizacoes
-
-Criar uma migracao SQL para inserir o usuario admin como membro (role: admin) das organizacoes Ijo Ifatokun e Ijo Ifadola, e tambem na tabela `organization_admins`.
-
-Isso garante que as politicas de RLS permitam o admin gerenciar modulos dessas orgs.
-
-**Tipo:** Migracao SQL
-
-#### Parte 3 — Garantir que o admin global possa criar/editar modulos em qualquer org
-
-Verificar que as politicas RLS de `modules` e `lessons` permitem que admins globais operem em qualquer organizacao. Pela analise atual, ja existem politicas "Global admins can manage all modules" usando `is_admin(auth.uid())`, entao isso ja deve funcionar.
-
-O problema real e que o `useAdminOrganization` nao lista todas as orgs para o admin global selecionar.
-
----
+| Linha | Antes | Depois |
+|-------|-------|--------|
+| 241 | `navigate('/review')` | `navigate(getOrgPath('/review'))` |
+| 269 | `navigate('/challenge')` | `navigate(getOrgPath('/challenge'))` |
+| 300 | `navigate('/memorization-guide')` | `navigate(getOrgPath('/memorization-guide'))` |
+| 308 | `navigate('/test-memorization')` | `navigate(getOrgPath('/test-memorization'))` |
+| 337 | `navigate('/recording-studio')` | `navigate(getOrgPath('/recording-studio'))` |
 
 ### Secao tecnica
 
-**Arquivo: `src/hooks/useAdminOrganization.ts`**
+Apenas 1 arquivo modificado: `src/pages/Dashboard.tsx`
 
-Modificar `fetchOrganizations` para verificar `isAdmin` (do `useAuth()`):
-- Se admin global: `supabase.from('organizations').select('*').eq('is_active', true)`
-- Se org admin: manter query atual via `organization_members`
+- Adicionar import: `import { useOrgNavigate } from '@/hooks/useOrgNavigate';`
+- Adicionar no corpo do componente: `const { getOrgPath } = useOrgNavigate();`
+- Substituir 5 chamadas `navigate()` para usar `getOrgPath()`
 
-Adicionar `isAdmin` como dependencia do `useCallback`.
-
-**Migracao SQL:**
-
-```sql
--- Adicionar admin como membro e admin das outras orgs
-INSERT INTO organization_members (user_id, organization_id, role, is_primary)
-SELECT 
-  'c50ed8ee-60ab-46f0-9689-4f002fa7175b',
-  o.id,
-  'admin',
-  false
-FROM organizations o
-WHERE o.slug IN ('ijoifatokun', 'ijoifadola')
-AND NOT EXISTS (
-  SELECT 1 FROM organization_members om 
-  WHERE om.user_id = 'c50ed8ee-60ab-46f0-9689-4f002fa7175b' 
-  AND om.organization_id = o.id
-);
-
-INSERT INTO organization_admins (user_id, organization_id, role)
-SELECT 
-  'c50ed8ee-60ab-46f0-9689-4f002fa7175b',
-  o.id,
-  'admin'
-FROM organizations o
-WHERE o.slug IN ('ijoifatokun', 'ijoifadola')
-AND NOT EXISTS (
-  SELECT 1 FROM organization_admins oa 
-  WHERE oa.user_id = 'c50ed8ee-60ab-46f0-9689-4f002fa7175b' 
-  AND oa.organization_id = o.id
-);
-```
+Nenhuma mudanca de banco de dados. Nenhuma nova rota necessaria (rotas `/org/:orgSlug/*` ja foram adicionadas no App.tsx anteriormente).
 
 ### Resultado esperado
 
-1. Admin global vera **todas** as organizacoes no switcher do painel admin
-2. Ao selecionar "Ijo Ifatokun", vera 0 modulos (porque essa org ainda nao tem modulos)
-3. Podera criar modulos novos para essa org
-4. O conteudo de "Ifatokun Academy" nunca aparecera quando outra org estiver selecionada
+Em `/org/ifatokun/dashboard`:
+- "Revisar Agora" leva para `/org/ifatokun/review`
+- "Iniciar Desafio" leva para `/org/ifatokun/challenge`
+- "Guia" leva para `/org/ifatokun/memorization-guide`
+- "Testar" leva para `/org/ifatokun/test-memorization`
+- "Abrir Estudio" leva para `/org/ifatokun/recording-studio`
 
+Em `/dashboard` (sem org): comportamento inalterado, links continuam como `/review`, `/challenge`, etc.
