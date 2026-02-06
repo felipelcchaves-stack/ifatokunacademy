@@ -75,11 +75,8 @@ const AdminDashboard: React.FC = () => {
     });
   };
 
-  useEffect(() => {
-    if (!isAdmin) {
-      navigate('/dashboard');
-    }
-  }, [isAdmin, navigate]);
+  // Redirect removido: ProtectedRoute já cuida da autorização.
+  // O useEffect anterior causava race condition pois isAdmin inicia como false.
 
   useEffect(() => {
     if (!orgLoading && activeOrg) {
