@@ -22,7 +22,7 @@ interface UseAdminOrganizationReturn {
 const ADMIN_ACTIVE_ORG_KEY = 'admin_active_org';
 
 export const useAdminOrganization = (): UseAdminOrganizationReturn => {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const location = useLocation();
   const [organizations, setOrganizations] = useState<AdminOrganization[]>([]);
   const [activeOrgId, setActiveOrgId] = useState<string | null>(() => {
@@ -43,34 +43,53 @@ export const useAdminOrganization = (): UseAdminOrganizationReturn => {
     try {
       setLoading(true);
 
-      // Buscar organizações do usuário via organization_members
-      const { data: membershipData, error: membershipError } = await supabase
-        .from('organization_members')
-        .select(`
-          organization_id,
-          is_primary,
-          role,
-          organizations:organization_id (
-            id,
-            name,
-            slug,
-            branding
-          )
-        `)
-        .eq('user_id', user.id)
-        .order('is_primary', { ascending: false });
+      let orgs: AdminOrganization[] = [];
 
-      if (membershipError) throw membershipError;
+      if (isAdmin) {
+        // Admin global: buscar TODAS as organizações ativas
+        const { data, error } = await supabase
+          .from('organizations')
+          .select('id, name, slug, branding')
+          .eq('is_active', true)
+          .order('name');
 
-      // Transformar dados
-      const orgs: AdminOrganization[] = (membershipData || [])
-        .filter(item => item.organizations)
-        .map(item => ({
-          id: (item.organizations as any).id,
-          name: (item.organizations as any).name,
-          slug: (item.organizations as any).slug,
-          branding: (item.organizations as any).branding,
+        if (error) throw error;
+
+        orgs = (data || []).map(org => ({
+          id: org.id,
+          name: org.name,
+          slug: org.slug,
+          branding: org.branding as Record<string, unknown> | null,
         }));
+      } else {
+        // Org admin: buscar apenas organizações onde é membro
+        const { data: membershipData, error: membershipError } = await supabase
+          .from('organization_members')
+          .select(`
+            organization_id,
+            is_primary,
+            role,
+            organizations:organization_id (
+              id,
+              name,
+              slug,
+              branding
+            )
+          `)
+          .eq('user_id', user.id)
+          .order('is_primary', { ascending: false });
+
+        if (membershipError) throw membershipError;
+
+        orgs = (membershipData || [])
+          .filter(item => item.organizations)
+          .map(item => ({
+            id: (item.organizations as any).id,
+            name: (item.organizations as any).name,
+            slug: (item.organizations as any).slug,
+            branding: (item.organizations as any).branding,
+          }));
+      }
 
       setOrganizations(orgs);
 
@@ -91,7 +110,7 @@ export const useAdminOrganization = (): UseAdminOrganizationReturn => {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, isAdmin]);
 
   // Sincronizar org do contexto tenant (quando vem de /org/:slug)
   const syncFromTenantContext = useCallback((orgId: string) => {
