@@ -1,52 +1,129 @@
 
 
-## Restringir menu "Organizacoes" para admins globais contextualizados
+## Adicionar campo "Prompt de Geração de Banner" por organização
 
-### Situacao atual
+### Motivacao
 
-O menu do admin e controlado pela variavel `isAdmin` (linha 79 do `AdminLayout.tsx`):
-- `isAdmin = true` (admin global) -> mostra TODOS os menus, incluindo "Organizacoes"
-- `isAdmin = false` (org admin) -> mostra menu reduzido sem "Organizacoes"
+Atualmente o prompt de geracao de banners esta hardcoded na edge function `generate-module-banner` com tematica fixa de Ifa/Isese/Yoruba. Todas as organizacoes geram banners com a mesma estetica. Cada org precisa poder personalizar seu prompt para refletir sua identidade.
 
-O usuario logado provavelmente e um **admin global** (listado em `admin_emails`), por isso ve o menu completo mesmo quando seleciona "Ijo Ifa Dola" no switcher.
+### Solucao
 
-### Problema
+1. Adicionar um campo `banner_prompt` dentro do JSON `branding` de cada organizacao
+2. Preencher automaticamente o campo com um prompt padrao (o atual para a org principal, e um generico para novas orgs)
+3. Permitir edicao do prompt na pagina de Branding da organizacao
+4. A edge function le o prompt da org do modulo e usa-o em vez do hardcoded
 
-Quando um admin global seleciona uma organizacao especifica no switcher, ele continua vendo menus que nao fazem sentido naquele contexto (como "Organizacoes", "Importar Odu", "Gerar TapComplete", "Gerar Drag & Drop"). Esses menus sao funcoes da **plataforma inteira**, nao de uma org especifica.
+### Etapas
 
-### Solucao proposta
+#### 1. Atualizar interface `OrganizationBranding`
 
-Adicionar logica no `AdminLayout.tsx` para distinguir entre:
-1. **Admin global gerenciando a plataforma** (org principal/ifatokun selecionada) -> menu completo
-2. **Admin global gerenciando uma org especifica** (outra org selecionada) -> menu contextualizado
+**Arquivo: `src/contexts/OrganizationContext.tsx`**
+
+Adicionar campo opcional ao tipo:
+```typescript
+export interface OrganizationBranding {
+  // ... campos existentes ...
+  banner_prompt?: string | null;
+}
+```
+
+#### 2. Adicionar campo de edicao na pagina de Branding
+
+**Arquivo: `src/pages/admin/AdminOrganizationBranding.tsx`**
+
+Adicionar um novo Card com um `Textarea` para editar o prompt. Incluir:
+- Label "Prompt de Geração de Banner IA"
+- Descricao explicando que este texto sera usado como instrucao para a IA gerar banners dos modulos
+- Textarea com o valor de `branding.banner_prompt`
+- Texto auxiliar com dicas (ex: "Descreva o estilo visual, elementos culturais, cores e atmosfera desejada")
+
+#### 3. Popular orgs existentes com prompts padrao
+
+**Migracao SQL:**
+- Atualizar a org principal (slug = 'ifatokun') com o prompt atual completo (tematica Ifa/Yoruba)
+- Atualizar outras orgs com um prompt generico neutro
+- Atualizar o default do campo `branding` na tabela para incluir `banner_prompt: null`
+
+#### 4. Modificar a edge function para usar o prompt da org
+
+**Arquivo: `supabase/functions/generate-module-banner/index.ts`**
+
+Alteracoes:
+- Apos validar o modulo, buscar o `organization_id` do modulo
+- Com o `organization_id`, buscar o campo `branding->banner_prompt` da organizacao
+- Se existir um prompt customizado, usar como base no lugar do prompt hardcoded
+- Manter o prompt atual como fallback caso `banner_prompt` seja null
+- Manter a logica de `getContextualElements()` para enriquecer o prompt com palavras-chave do titulo/descricao
+
+Fluxo:
+```text
+1. Recebe moduleId, title, description
+2. Busca module.organization_id
+3. Busca organization.branding.banner_prompt
+4. Se banner_prompt existe -> usa como base + contextualElements
+5. Se banner_prompt e null -> usa prompt hardcoded atual (fallback Ifa/Yoruba)
+6. Gera imagem com o prompt final
+```
 
 ### Secao tecnica
 
-**Arquivo: `src/components/layout/AdminLayout.tsx`**
-
-Alterar a logica da linha 79 para considerar tambem a org ativa:
-
-```text
-// Antes:
-const sidebarItems = isAdmin ? globalAdminItems : orgAdminItems;
-
-// Depois:
-const isPrimaryOrg = !activeOrg || activeOrg.slug === 'ifatokun';
-const sidebarItems = isAdmin && isPrimaryOrg 
-  ? globalAdminItems 
-  : isAdmin 
-    ? [...orgAdminItems, { icon: Settings, label: 'Configuracoes', path: '/admin/settings' }]
-    : orgAdminItems;
+**Tipo atualizado (`OrganizationContext.tsx`, linha 5-13):**
+```typescript
+export interface OrganizationBranding {
+  logo_url: string | null;
+  favicon_url: string | null;
+  primary_color: string;
+  secondary_color: string;
+  accent_color: string;
+  font_family: string;
+  login_background_url: string | null;
+  banner_prompt?: string | null;
+}
 ```
 
-Quando um admin global seleciona uma org que nao e a principal:
-- Esconde "Organizacoes", "Importar Odu", "Gerar TapComplete", "Gerar Drag & Drop", "Pagamentos"
-- Mantem "Modulos", "Licoes", "Usuarios", "Convites", "Relatorios", "Configuracoes"
-- Mantem a possibilidade de voltar a org principal no switcher para acessar o menu completo
+**Edge function - trecho principal da alteracao:**
+```typescript
+// Buscar org do modulo
+const { data: moduleData } = await supabase
+  .from('modules')
+  .select('organization_id')
+  .eq('id', moduleId)
+  .single();
 
-### Resultado esperado
+let customPrompt: string | null = null;
+if (moduleData?.organization_id) {
+  const { data: orgData } = await supabase
+    .from('organizations')
+    .select('branding')
+    .eq('id', moduleData.organization_id)
+    .single();
+  
+  customPrompt = (orgData?.branding as any)?.banner_prompt || null;
+}
 
-- Admin global com org "Ifatokun" selecionada: menu completo (com Organizacoes)
-- Admin global com org "Ijo Ifa Dola" selecionada: menu reduzido (sem Organizacoes)
-- Org admin de "Ijo Ifa Dola": menu reduzido (sem Organizacoes)
+// Usar customPrompt ou fallback
+const prompt = customPrompt 
+  ? buildCustomPrompt(customPrompt, title, description, isRetry)
+  : buildPrompt(title, description, isRetry);
+```
 
+**Nova funcao `buildCustomPrompt`:**
+Recebe o prompt base da org e adiciona instrucoes tecnicas fixas (formato 16:9, sem texto, alta resolucao) + elementos contextuais do titulo.
+
+**Prompt padrao para org principal (ifatokun):**
+O prompt Ifa/Yoruba atual completo sera salvo no campo `banner_prompt` da org.
+
+**Prompt padrao para novas orgs:**
+```
+Create a professional banner image for an educational module titled "{title}".
+Module description: {description}.
+Style: Clean, modern, professional educational platform aesthetic.
+Format: Horizontal banner (16:9), no text or letters in the image, high resolution.
+```
+
+### Arquivos modificados
+
+1. `src/contexts/OrganizationContext.tsx` - adicionar campo ao tipo
+2. `src/pages/admin/AdminOrganizationBranding.tsx` - adicionar textarea de edicao
+3. `supabase/functions/generate-module-banner/index.ts` - ler prompt da org
+4. Migracao SQL - popular orgs existentes com prompts padrao
