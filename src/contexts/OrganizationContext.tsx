@@ -38,6 +38,7 @@ interface OrganizationContextType {
   refreshOrganization: () => Promise<void>;
   updateBranding: (branding: Partial<OrganizationBranding>) => Promise<void>;
   updateSettings: (settings: Partial<OrganizationSettings>) => Promise<void>;
+  setOrganizationById: (orgId: string) => Promise<void>;
 }
 
 const defaultBranding: OrganizationBranding = {
@@ -283,6 +284,42 @@ export const OrganizationProvider: React.FC<{ children: ReactNode }> = ({ childr
     await fetchOrganization();
   };
 
+  const setOrganizationById = async (orgId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('organizations')
+        .select('*')
+        .eq('id', orgId)
+        .single();
+
+      if (error || !data) {
+        console.error('Error fetching organization by ID:', error);
+        return;
+      }
+
+      const rawBranding = data.branding as Record<string, unknown> | null;
+      const rawSettings = data.settings as Record<string, unknown> | null;
+      const branding: OrganizationBranding = {
+        ...defaultBranding,
+        ...(rawBranding || {}) as Partial<OrganizationBranding>,
+      };
+      const settings: OrganizationSettings = {
+        max_users: (rawSettings?.max_users as number) ?? 100,
+        max_modules: (rawSettings?.max_modules as number) ?? 50,
+        plan_type: (rawSettings?.plan_type as 'free' | 'pro' | 'enterprise') ?? 'free',
+        features: (rawSettings?.features as string[]) ?? [],
+      };
+
+      setOrganization({
+        ...data,
+        branding,
+        settings,
+      });
+    } catch (err) {
+      console.error('Error in setOrganizationById:', err);
+    }
+  };
+
   const updateBranding = async (newBranding: Partial<OrganizationBranding>) => {
     if (!organization) return;
     
@@ -328,6 +365,7 @@ export const OrganizationProvider: React.FC<{ children: ReactNode }> = ({ childr
         refreshOrganization,
         updateBranding,
         updateSettings,
+        setOrganizationById,
       }}
     >
       {children}

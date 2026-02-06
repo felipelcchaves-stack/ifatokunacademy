@@ -15,6 +15,7 @@ interface UseAdminOrganizationReturn {
   organizations: AdminOrganization[];
   loading: boolean;
   switchOrganization: (orgId: string) => void;
+  switchOrganizationBySlug: (slug: string) => Promise<void>;
   refetch: () => Promise<void>;
   syncFromTenantContext: (orgId: string) => void;
 }
@@ -147,8 +148,18 @@ export const useAdminOrganization = (): UseAdminOrganizationReturn => {
   const switchOrganization = useCallback((orgId: string) => {
     setActiveOrgId(orgId);
     localStorage.setItem(ADMIN_ACTIVE_ORG_KEY, orgId);
-    // Recarregar a página para garantir que todos os dados sejam atualizados
-    window.location.reload();
+  }, []);
+
+  const switchOrganizationBySlug = useCallback(async (slug: string) => {
+    const { data } = await supabase
+      .from('organizations')
+      .select('id')
+      .eq('slug', slug)
+      .single();
+    if (data?.id) {
+      setActiveOrgId(data.id);
+      localStorage.setItem(ADMIN_ACTIVE_ORG_KEY, data.id);
+    }
   }, []);
 
   const activeOrg = organizations.find(o => o.id === activeOrgId) || organizations[0] || null;
@@ -158,6 +169,7 @@ export const useAdminOrganization = (): UseAdminOrganizationReturn => {
     organizations,
     loading,
     switchOrganization,
+    switchOrganizationBySlug,
     refetch: fetchOrganizations,
     syncFromTenantContext,
   };

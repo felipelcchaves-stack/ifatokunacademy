@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -37,8 +37,15 @@ const AdminLayout: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, profile, signOut, isAdmin } = useAuth();
-  const { organization, isOrgAdmin } = useOrganization();
+  const { organization, isOrgAdmin, setOrganizationById } = useOrganization();
   const { activeOrg, organizations, loading: orgsLoading, switchOrganization } = useAdminOrganization();
+
+  // Sincronizar OrganizationContext com o switcher do admin
+  useEffect(() => {
+    if (activeOrg?.id && activeOrg.id !== organization?.id) {
+      setOrganizationById(activeOrg.id);
+    }
+  }, [activeOrg?.id]);
 
   const displayName = profile?.full_name || user?.email?.split('@')[0] || 'Admin';
 
