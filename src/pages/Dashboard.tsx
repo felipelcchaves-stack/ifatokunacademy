@@ -29,6 +29,7 @@ import { useSequentialProgress } from '@/hooks/useSequentialProgress';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { useModulePhaseProgress } from '@/hooks/useModulePhaseProgress';
+import { useOrgNavigate } from '@/hooks/useOrgNavigate';
 
 interface DashboardProps {
   organizationId?: string | null;
@@ -38,6 +39,7 @@ interface DashboardProps {
 const Dashboard: React.FC<DashboardProps> = ({ organizationId, orgName }) => {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
+  const { getOrgPath } = useOrgNavigate();
   
   // Use optimized hook for dashboard data, filtered by organization if provided
   const { modules, completions, userProgress, loading } = useDashboardData(user, organizationId);
@@ -238,7 +240,7 @@ const Dashboard: React.FC<DashboardProps> = ({ organizationId, orgName }) => {
                     </p>
                     <Button 
                       className="w-full gradient-forest text-primary-foreground font-bold shadow-forest hover:shadow-lg hover:scale-[1.02] transition-all duration-200"
-                      onClick={() => navigate('/review')}
+                      onClick={() => navigate(getOrgPath('/review'))}
                     >
                       <Brain className="w-4 h-4 mr-2" />
                       {dueCount > 0 ? 'Revisar Agora' : 'Ver Revisões'}
@@ -266,7 +268,7 @@ const Dashboard: React.FC<DashboardProps> = ({ organizationId, orgName }) => {
                     </p>
                     <Button 
                       className="w-full bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white font-bold shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all duration-200"
-                      onClick={() => navigate('/challenge')}
+                      onClick={() => navigate(getOrgPath('/challenge'))}
                     >
                       <Zap className="w-4 h-4 mr-2" />
                       Iniciar Desafio
@@ -297,7 +299,7 @@ const Dashboard: React.FC<DashboardProps> = ({ organizationId, orgName }) => {
                         variant="outline"
                         size="sm"
                         className="flex-1 border-cyan-300 text-cyan-700 hover:bg-cyan-50"
-                        onClick={() => navigate('/memorization-guide')}
+                        onClick={() => navigate(getOrgPath('/memorization-guide'))}
                       >
                         <GuideIcon className="w-4 h-4 mr-1" />
                         Guia
@@ -305,7 +307,7 @@ const Dashboard: React.FC<DashboardProps> = ({ organizationId, orgName }) => {
                       <Button 
                         size="sm"
                         className="flex-1 bg-gradient-to-r from-cyan-500 to-teal-600 hover:from-cyan-600 hover:to-teal-700 text-white font-bold"
-                        onClick={() => navigate('/test-memorization')}
+                        onClick={() => navigate(getOrgPath('/test-memorization'))}
                       >
                         <FlaskConical className="w-4 h-4 mr-1" />
                         Testar
@@ -334,7 +336,7 @@ const Dashboard: React.FC<DashboardProps> = ({ organizationId, orgName }) => {
                     </p>
                     <Button 
                       className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all duration-200"
-                      onClick={() => navigate('/recording-studio')}
+                      onClick={() => navigate(getOrgPath('/recording-studio'))}
                     >
                       <Mic className="w-4 h-4 mr-2" />
                       Abrir Estúdio
