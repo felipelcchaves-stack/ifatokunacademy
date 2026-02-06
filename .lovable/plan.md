@@ -1,150 +1,93 @@
 
 
-## Plano: Cache Offline PWA para Revisoes Espacadas
+## Diagnostico: Por que o isolamento de organizacao nao funciona
 
-### Resumo
+### Causa raiz
 
-Transformar a plataforma em um **Progressive Web App (PWA)** com cache offline focado nas revisoes espacadas. Isso traz dois beneficios imediatos:
+O banco de dados mostra que:
+- **Ifatokun Academy** (slug: `ifatokun`): 52 modulos
+- **Ijo Ifatokun** (slug: `ijoifatokun`): 0 modulos
+- **Ijo Ifadola** (slug: `ijoifadola`): 0 modulos
 
-1. **Velocidade**: Assets estaticos (JS, CSS, fontes, imagens) sao servidos do cache local, eliminando downloads repetidos. A plataforma carrega quase instantaneamente apos a primeira visita.
-2. **Offline**: O aluno pode fazer revisoes espacadas sem internet. Ao reconectar, os resultados sincronizam automaticamente.
+Entao quando voce acessa `/org/ijoifatokun/dashboard`, o filtro de organizacao funciona -- mas nao ha modulos para mostrar. Se voce ve 52 modulos, e porque esta caindo em uma rota sem filtro.
 
-### Compatibilidade
+### Os 3 problemas que causam o vazamento
 
-| Navegador | Service Worker | IndexedDB | PWA Install |
-|-----------|---------------|-----------|-------------|
-| Chrome (desktop/mobile) | Sim | Sim | Sim |
-| Firefox (desktop/mobile) | Sim | Sim | Sim |
-| Edge (desktop) | Sim | Sim | Sim |
-| Safari 11.1+ (Mac/iPhone/iPad) | Sim | Sim | Sim (Add to Home) |
-| Samsung Internet | Sim | Sim | Sim |
+**Problema 1: OrganizationContext ignora a URL `/org/:slug`**
 
-Funciona em **notebook, tablet e celular** sem distincao -- a plataforma ja e responsiva com Tailwind.
+O `OrganizationContext` detecta o tenant pelo hostname (subdominio). No ambiente de preview (`id-preview--*.lovable.app`), ele sempre retorna `ifatokun` como padrao (linha 79 do `OrganizationContext.tsx`). Mesmo acessando `/org/ijoifatokun/dashboard`, o contexto global da organizacao continua sendo `ifatokun`.
 
-### Arquivos a criar
+**Problema 2: Links do Header sao hardcoded sem `/org/:slug`**
 
-| Arquivo | Descricao |
-|---------|-----------|
-| `public/manifest.json` | Metadata PWA (nome, icones, cores, tema) |
-| `public/sw.js` | Service Worker com estrategias de cache |
-| `src/lib/offlineDb.ts` | Camada IndexedDB para armazenar itens e fila de reviews offline |
-| `src/hooks/useOfflineSync.ts` | Hook para detectar online/offline, sincronizar pendencias |
-| `src/components/OfflineIndicator.tsx` | Banner visual de status offline/sincronizando |
+O `Header.tsx` usa links fixos como `/dashboard`, `/review`, `/challenge` (linhas 27-33). Quando o aluno esta em `/org/ijoifatokun/dashboard` e clica em qualquer link de navegacao, ele e levado para rotas "soltas" (ex: `/review`) que nao tem filtro de organizacao.
 
-### Arquivos a modificar
+**Problema 3: ModuleCard e LessonCard navegam sem prefixo de org**
+
+O `ModuleCard` navega para `/module/${module.id}` (sem `/org/:slug/module/...`). Ao clicar em um modulo, o aluno sai do contexto da organizacao.
+
+---
+
+### Plano de correcao (4 etapas)
+
+#### Etapa 1 — OrganizationContext deve respeitar `/org/:slug` da URL
+
+Modificar `OrganizationContext.tsx` para, alem de detectar pelo hostname, verificar se a URL atual contem `/org/:slug` e usar esse slug como prioridade.
+
+Logica:
+```text
+1. Verificar URL: se pathname comeca com /org/:slug, usar esse slug
+2. Senao, verificar hostname (subdominio/dominio customizado)
+3. Senao, fallback para profile.organization_id ou 'ifatokun'
+```
+
+**Arquivo:** `src/contexts/OrganizationContext.tsx`
+
+#### Etapa 2 — Header deve usar links com prefixo de org quando em contexto `/org/:slug`
+
+Criar um hook utilitario ou usar `useOrgRoute` (que ja existe) para gerar paths corretos. Quando o aluno esta em `/org/ijoifatokun/dashboard`, os links do menu devem ser:
+- `/org/ijoifatokun/dashboard` (em vez de `/dashboard`)
+- `/org/ijoifatokun/review` (em vez de `/review`)
+- etc.
+
+**Arquivo:** `src/components/layout/Header.tsx`
+
+#### Etapa 3 — ModuleCard e LessonCard devem navegar com prefixo de org
+
+Modificar `ModuleCard.tsx` e `LessonCard.tsx` para detectar se estamos em uma rota de org e usar o prefixo correto na navegacao.
+
+**Arquivos:** `src/components/modules/ModuleCard.tsx`, `src/components/modules/LessonCard.tsx`
+
+#### Etapa 4 — Adicionar rotas org que faltam no App.tsx
+
+Atualmente so existem rotas `/org/:orgSlug` para dashboard, module, lesson e quiz. Faltam:
+- `/org/:orgSlug/review` (revisao espacada)
+- `/org/:orgSlug/challenge` (modo desafio)
+- `/org/:orgSlug/achievements` (conquistas)
+- `/org/:orgSlug/recording-studio` (gravacao)
+- `/org/:orgSlug/test-memorization` (memorizacao)
+- `/org/:orgSlug/memorization-guide` (guia)
+- `/org/:orgSlug/review/stats` (estatisticas)
+
+**Arquivo:** `src/App.tsx`
+
+---
+
+### Secao tecnica — Resumo das mudancas
 
 | Arquivo | Mudanca |
 |---------|---------|
-| `index.html` | Adicionar link para manifest e meta theme-color |
-| `src/main.tsx` | Registrar Service Worker |
-| `src/hooks/useSpacedRepetition.ts` | Integrar cache offline (fallback IndexedDB quando offline, salvar cache quando online) |
-| `src/pages/SpacedReview.tsx` | Exibir `OfflineIndicator` |
+| `src/contexts/OrganizationContext.tsx` | Adicionar deteccao de org via `window.location.pathname` (`/org/:slug`) como prioridade sobre hostname |
+| `src/components/layout/Header.tsx` | Usar `useOrgRoute()` ou deteccao de pathname para gerar links com prefixo `/org/:slug` |
+| `src/components/modules/ModuleCard.tsx` | Usar `useOrgRoute()` ou `useParams` para navegar com prefixo correto |
+| `src/components/modules/LessonCard.tsx` | Mesmo ajuste do ModuleCard |
+| `src/App.tsx` | Adicionar rotas `/org/:orgSlug/*` faltantes (review, challenge, achievements, etc.) |
+| `src/components/dashboard/HeroStudyTrack.tsx` | Verificar se links internos tambem precisam de prefixo (provavel) |
 
----
+### Resultado esperado
 
-### Detalhes tecnicos
-
-#### 1. PWA Manifest (`public/manifest.json`)
-
-Definir nome da plataforma, cores (verde/dourado da identidade visual), orientacao, e icones. Isso permite que o aluno "instale" a plataforma no celular como um app nativo.
-
-Icones: usar o favicon existente como placeholder inicial (192x192 e 512x512 podem ser adicionados depois).
-
-#### 2. Service Worker (`public/sw.js`)
-
-Estrategias de cache:
-- **Cache First** para assets estaticos (JS bundles, CSS, fontes Google, imagens)
-- **Network First** para chamadas de API (com fallback para cache quando offline)
-- **Stale While Revalidate** para fontes externas
-
-No evento `install`, pre-cachear a pagina principal e assets criticos.
-No evento `fetch`, interceptar requests e aplicar a estrategia adequada.
-
-#### 3. IndexedDB (`src/lib/offlineDb.ts`)
-
-Database: `offe-orunmila-offline`, versao 1
-
-Object Stores:
-- `spaced_items`: armazena copia dos itens de revisao do usuario (key: `id`)
-- `pending_reviews`: fila de reviews feitos offline (key: autoIncrement, campos: `itemId`, `wasCorrect`, `timestamp`, `calculatedUpdate`)
-
-Funcoes exportadas:
-- `openDb()` - abrir/criar database
-- `cacheSpacedItems(items)` - salvar itens no store
-- `getCachedSpacedItems()` - ler todos os itens cacheados
-- `addPendingReview(review)` - enfileirar review offline
-- `getPendingReviews()` - ler fila de pendencias
-- `clearPendingReviews()` - limpar apos sincronizacao
-- `updateCachedItem(id, updates)` - atualizar item local apos review offline
-
-#### 4. Hook `useOfflineSync`
-
-Responsabilidades:
-- Monitorar `navigator.onLine` e eventos `online`/`offline`
-- Expor estado `isOnline` e `isSyncing`
-- Ao detectar volta de conexao (`online` event), executar `syncPendingReviews()`:
-  1. Ler fila de `pending_reviews` do IndexedDB
-  2. Para cada review, chamar `supabase.from('spaced_repetition_items').update(...)` com os dados calculados
-  3. Em caso de sucesso, limpar a fila
-  4. Disparar toast "X revisoes sincronizadas"
-- Expor `pendingCount` para mostrar quantas revisoes estao aguardando sync
-
-#### 5. Modificacao do `useSpacedRepetition`
-
-No `fetchItems`:
-- Se online: buscar do Supabase normalmente + chamar `cacheSpacedItems(items)` para salvar copia local
-- Se offline: chamar `getCachedSpacedItems()` e usar os dados locais
-
-No `recordReview`:
-- Se online: enviar para Supabase normalmente + atualizar cache local
-- Se offline: calcular novo intervalo com `calculateNextReview()` (ja existe no front), atualizar item no IndexedDB, e adicionar na fila `pending_reviews`
-
-#### 6. `OfflineIndicator` component
-
-Banner fixo no topo da pagina de revisao:
-- Quando offline: fundo amarelo, "Voce esta offline. Revisoes serao salvas localmente."
-- Quando sincronizando: fundo azul, "Sincronizando X revisoes..."
-- Quando sincronizado: toast verde, "Revisoes sincronizadas com sucesso!"
-
-#### 7. Registro do Service Worker (`src/main.tsx`)
-
-Adicionar apos o `render()`:
-```text
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js')
-}
-```
-
-Compativel com todos os navegadores -- em navegadores sem suporte, simplesmente nao registra (graceful degradation).
-
----
-
-### Fluxo completo
-
-```text
-Aluno abre revisao (online)
-  -> Busca itens do backend
-  -> Salva copia no IndexedDB (cache)
-  -> Faz revisoes normalmente
-
-Aluno perde conexao
-  -> Banner "Offline" aparece
-  -> Itens ja carregados continuam disponiveis
-  -> Reviews sao calculados localmente (SM-2)
-  -> Reviews salvos no IndexedDB (fila pendente)
-
-Conexao volta
-  -> Event "online" dispara sync
-  -> Fila de reviews enviada ao backend
-  -> Cache atualizado
-  -> Toast "Sincronizado!"
-```
-
-### Limitacoes (transparencia)
-
-- Apenas revisoes espacadas funcionam offline (nao toda a plataforma)
-- O aluno precisa ter aberto a revisao pelo menos uma vez online para cachear os itens
-- Novas licoes e exercicios nao ficam disponiveis offline
-- Gravacao de audio nao funciona offline
-- Se o aluno ficar offline por muitos dias, os intervalos calculados localmente podem divergir levemente do servidor (resolvido no sync)
+Apos a correcao:
+1. Acessando `/org/ijoifatokun/dashboard`, o contexto de organizacao sera "Ijo Ifatokun"
+2. Todos os links de navegacao manterao o prefixo `/org/ijoifatokun/...`
+3. Modulos, licoes e exercicios serao filtrados pela organizacao correta
+4. Nenhum conteudo de outra organizacao sera visivel
 
