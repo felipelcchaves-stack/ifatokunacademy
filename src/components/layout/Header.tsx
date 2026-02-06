@@ -1,4 +1,4 @@
-import React, { forwardRef, useState } from 'react';
+import React, { forwardRef, useState, useMemo } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Menu, X, LogOut, Settings, Lock, Shield, LayoutDashboard, Brain, Trophy, BarChart3, Mic } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -20,16 +20,17 @@ import { Progress } from '@/components/ui/progress';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrganization } from '@/contexts/OrganizationContext';
 import { useExperience } from '@/hooks/useExperience';
+import { useOrgNavigate } from '@/hooks/useOrgNavigate';
 import { cn } from '@/lib/utils';
 import OrganizationSwitcher from './OrganizationSwitcher';
 
-// Links para alunos (logados)
-const studentLinks = [
-  { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
-  { label: 'Revisar', to: '/review', icon: Brain },
-  { label: 'Desafios', to: '/challenge', icon: Trophy },
-  { label: 'Gravar', to: '/recording-studio', icon: Mic },
-  { label: 'Estatísticas', to: '/review/stats', icon: BarChart3 },
+// Links base para alunos (logados) — paths serão prefixados dinamicamente
+const baseStudentLinks = [
+  { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+  { label: 'Revisar', path: '/review', icon: Brain },
+  { label: 'Desafios', path: '/challenge', icon: Trophy },
+  { label: 'Gravar', path: '/recording-studio', icon: Mic },
+  { label: 'Estatísticas', path: '/review/stats', icon: BarChart3 },
 ];
 
 const Header = forwardRef<HTMLElement>((_, ref) => {
@@ -37,8 +38,15 @@ const Header = forwardRef<HTMLElement>((_, ref) => {
   const { user, profile, isAuthenticated, isAdmin, signOut } = useAuth();
   const { organization } = useOrganization();
   const { experience, getProgressToNextLevel, getXPForNextLevel } = useExperience();
+  const { getOrgPath } = useOrgNavigate();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Gerar links com prefixo de org quando necessário
+  const studentLinks = useMemo(() => 
+    baseStudentLinks.map(link => ({ ...link, to: getOrgPath(link.path) })),
+    [getOrgPath]
+  );
 
   const branding = organization?.branding;
   const orgName = organization?.name || 'Offe Orunmila Learning';
@@ -64,14 +72,14 @@ const Header = forwardRef<HTMLElement>((_, ref) => {
     navigate('/login');
   };
 
-  const isActiveLink = (path: string) => location.pathname === path;
+  const isActiveLink = (path: string) => location.pathname === path || location.pathname.endsWith(path.replace(/^\/org\/[^/]+/, ''));
 
   return (
     <header ref={ref} className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-md border-b border-border">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16 md:h-20">
           {/* Logo */}
-          <Link to={isAuthenticated ? '/dashboard' : '/login'} className="flex items-center gap-3">
+          <Link to={isAuthenticated ? getOrgPath('/dashboard') : '/login'} className="flex items-center gap-3">
             {logoUrl ? (
               <img 
                 src={logoUrl} 
@@ -183,11 +191,11 @@ const Header = forwardRef<HTMLElement>((_, ref) => {
                     </div>
                   </div>
                   
-                  <DropdownMenuItem onClick={() => navigate('/settings')} className="py-2.5">
+                  <DropdownMenuItem onClick={() => navigate(getOrgPath('/settings'))} className="py-2.5">
                     <Settings className="w-4 h-4 mr-2" />
                     Configurações
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate('/settings?tab=security')} className="py-2.5">
+                  <DropdownMenuItem onClick={() => navigate(getOrgPath('/settings') + '?tab=security')} className="py-2.5">
                     <Lock className="w-4 h-4 mr-2" />
                     Alterar Senha
                   </DropdownMenuItem>
@@ -271,7 +279,7 @@ const Header = forwardRef<HTMLElement>((_, ref) => {
                     <Button 
                       variant="ghost" 
                       className="w-full justify-start"
-                      onClick={() => { navigate('/settings'); setMobileMenuOpen(false); }}
+                      onClick={() => { navigate(getOrgPath('/settings')); setMobileMenuOpen(false); }}
                     >
                       <Settings className="w-4 h-4 mr-2" />
                       Configurações
@@ -279,7 +287,7 @@ const Header = forwardRef<HTMLElement>((_, ref) => {
                     <Button 
                       variant="ghost" 
                       className="w-full justify-start"
-                      onClick={() => { navigate('/settings?tab=security'); setMobileMenuOpen(false); }}
+                      onClick={() => { navigate(getOrgPath('/settings') + '?tab=security'); setMobileMenuOpen(false); }}
                     >
                       <Lock className="w-4 h-4 mr-2" />
                       Alterar Senha

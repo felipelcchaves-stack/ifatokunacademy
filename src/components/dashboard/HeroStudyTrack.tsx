@@ -4,6 +4,7 @@ import { BookOpen, Sparkles } from 'lucide-react';
 import { MainCTAButton } from '@/components/ui/MainCTAButton';
 import HeroModuleSlider from './HeroModuleSlider';
 import { getRandomProverb, YorubaProverb } from '@/data/yorubaProverbs';
+import { useOrgNavigate } from '@/hooks/useOrgNavigate';
 
 // Interface for modules from database
 interface DatabaseModule {
@@ -37,6 +38,7 @@ export const HeroStudyTrack: React.FC<HeroStudyTrackProps> = ({
   pendingPhase2Modules = [],
 }) => {
   const navigate = useNavigate();
+  const { getOrgPath } = useOrgNavigate();
   const [proverb, setProverb] = useState<YorubaProverb | null>(null);
 
   useEffect(() => {
@@ -92,7 +94,7 @@ export const HeroStudyTrack: React.FC<HeroStudyTrackProps> = ({
           <div className="text-center mb-10">
             <MainCTAButton
               size="xl"
-              onClick={() => navigate(`/module/${activeModule.id}`)}
+              onClick={() => navigate(getOrgPath(`/module/${activeModule.id}`))}
             >
               {activeModule.progress > 0 ? 'Continuar Estudando' : 'Começar a Estudar'}
             </MainCTAButton>
