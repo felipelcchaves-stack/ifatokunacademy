@@ -5,6 +5,7 @@ import { Module } from '@/data/mockData';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useOrgNavigate } from '@/hooks/useOrgNavigate';
 import { cn } from '@/lib/utils';
 
 interface ModuleCardProps {
@@ -27,10 +28,11 @@ const ModuleCard: React.FC<ModuleCardProps> = ({
   hasPendingPhase2 = false,
 }) => {
   const navigate = useNavigate();
+  const { getOrgPath } = useOrgNavigate();
 
   const handleClick = () => {
     if (!isLocked) {
-      navigate(`/module/${module.id}`);
+      navigate(getOrgPath(`/module/${module.id}`));
     }
   };
 
@@ -99,7 +101,7 @@ const ModuleCard: React.FC<ModuleCardProps> = ({
         )}
         onClick={(e) => {
           e.stopPropagation();
-          navigate(`/module/${module.id}/retention`);
+          navigate(getOrgPath(`/module/${module.id}/retention`));
         }}
       >
         <span>{config.icon}</span>

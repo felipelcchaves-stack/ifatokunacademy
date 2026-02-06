@@ -108,6 +108,41 @@ const App = () => (
                   <SpacedReview />
                 </ProtectedRoute>
               } />
+              <Route path="/org/:orgSlug/review/stats" element={
+                <ProtectedRoute>
+                  <SpacedReviewStats />
+                </ProtectedRoute>
+              } />
+              <Route path="/org/:orgSlug/challenge" element={
+                <ProtectedRoute>
+                  <ChallengeMode />
+                </ProtectedRoute>
+              } />
+              <Route path="/org/:orgSlug/achievements" element={
+                <ProtectedRoute>
+                  <Achievements />
+                </ProtectedRoute>
+              } />
+              <Route path="/org/:orgSlug/recording-studio" element={
+                <ProtectedRoute>
+                  <RecordingStudio />
+                </ProtectedRoute>
+              } />
+              <Route path="/org/:orgSlug/test-memorization" element={
+                <ProtectedRoute>
+                  <TestMemorization />
+                </ProtectedRoute>
+              } />
+              <Route path="/org/:orgSlug/memorization-guide" element={
+                <ProtectedRoute>
+                  <MemorizationGuide />
+                </ProtectedRoute>
+              } />
+              <Route path="/org/:orgSlug/module/:moduleId/retention" element={
+                <ProtectedRoute>
+                  <ModuleRetentionReview />
+                </ProtectedRoute>
+              } />
               <Route path="/org/:orgSlug/settings" element={
                 <ProtectedRoute>
                   <UserSettings />

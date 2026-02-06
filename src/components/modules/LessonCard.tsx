@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Clock, CheckCircle, Lock, Play, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { useOrgNavigate } from '@/hooks/useOrgNavigate';
 
 interface Lesson {
   id: string;
@@ -29,6 +30,7 @@ interface LessonCardProps {
 const LessonCard = forwardRef<HTMLDivElement, LessonCardProps>(
   ({ lesson, index, moduleId, isLocked, progress = 0, phase1Complete = false, phase1Total = 0, phase1Completed = 0 }, ref) => {
     const navigate = useNavigate();
+    const { getOrgPath } = useOrgNavigate();
 
     const formatDuration = (minutes: number | null) => {
       if (!minutes) return '30 min';
@@ -47,7 +49,7 @@ const LessonCard = forwardRef<HTMLDivElement, LessonCardProps>(
           bg-card rounded-xl p-6 border border-border transition-all duration-300
           ${isLocked ? 'opacity-60' : 'hover:shadow-soft hover:border-primary/30 cursor-pointer'}
         `}
-        onClick={() => !isLocked && navigate(`/module/${moduleId}/lesson/${lesson.id}`)}
+        onClick={() => !isLocked && navigate(getOrgPath(`/module/${moduleId}/lesson/${lesson.id}`))}
       >
         <div className="flex items-center gap-4">
           <div className={`

@@ -53,6 +53,15 @@ const defaultBranding: OrganizationBranding = {
 const OrganizationContext = createContext<OrganizationContextType | undefined>(undefined);
 
 /**
+ * Detecta o slug da organização a partir do pathname (/org/:slug/...)
+ */
+export const detectTenantFromPathname = (): string | null => {
+  const pathname = window.location.pathname;
+  const match = pathname.match(/^\/org\/([^/]+)/);
+  return match ? match[1] : null;
+};
+
+/**
  * Detecta a organização a partir do hostname atual
  */
 export const detectTenantFromHostname = (): { slug: string | null; customDomain: string | null } => {
@@ -88,6 +97,20 @@ export const detectTenantFromHostname = (): { slug: string | null; customDomain:
   return { slug: null, customDomain: hostname };
 };
 
+/**
+ * Detecta o tenant combinando pathname (prioridade) + hostname (fallback)
+ */
+export const detectTenant = (): { slug: string | null; customDomain: string | null } => {
+  // Prioridade 1: slug na URL (/org/:slug)
+  const pathSlug = detectTenantFromPathname();
+  if (pathSlug) {
+    return { slug: pathSlug, customDomain: null };
+  }
+  
+  // Prioridade 2: hostname (subdomínio ou domínio customizado)
+  return detectTenantFromHostname();
+};
+
 export const OrganizationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { user, isAdmin } = useAuth();
   const [organization, setOrganization] = useState<Organization | null>(null);
@@ -98,8 +121,8 @@ export const OrganizationProvider: React.FC<{ children: ReactNode }> = ({ childr
     try {
       setLoading(true);
       
-      // Primeiro, tentar detectar pelo hostname
-      const { slug, customDomain } = detectTenantFromHostname();
+      // Detectar tenant: pathname (/org/:slug) tem prioridade sobre hostname
+      const { slug, customDomain } = detectTenant();
       
       let query = supabase.from('organizations').select('*');
       
@@ -185,9 +208,17 @@ export const OrganizationProvider: React.FC<{ children: ReactNode }> = ({ childr
     }
   };
 
+  // Re-fetch when user changes or when pathname changes (org context switch)
   useEffect(() => {
     fetchOrganization();
   }, [user]);
+
+  // Listen for pathname changes to detect org context switches
+  useEffect(() => {
+    const handlePopState = () => fetchOrganization();
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   useEffect(() => {
     if (organization && user) {
