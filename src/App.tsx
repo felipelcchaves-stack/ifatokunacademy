@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -63,10 +63,10 @@ import OrgDashboard from "./pages/OrgDashboard";
  */
 const AdminOrgRedirect = () => {
   const { orgSlug } = useParams<{ orgSlug: string }>();
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     if (orgSlug) {
-      // Buscar org por slug e salvar no localStorage para o switcher captar
       supabase
         .from('organizations')
         .select('id')
@@ -76,10 +76,15 @@ const AdminOrgRedirect = () => {
           if (data?.id) {
             localStorage.setItem('admin_active_org', data.id);
           }
-        });
+          setReady(true);
+        })
+        .then(undefined, () => setReady(true));
+    } else {
+      setReady(true);
     }
   }, [orgSlug]);
 
+  if (!ready) return null;
   return <Navigate to="/admin" replace />;
 };
 
