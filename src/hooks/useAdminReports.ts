@@ -56,40 +56,64 @@ function getDateRangeStart(range: DateRange): Date | null {
   return startOfDay(subDays(new Date(), days));
 }
 
-export function useAdminReports(dateRange: DateRange = "30d"): AdminReportsData {
+export function useAdminReports(dateRange: DateRange = "30d", organizationId?: string): AdminReportsData {
   const rangeStart = getDateRangeStart(dateRange);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ["admin-reports", dateRange],
+    queryKey: ["admin-reports", dateRange, organizationId],
+    enabled: !!organizationId,
     queryFn: async () => {
-      // Fetch all data in parallel
+      // Step 1: Fetch modules filtered by org
+      let modulesQuery = supabase.from("modules").select("id, title, type, is_published");
+      if (organizationId) {
+        modulesQuery = modulesQuery.eq("organization_id", organizationId);
+      }
+      const modulesRes = await modulesQuery;
+      const modules = modulesRes.data || [];
+      const moduleIds = modules.map(m => m.id);
+
+      if (moduleIds.length === 0) {
+        return {
+          contentStats: { totalModules: 0, publishedModules: 0, draftModules: 0, totalLessons: 0, totalExercises: 0, avgExercisesPerLesson: 0 },
+          userStats: { totalUsers: 0, newUsersThisPeriod: 0, userGrowthData: [] },
+          exerciseTypes: [],
+          moduleDetails: [],
+          progressActivity: []
+        };
+      }
+
+      // Step 2: Fetch related data scoped to org modules
       const [
-        modulesRes,
         lessonsRes,
-        exercisesRes,
-        profilesRes,
-        progressRes,
-        completionsRes
+        completionsRes,
+        membersRes
       ] = await Promise.all([
-        supabase.from("modules").select("id, title, type, is_published"),
-        supabase.from("lessons").select("id, module_id"),
-        supabase.from("exercises").select("id, lesson_id, type"),
-        supabase.from("profiles").select("id, created_at"),
-        rangeStart
-          ? supabase
-              .from("user_progress")
-              .select("id, completed_at")
-              .gte("completed_at", rangeStart.toISOString())
-          : supabase.from("user_progress").select("id, completed_at"),
-        supabase.from("module_completions").select("id, module_id")
+        supabase.from("lessons").select("id, module_id").in("module_id", moduleIds),
+        supabase.from("module_completions").select("id, module_id").in("module_id", moduleIds),
+        organizationId
+          ? supabase.from("organization_members").select("user_id, created_at").eq("organization_id", organizationId)
+          : Promise.resolve({ data: [] as { user_id: string; created_at: string }[] })
       ]);
 
-      const modules = modulesRes.data || [];
       const lessons = lessonsRes.data || [];
-      const exercises = exercisesRes.data || [];
-      const profiles = profilesRes.data || [];
-      const progress = progressRes.data || [];
+      const lessonIds = lessons.map(l => l.id);
       const completions = completionsRes.data || [];
+      const members = 'data' in membersRes ? (membersRes as any).data || [] : membersRes;
+
+      // Step 3: Fetch exercises and progress scoped to lesson/module IDs
+      const [exercisesRes, progressRes] = await Promise.all([
+        lessonIds.length > 0
+          ? supabase.from("exercises").select("id, lesson_id, type").in("lesson_id", lessonIds)
+          : Promise.resolve({ data: [] as { id: string; lesson_id: string; type: string }[] }),
+        rangeStart
+          ? supabase.from("user_progress").select("id, completed_at").in("module_id", moduleIds).gte("completed_at", rangeStart.toISOString())
+          : supabase.from("user_progress").select("id, completed_at").in("module_id", moduleIds)
+      ]);
+
+      const exercises = 'data' in exercisesRes ? (exercisesRes as any).data || [] : exercisesRes;
+      const progress = 'data' in progressRes ? (progressRes as any).data || [] : progressRes;
+
+      const profiles = members as { user_id: string; created_at: string }[];
 
       // Content Stats
       const publishedModules = modules.filter((m) => m.is_published).length;

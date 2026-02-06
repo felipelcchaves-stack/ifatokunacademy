@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { clearPlatformSettingsCache } from "@/hooks/usePlatformSettings";
+import { useAdminOrganization } from "@/hooks/useAdminOrganization";
 import { 
   Settings, 
   Bell, 
@@ -72,19 +73,25 @@ export default function AdminSettings() {
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState<PlatformSettings>(defaultSettings);
 
+  const { activeOrg, loading: orgLoading } = useAdminOrganization();
+
   useEffect(() => {
-    if (!isAdmin) {
-      navigate('/dashboard');
-      return;
+    if (!orgLoading && activeOrg) {
+      fetchSettings();
     }
-    fetchSettings();
-  }, [isAdmin, navigate]);
+  }, [activeOrg, orgLoading]);
 
   const fetchSettings = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('platform_settings')
         .select('key, value');
+      
+      if (activeOrg) {
+        query = query.eq('organization_id', activeOrg.id);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -109,10 +116,16 @@ export default function AdminSettings() {
   const saveSettings = async (key: keyof PlatformSettings, value: any) => {
     setSaving(true);
     try {
-      const { error } = await supabase
+      let query = supabase
         .from('platform_settings')
         .update({ value })
         .eq('key', key);
+
+      if (activeOrg) {
+        query = query.eq('organization_id', activeOrg.id);
+      }
+
+      const { error } = await query;
 
       if (error) throw error;
       toast.success('Configuração salva com sucesso!');

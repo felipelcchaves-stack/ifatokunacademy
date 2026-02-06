@@ -27,6 +27,7 @@ import {
   BarChart3
 } from "lucide-react";
 import { useAdminReports, DateRange } from "@/hooks/useAdminReports";
+import { useAdminOrganization } from "@/hooks/useAdminOrganization";
 import {
   UserGrowthChart,
   ExerciseTypePieChart,
@@ -69,6 +70,7 @@ function KPICard({ title, value, icon, subtitle, isLoading }: KPICardProps) {
 
 export default function AdminReports() {
   const [dateRange, setDateRange] = useState<DateRange>("30d");
+  const { activeOrg } = useAdminOrganization();
   const {
     contentStats,
     userStats,
@@ -76,7 +78,7 @@ export default function AdminReports() {
     moduleDetails,
     progressActivity,
     isLoading
-  } = useAdminReports(dateRange);
+  } = useAdminReports(dateRange, activeOrg?.id);
 
   const dateRangeLabel =
     dateRange === "7d"
