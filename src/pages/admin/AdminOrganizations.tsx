@@ -350,8 +350,7 @@ const AdminOrganizations: React.FC = () => {
                   onChange={(e) => setFormData({ ...formData, organization_type: e.target.value })}
                 >
                   <option value="educational">Educacional</option>
-                  <option value="afrocultural">Afrocultural / Religiosa</option>
-                  <option value="association">Associação</option>
+                  <option value="religious_association">Associação Religiosa</option>
                 </select>
               </div>
 
