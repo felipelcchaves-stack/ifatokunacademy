@@ -21,7 +21,8 @@ import {
   Globe,
   Crown,
   ScrollText,
-  Gift
+  Gift,
+  Receipt
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -92,6 +93,7 @@ const AdminLayout: React.FC = () => {
     { icon: Crown, label: 'Hierarquia do Templo', path: `/admin/organizations/${activeOrg.id}/hierarchy` },
     { icon: ScrollText, label: 'Estatuto', path: `/admin/organizations/${activeOrg.id}/bylaws` },
     { icon: Gift, label: 'Benefícios', path: `/admin/organizations/${activeOrg.id}/benefits` },
+    { icon: Receipt, label: 'Mensalidades', path: `/admin/organizations/${activeOrg.id}/dues` },
   ] : [];
 
   // Usar menu apropriado baseado no tipo de admin e org ativa

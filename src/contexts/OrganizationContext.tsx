@@ -35,6 +35,7 @@ export interface Organization {
   name: string;
   slug: string;
   custom_domain: string | null;
+  organization_type: string;
   branding: OrganizationBranding;
   settings: OrganizationSettings;
   is_active: boolean;

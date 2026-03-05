@@ -60,6 +60,12 @@ import AuthDebug from "./pages/AuthDebug";
 import OrgLogin from "./pages/OrgLogin";
 import OrgDashboard from "./pages/OrgDashboard";
 import BylawsView from "./pages/BylawsView";
+import HierarchyView from "./pages/HierarchyView";
+import BenefitsView from "./pages/BenefitsView";
+import MemberDuesView from "./pages/MemberDuesView";
+
+// Admin pages (lazy)
+import AdminDues from "./pages/admin/AdminDues";
 
 /**
  * Componente que redireciona /org/:slug/admin para /admin
@@ -189,6 +195,21 @@ const App = () => (
                   <BylawsView />
                 </ProtectedRoute>
               } />
+              <Route path="/org/:orgSlug/hierarchy" element={
+                <ProtectedRoute>
+                  <HierarchyView />
+                </ProtectedRoute>
+              } />
+              <Route path="/org/:orgSlug/benefits" element={
+                <ProtectedRoute>
+                  <BenefitsView />
+                </ProtectedRoute>
+              } />
+              <Route path="/org/:orgSlug/dues" element={
+                <ProtectedRoute>
+                  <MemberDuesView />
+                </ProtectedRoute>
+              } />
               
               {/* Student Routes - Protected */}
               {/* IMPORTANTE: /dashboard agora redireciona para /org/:slug/dashboard */}
@@ -293,6 +314,7 @@ const App = () => (
                 <Route path="organizations/:organizationId/hierarchy" element={<AdminTempleHierarchy />} />
                 <Route path="organizations/:organizationId/bylaws" element={<AdminBylaws />} />
                 <Route path="organizations/:organizationId/benefits" element={<AdminBenefits />} />
+                <Route path="organizations/:organizationId/dues" element={<AdminDues />} />
                 
                 <Route path="users" element={<AdminUsers />} />
                 <Route path="invites" element={<AdminInvites />} />
