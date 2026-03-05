@@ -1,6 +1,6 @@
 import React, { forwardRef, useState, useMemo } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Menu, X, LogOut, Settings, Lock, Shield, LayoutDashboard, Brain, Trophy, BarChart3, Mic, Crown, ScrollText, Gift, Receipt } from 'lucide-react';
+import { Menu, X, LogOut, Settings, Lock, Shield, LayoutDashboard, Brain, Trophy, BarChart3, Crown, ScrollText, Gift, Receipt } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -27,9 +27,12 @@ import OrganizationSwitcher from './OrganizationSwitcher';
 // Links base para alunos (logados) — paths serão prefixados dinamicamente
 const baseStudentLinks = [
   { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+];
+
+// Links movidos para o menu do perfil
+const profileMenuLinks = [
   { label: 'Revisar', path: '/review', icon: Brain },
   { label: 'Desafios', path: '/challenge', icon: Trophy },
-  { label: 'Gravar', path: '/recording-studio', icon: Mic },
   { label: 'Estatísticas', path: '/review/stats', icon: BarChart3 },
 ];
 
@@ -199,6 +202,14 @@ const Header = forwardRef<HTMLElement>((_, ref) => {
                       <p className="text-xs text-muted-foreground truncate">{profile?.email || user?.email}</p>
                     </div>
                   </div>
+                  {/* Study links moved to profile menu */}
+                  {profileMenuLinks.map(link => (
+                    <DropdownMenuItem key={link.path} onClick={() => navigate(getOrgPath(link.path))} className="py-2.5">
+                      <link.icon className="w-4 h-4 mr-2" />
+                      {link.label}
+                    </DropdownMenuItem>
+                  ))}
+                  <DropdownMenuSeparator />
                   
                   <DropdownMenuItem onClick={() => navigate(getOrgPath('/settings'))} className="py-2.5">
                     <Settings className="w-4 h-4 mr-2" />
@@ -284,6 +295,20 @@ const Header = forwardRef<HTMLElement>((_, ref) => {
                     </Link>
                   ))}
 
+                  <div className="border-t border-border mt-2 pt-2">
+                    {/* Study links in mobile */}
+                    {profileMenuLinks.map(link => (
+                      <Button
+                        key={link.path}
+                        variant="ghost"
+                        className="w-full justify-start"
+                        onClick={() => { navigate(getOrgPath(link.path)); setMobileMenuOpen(false); }}
+                      >
+                        <link.icon className="w-4 h-4 mr-2" />
+                        {link.label}
+                      </Button>
+                    ))}
+                  </div>
                   <div className="border-t border-border mt-2 pt-2">
                     <Button 
                       variant="ghost" 
