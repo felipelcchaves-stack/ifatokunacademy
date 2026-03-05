@@ -403,6 +403,79 @@ export type Database = {
           },
         ]
       }
+      member_profiles: {
+        Row: {
+          created_at: string | null
+          exemption_reason: string | null
+          id: string
+          initiation_date: string | null
+          is_board_member: boolean
+          is_fee_exempt: boolean
+          notes: string | null
+          organization_id: string
+          orixa_head: string | null
+          oye_ile: string | null
+          religious_name: string | null
+          temple_role_id: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          exemption_reason?: string | null
+          id?: string
+          initiation_date?: string | null
+          is_board_member?: boolean
+          is_fee_exempt?: boolean
+          notes?: string | null
+          organization_id: string
+          orixa_head?: string | null
+          oye_ile?: string | null
+          religious_name?: string | null
+          temple_role_id?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          exemption_reason?: string | null
+          id?: string
+          initiation_date?: string | null
+          is_board_member?: boolean
+          is_fee_exempt?: boolean
+          notes?: string | null
+          organization_id?: string
+          orixa_head?: string | null
+          oye_ile?: string | null
+          religious_name?: string | null
+          temple_role_id?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "member_profiles_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "member_profiles_temple_role_id_fkey"
+            columns: ["temple_role_id"]
+            isOneToOne: false
+            referencedRelation: "temple_roles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "member_profiles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       module_completions: {
         Row: {
           completed_at: string

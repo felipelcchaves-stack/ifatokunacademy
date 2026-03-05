@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -10,7 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { User, Calendar, Lock, Save, Camera, Loader2, AlertTriangle, Trash2, Eye, EyeOff, Settings2, Zap, BookOpen, Clock } from 'lucide-react';
+import { User, Calendar, Lock, Save, Camera, Loader2, AlertTriangle, Trash2, Eye, EyeOff, Settings2, Zap, BookOpen, Clock, Sparkles } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -21,6 +21,134 @@ import { useStudyPlan } from '@/hooks/useStudyPlan';
 import { useStudyMode, StudyMode } from '@/hooks/useStudyMode';
 import { useSearchParams } from 'react-router-dom';
 import MFASetup from '@/components/auth/MFASetup';
+
+interface ReligiousData {
+  religious_name: string | null;
+  orixa_head: string | null;
+  initiation_date: string | null;
+  oye_ile: string | null;
+  is_board_member: boolean;
+  is_fee_exempt: boolean;
+  temple_role_name?: string | null;
+}
+
+const ReligiousProfileSection: React.FC<{ userId?: string }> = ({ userId }) => {
+  const [data, setData] = useState<ReligiousData | null>(null);
+  const [orgType, setOrgType] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!userId) return;
+    const fetch = async () => {
+      // Get user's org
+      const { data: prof } = await supabase
+        .from('profiles')
+        .select('organization_id')
+        .eq('id', userId)
+        .single();
+      
+      if (!prof?.organization_id) { setLoading(false); return; }
+
+      const { data: org } = await supabase
+        .from('organizations')
+        .select('organization_type')
+        .eq('id', prof.organization_id)
+        .single();
+
+      if (!org || (org.organization_type !== 'afrocultural' && org.organization_type !== 'association')) {
+        setLoading(false);
+        return;
+      }
+      setOrgType(org.organization_type);
+
+      const { data: mp } = await supabase
+        .from('member_profiles' as any)
+        .select('*')
+        .eq('user_id', userId)
+        .eq('organization_id', prof.organization_id)
+        .maybeSingle();
+
+      if (mp) {
+        let roleName: string | null = null;
+        if ((mp as any).temple_role_id) {
+          const { data: role } = await supabase
+            .from('temple_roles')
+            .select('name')
+            .eq('id', (mp as any).temple_role_id)
+            .single();
+          roleName = role?.name || null;
+        }
+        setData({
+          religious_name: (mp as any).religious_name,
+          orixa_head: (mp as any).orixa_head,
+          initiation_date: (mp as any).initiation_date,
+          oye_ile: (mp as any).oye_ile,
+          is_board_member: (mp as any).is_board_member,
+          is_fee_exempt: (mp as any).is_fee_exempt,
+          temple_role_name: roleName,
+        });
+      }
+      setLoading(false);
+    };
+    fetch();
+  }, [userId]);
+
+  if (loading || !orgType || !data) return null;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Sparkles className="h-5 w-5" />
+          Perfil Religioso
+        </CardTitle>
+        <CardDescription>
+          Informações do seu perfil institucional (somente leitura)
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {data.religious_name && (
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Orunkó</p>
+              <p className="text-foreground">{data.religious_name}</p>
+            </div>
+          )}
+          {data.orixa_head && (
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Orixá de cabeça</p>
+              <p className="text-foreground">{data.orixa_head}</p>
+            </div>
+          )}
+          {data.initiation_date && (
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Data de iniciação</p>
+              <p className="text-foreground">{new Date(data.initiation_date).toLocaleDateString('pt-BR')}</p>
+            </div>
+          )}
+          {data.oye_ile && (
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Oye Ilê</p>
+              <p className="text-foreground">{data.oye_ile}</p>
+            </div>
+          )}
+          {data.temple_role_name && (
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Cargo no Templo</p>
+              <Badge variant="outline">{data.temple_role_name}</Badge>
+            </div>
+          )}
+          {data.is_board_member && (
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Diretoria</p>
+              <Badge className="bg-amber-500/20 text-amber-600 border-amber-500/30">Membro da Diretoria</Badge>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
 
 const UserSettings = () => {
   const { user, profile, refreshProfile } = useAuth();
@@ -279,6 +407,7 @@ const UserSettings = () => {
 
             {/* Tab Perfil */}
             <TabsContent value="profile" className="space-y-6">
+              <ReligiousProfileSection userId={user?.id} />
               <Card>
                 <CardHeader>
                   <CardTitle>Informações do Perfil</CardTitle>
