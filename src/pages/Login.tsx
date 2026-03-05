@@ -312,10 +312,10 @@ const Login: React.FC = () => {
             }}
           >
             <h2 className="font-serif text-4xl font-bold mb-6 drop-shadow-lg">
-              "A segurança é a fortaleza do sábio."
+              "{branding?.login_quote || 'A segurança é a fortaleza do sábio.'}"
             </h2>
             <p className="text-white/70 text-lg drop-shadow-md">
-              — Provérbio Yorubá
+              — {branding?.login_quote_author || 'Provérbio Yorubá'}
             </p>
           </div>
         </div>
@@ -407,9 +407,13 @@ const Login: React.FC = () => {
           </form>
 
           <p className="text-center text-muted-foreground mt-8 text-sm">
-            O acesso a esta plataforma é exclusivo por convite.
-            <br />
-            Entre em contato com o administrador para obter acesso.
+            {branding?.login_footer_text || (
+              <>
+                O acesso a esta plataforma é exclusivo por convite.
+                <br />
+                Entre em contato com o administrador para obter acesso.
+              </>
+            )}
           </p>
         </div>
       </div>
@@ -443,10 +447,10 @@ const Login: React.FC = () => {
           }}
         >
           <h2 className="font-serif text-4xl font-bold mb-6 drop-shadow-lg">
-            "O conhecimento é a chave que abre todas as portas."
+            "{branding?.login_quote || 'O conhecimento é a chave que abre todas as portas.'}"
           </h2>
           <p className="text-white/70 text-lg drop-shadow-md">
-            — Provérbio Yorubá
+            — {branding?.login_quote_author || 'Provérbio Yorubá'}
           </p>
         </div>
       </div>

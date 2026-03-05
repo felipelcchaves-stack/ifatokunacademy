@@ -551,6 +551,32 @@ const AdminOrganizationBranding: React.FC = () => {
                   rows={3}
                 />
               </div>
+              <div className="space-y-2">
+                <Label>Citação da tela de login</Label>
+                <Textarea
+                  value={branding.login_quote || ''}
+                  onChange={(e) => setBranding({ ...branding, login_quote: e.target.value || null })}
+                  placeholder="Ex: O conhecimento é a chave que abre todas as portas."
+                  rows={2}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Autor da citação</Label>
+                <Input
+                  value={branding.login_quote_author || ''}
+                  onChange={(e) => setBranding({ ...branding, login_quote_author: e.target.value || null })}
+                  placeholder="Ex: Provérbio Yorubá"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Texto informativo do login</Label>
+                <Textarea
+                  value={branding.login_footer_text || ''}
+                  onChange={(e) => setBranding({ ...branding, login_footer_text: e.target.value || null })}
+                  placeholder="Ex: O acesso a esta plataforma é exclusivo por convite. Entre em contato com o administrador para obter acesso."
+                  rows={2}
+                />
+              </div>
             </div>
             <div className="space-y-4">
               <div className="space-y-2">
@@ -694,10 +720,10 @@ const AdminOrganizationBranding: React.FC = () => {
                   {/* Content */}
                   <div className="relative z-10 text-center text-white">
                     <h3 className="text-xl font-bold mb-2">
-                      {branding.welcome_title || `Bem-vindo ao ${organization.name.split(' ').slice(0, 2).join(' ')}`}
+                      "{branding.login_quote || 'O conhecimento é a chave que abre todas as portas.'}"
                     </h3>
                     <p className="text-sm opacity-90">
-                      {branding.welcome_subtitle || branding.tagline || 'Plataforma de estudos sagrados'}
+                      — {branding.login_quote_author || 'Provérbio Yorubá'}
                     </p>
                   </div>
                   
