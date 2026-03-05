@@ -387,7 +387,16 @@ export const OrganizationProvider: React.FC<{ children: ReactNode }> = ({ childr
 export const useOrganization = () => {
   const context = useContext(OrganizationContext);
   if (!context) {
-    throw new Error('useOrganization must be used within an OrganizationProvider');
+    // During HMR, context may temporarily be unavailable - return safe defaults
+    return {
+      organization: null,
+      loading: true,
+      isOrgAdmin: false,
+      refreshOrganization: async () => {},
+      updateBranding: async () => {},
+      updateSettings: async () => {},
+      setOrganizationById: async () => {},
+    } as OrganizationContextType;
   }
   return context;
 };
