@@ -8,6 +8,7 @@ export interface AdminOrganization {
   name: string;
   slug: string;
   branding: Record<string, unknown> | null;
+  organization_type?: string;
 }
 
 interface UseAdminOrganizationReturn {
@@ -50,7 +51,7 @@ export const useAdminOrganization = (): UseAdminOrganizationReturn => {
         // Admin global: buscar TODAS as organizações ativas
         const { data, error } = await supabase
           .from('organizations')
-          .select('id, name, slug, branding')
+          .select('id, name, slug, branding, organization_type')
           .eq('is_active', true)
           .order('name');
 
@@ -61,6 +62,7 @@ export const useAdminOrganization = (): UseAdminOrganizationReturn => {
           name: org.name,
           slug: org.slug,
           branding: org.branding as Record<string, unknown> | null,
+          organization_type: (org as any).organization_type,
         }));
       } else {
         // Org admin: buscar apenas organizações onde é membro

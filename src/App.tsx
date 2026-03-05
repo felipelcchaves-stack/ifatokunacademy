@@ -43,6 +43,9 @@ import AdminOrganizationAdmins from "./pages/admin/AdminOrganizationAdmins";
 import AdminOrganizationDomain from "./pages/admin/AdminOrganizationDomain";
 import AdminOrganizationMembers from "./pages/admin/AdminOrganizationMembers";
 import AdminOrgDashboard from "./pages/admin/AdminOrgDashboard";
+import AdminTempleHierarchy from "./pages/admin/AdminTempleHierarchy";
+import AdminBylaws from "./pages/admin/AdminBylaws";
+import AdminBenefits from "./pages/admin/AdminBenefits";
 import UserSettings from "./pages/UserSettings";
 import ModuleRetentionReview from "./pages/ModuleRetentionReview";
 import MFAVerify from "./pages/MFAVerify";
@@ -56,6 +59,7 @@ import AuthDebug from "./pages/AuthDebug";
 // Organization-specific pages
 import OrgLogin from "./pages/OrgLogin";
 import OrgDashboard from "./pages/OrgDashboard";
+import BylawsView from "./pages/BylawsView";
 
 /**
  * Componente que redireciona /org/:slug/admin para /admin
@@ -180,6 +184,11 @@ const App = () => (
                   <UserSettings />
                 </ProtectedRoute>
               } />
+              <Route path="/org/:orgSlug/bylaws" element={
+                <ProtectedRoute>
+                  <BylawsView />
+                </ProtectedRoute>
+              } />
               
               {/* Student Routes - Protected */}
               {/* IMPORTANTE: /dashboard agora redireciona para /org/:slug/dashboard */}
@@ -281,6 +290,9 @@ const App = () => (
                 <Route path="organizations/:organizationId/admins" element={<AdminOrganizationAdmins />} />
                 <Route path="organizations/:organizationId/domain" element={<AdminOrganizationDomain />} />
                 <Route path="organizations/:organizationId/members" element={<AdminOrganizationMembers />} />
+                <Route path="organizations/:organizationId/hierarchy" element={<AdminTempleHierarchy />} />
+                <Route path="organizations/:organizationId/bylaws" element={<AdminBylaws />} />
+                <Route path="organizations/:organizationId/benefits" element={<AdminBenefits />} />
                 
                 <Route path="users" element={<AdminUsers />} />
                 <Route path="invites" element={<AdminInvites />} />
