@@ -69,6 +69,7 @@ const AdminOrganizations: React.FC = () => {
     max_users: 100,
     max_modules: 50,
     plan_type: 'free' as 'free' | 'pro' | 'enterprise',
+    organization_type: 'educational',
   });
 
   // Se estiver em uma sub-rota, renderizar o Outlet
@@ -115,6 +116,7 @@ const AdminOrganizations: React.FC = () => {
         max_users: org.settings.max_users,
         max_modules: org.settings.max_modules,
         plan_type: org.settings.plan_type,
+        organization_type: (org as any).organization_type || 'educational',
       });
     } else {
       setEditingOrg(null);
@@ -126,6 +128,7 @@ const AdminOrganizations: React.FC = () => {
         max_users: 100,
         max_modules: 50,
         plan_type: 'free',
+        organization_type: 'educational',
       });
     }
     setDialogOpen(true);
@@ -151,6 +154,7 @@ const AdminOrganizations: React.FC = () => {
         slug: formData.slug,
         custom_domain: formData.custom_domain || null,
         is_active: formData.is_active,
+        organization_type: formData.organization_type,
         settings: {
           max_users: formData.max_users,
           max_modules: formData.max_modules,
@@ -337,6 +341,20 @@ const AdminOrganizations: React.FC = () => {
                 </div>
               </div>
               
+              <div className="space-y-2">
+                <Label htmlFor="organization_type">Tipo de Organização</Label>
+                <select
+                  id="organization_type"
+                  className="w-full border rounded-md p-2 bg-background"
+                  value={formData.organization_type}
+                  onChange={(e) => setFormData({ ...formData, organization_type: e.target.value })}
+                >
+                  <option value="educational">Educacional</option>
+                  <option value="afrocultural">Afrocultural / Religiosa</option>
+                  <option value="association">Associação</option>
+                </select>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="plan_type">Plano</Label>
                 <select

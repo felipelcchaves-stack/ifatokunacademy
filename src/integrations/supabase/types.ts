@@ -638,6 +638,88 @@ export type Database = {
           },
         ]
       }
+      organization_benefits: {
+        Row: {
+          created_at: string
+          description: string | null
+          display_order: number
+          icon: string | null
+          id: string
+          is_active: boolean
+          organization_id: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          organization_id: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          organization_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_benefits_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organization_bylaws: {
+        Row: {
+          content: string
+          created_at: string
+          display_order: number
+          id: string
+          is_published: boolean
+          organization_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          display_order?: number
+          id?: string
+          is_published?: boolean
+          organization_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          display_order?: number
+          id?: string
+          is_published?: boolean
+          organization_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_bylaws_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_members: {
         Row: {
           created_at: string
@@ -694,6 +776,7 @@ export type Database = {
           id: string
           is_active: boolean | null
           name: string
+          organization_type: string
           settings: Json | null
           slug: string
           updated_at: string | null
@@ -705,6 +788,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           name: string
+          organization_type?: string
           settings?: Json | null
           slug: string
           updated_at?: string | null
@@ -716,6 +800,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           name?: string
+          organization_type?: string
           settings?: Json | null
           slug?: string
           updated_at?: string | null
@@ -965,6 +1050,50 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      temple_roles: {
+        Row: {
+          category: string
+          created_at: string
+          description: string | null
+          grants_fee_exemption: boolean
+          id: string
+          is_board_member: boolean
+          level: number
+          name: string
+          organization_id: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          grants_fee_exemption?: boolean
+          id?: string
+          is_board_member?: boolean
+          level?: number
+          name: string
+          organization_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          grants_fee_exemption?: boolean
+          id?: string
+          is_board_member?: boolean
+          level?: number
+          name?: string
+          organization_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "temple_roles_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
