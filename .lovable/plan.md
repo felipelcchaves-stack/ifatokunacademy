@@ -1,32 +1,50 @@
 
 
-## Tipos de Organização
+## Plano: Reorganizar Header — Limpar Poluição Visual
 
-A plataforma suporta **dois** tipos de organização:
+### Problema
 
-- **`educational`** — Educacional (sem páginas institucionais)
-- **`religious_association`** — Associação Religiosa (hierarquia do templo, estatuto, benefícios, perfil estendido de membros, mensalidades)
+O header está com 9+ links (Dashboard, Revisar, Desafios, Gravar, Estatísticas, Hierarquia, Estatuto, Benefícios, Mensalidades), competindo com o logo e nome da organização.
 
-Os antigos tipos `afrocultural` e `association` foram unificados em `religious_association`.
+### Solução
+
+Redistribuir os links entre **Header** (itens principais) e **Menu do Perfil** (itens secundários).
 
 ---
 
-## Sistema de Mensalidades (`member_dues`) ✅
+### Nova distribuição
 
-Tabela `member_dues` criada com RLS:
-- Admins da org gerenciam todas as mensalidades
-- Membros veem apenas as próprias
+**Header (navegação principal):**
+- Dashboard
+- Hierarquia *(só religious_association)*
+- Estatuto *(só religious_association)*
+- Benefícios *(só religious_association)*
+- Mensalidades *(só religious_association)*
 
-### Páginas implementadas:
-- **Admin**: `/admin/organizations/:id/dues` — gerar mensalidades, marcar como pago, filtros
-- **Membro**: `/org/:slug/dues` — histórico pessoal de mensalidades
-- **Dashboard**: Alerta de mensalidades pendentes/vencidas (`DuesAlert`)
+**Menu do Perfil (dropdown do avatar):**
+- Revisar
+- Desafios
+- Estatísticas
+- Configurações
+- Alterar Senha
+- Painel Admin *(se admin)*
+- Sair
 
-### Páginas institucionais (membros):
-- `/org/:slug/hierarchy` — Hierarquia do templo (somente leitura)
-- `/org/:slug/bylaws` — Estatuto (já existia)
-- `/org/:slug/benefits` — Benefícios (somente leitura)
-- `/org/:slug/dues` — Minhas mensalidades
+**Removidos do header:**
+- Gravar (removido da navegação principal, fica acessível pela página de lições ou dashboard)
 
-### Links no Header:
-Links institucionais (Hierarquia, Estatuto, Benefícios, Mensalidades) aparecem condicionalmente para membros de organizações `religious_association`.
+---
+
+### Arquivo a modificar
+
+**`src/components/layout/Header.tsx`**
+
+1. Reduzir `baseStudentLinks` para apenas `Dashboard`
+2. Manter `institutionalLinks` (Hierarquia, Estatuto, Benefícios, Mensalidades) no header
+3. Adicionar Revisar, Desafios e Estatísticas como `DropdownMenuItem` no menu do perfil, antes de Configurações
+4. Remover Gravar do header
+
+### Resultado
+
+Header limpo com no máximo 5 links (Dashboard + 4 institucionais), dando espaço ao logo. Funcionalidades de estudo ficam organizadas no menu do perfil.
+
