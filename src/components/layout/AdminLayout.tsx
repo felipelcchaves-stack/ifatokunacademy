@@ -88,7 +88,7 @@ const AdminLayout: React.FC = () => {
 
   // Itens institucionais para orgs afroculturais
   const orgType = activeOrg?.organization_type;
-  const institutionalItems = activeOrg && (orgType === 'afrocultural' || orgType === 'association') ? [
+  const institutionalItems = activeOrg && orgType === 'religious_association' ? [
     { icon: Crown, label: 'Hierarquia do Templo', path: `/admin/organizations/${activeOrg.id}/hierarchy` },
     { icon: ScrollText, label: 'Estatuto', path: `/admin/organizations/${activeOrg.id}/bylaws` },
     { icon: Gift, label: 'Benefícios', path: `/admin/organizations/${activeOrg.id}/benefits` },

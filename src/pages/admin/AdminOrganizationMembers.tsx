@@ -157,7 +157,7 @@ const AdminOrganizationMembers: React.FC = () => {
   const [profileForm, setProfileForm] = useState<MemberProfile | null>(null);
   const [savingProfile, setSavingProfile] = useState(false);
 
-  const isAfrocultural = organization?.organization_type === 'afrocultural' || organization?.organization_type === 'association';
+  const isAfrocultural = organization?.organization_type === 'religious_association';
 
   useEffect(() => {
     if (organizationId) {

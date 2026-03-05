@@ -55,7 +55,7 @@ const ReligiousProfileSection: React.FC<{ userId?: string }> = ({ userId }) => {
         .eq('id', prof.organization_id)
         .single();
 
-      if (!org || (org.organization_type !== 'afrocultural' && org.organization_type !== 'association')) {
+      if (!org || org.organization_type !== 'religious_association') {
         setLoading(false);
         return;
       }
