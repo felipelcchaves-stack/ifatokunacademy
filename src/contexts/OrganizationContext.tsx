@@ -18,6 +18,9 @@ export interface OrganizationBranding {
   welcome_title?: string | null;
   welcome_subtitle?: string | null;
   footer_description?: string | null;
+  login_quote?: string | null;
+  login_quote_author?: string | null;
+  login_footer_text?: string | null;
 }
 
 export interface OrganizationSettings {
