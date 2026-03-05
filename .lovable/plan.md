@@ -1,129 +1,121 @@
 
 
-## Adicionar campo "Prompt de Geração de Banner" por organização
+## Plano: Branding completo acessivel a cada tenant admin
 
-### Motivacao
+### Situacao atual
 
-Atualmente o prompt de geracao de banners esta hardcoded na edge function `generate-module-banner` com tematica fixa de Ifa/Isese/Yoruba. Todas as organizacoes geram banners com a mesma estetica. Cada org precisa poder personalizar seu prompt para refletir sua identidade.
+A pagina de branding (`AdminOrganizationBranding.tsx`) ja tem:
+- Cores (primaria, secundaria, destaque)
+- Identidade visual (logo, favicon, fonte, imagem de fundo login)
+- Prompt de banner IA
+- Previews (login, componentes, header, footer)
+
+**Problemas identificados:**
+
+1. **Acesso restrito a global admin**: A pagina de branding so e acessivel via `/admin/organizations/:id/branding`, que aparece apenas no menu "Organizacoes" — visivel somente para admins globais com org principal ativa. Org admins nao tem acesso.
+
+2. **Sem link de branding/dominio no menu contextual**: Quando um org admin (ou global admin gerenciando outra org) esta no painel, nao ha links para Branding ou Dominio no sidebar.
+
+3. **Footer hardcoded**: O texto "Plataforma de estudos sagrados para aprofundamento nos conhecimentos tradicionais" e fixo. Deveria ser configuravel por org.
+
+4. **Dados de contato hardcoded**: Email, telefone, endereco no footer sao ficticios e nao configuraveis.
+
+5. **Texto do login hardcoded**: "Bem-vindo ao..." e "Plataforma de estudos sagrados" na tela de login sao fixos.
 
 ### Solucao
 
-1. Adicionar um campo `banner_prompt` dentro do JSON `branding` de cada organizacao
-2. Preencher automaticamente o campo com um prompt padrao (o atual para a org principal, e um generico para novas orgs)
-3. Permitir edicao do prompt na pagina de Branding da organizacao
-4. A edge function le o prompt da org do modulo e usa-o em vez do hardcoded
+#### 1. Adicionar campos editaveis ao branding da org
 
-### Etapas
+Novos campos no `OrganizationBranding`:
 
-#### 1. Atualizar interface `OrganizationBranding`
-
-**Arquivo: `src/contexts/OrganizationContext.tsx`**
-
-Adicionar campo opcional ao tipo:
 ```typescript
 export interface OrganizationBranding {
   // ... campos existentes ...
-  banner_prompt?: string | null;
+  tagline?: string | null;           // Ex: "Plataforma de estudos sagrados"
+  contact_email?: string | null;
+  contact_phone?: string | null;
+  contact_address?: string | null;
+  welcome_title?: string | null;     // Titulo da tela de login
+  welcome_subtitle?: string | null;  // Subtitulo da tela de login
+  footer_description?: string | null;
 }
 ```
 
-#### 2. Adicionar campo de edicao na pagina de Branding
+**Arquivo**: `src/contexts/OrganizationContext.tsx`
 
-**Arquivo: `src/pages/admin/AdminOrganizationBranding.tsx`**
+#### 2. Adicionar secoes de edicao na pagina de Branding
 
-Adicionar um novo Card com um `Textarea` para editar o prompt. Incluir:
-- Label "Prompt de Geração de Banner IA"
-- Descricao explicando que este texto sera usado como instrucao para a IA gerar banners dos modulos
-- Textarea com o valor de `branding.banner_prompt`
-- Texto auxiliar com dicas (ex: "Descreva o estilo visual, elementos culturais, cores e atmosfera desejada")
+**Arquivo**: `src/pages/admin/AdminOrganizationBranding.tsx`
 
-#### 3. Popular orgs existentes com prompts padrao
+Novo card "Textos e Contato" com campos para:
+- Tagline / descricao curta
+- Titulo e subtitulo de boas-vindas (login)
+- Descricao do footer
+- Email, telefone, endereco de contato
 
-**Migracao SQL:**
-- Atualizar a org principal (slug = 'ifatokun') com o prompt atual completo (tematica Ifa/Yoruba)
-- Atualizar outras orgs com um prompt generico neutro
-- Atualizar o default do campo `branding` na tabela para incluir `banner_prompt: null`
+#### 3. Usar dados dinamicos no Footer
 
-#### 4. Modificar a edge function para usar o prompt da org
+**Arquivo**: `src/components/layout/Footer.tsx`
 
-**Arquivo: `supabase/functions/generate-module-banner/index.ts`**
+Substituir textos hardcoded pelos campos de `organization.branding`:
+- `footer_description` ou fallback "Plataforma de estudos..."
+- `contact_email` ou fallback gerado
+- `contact_phone` ou fallback
+- `contact_address` ou fallback
 
-Alteracoes:
-- Apos validar o modulo, buscar o `organization_id` do modulo
-- Com o `organization_id`, buscar o campo `branding->banner_prompt` da organizacao
-- Se existir um prompt customizado, usar como base no lugar do prompt hardcoded
-- Manter o prompt atual como fallback caso `banner_prompt` seja null
-- Manter a logica de `getContextualElements()` para enriquecer o prompt com palavras-chave do titulo/descricao
+#### 4. Usar dados dinamicos na tela de Login
 
-Fluxo:
-```text
-1. Recebe moduleId, title, description
-2. Busca module.organization_id
-3. Busca organization.branding.banner_prompt
-4. Se banner_prompt existe -> usa como base + contextualElements
-5. Se banner_prompt e null -> usa prompt hardcoded atual (fallback Ifa/Yoruba)
-6. Gera imagem com o prompt final
-```
+**Arquivo**: `src/pages/Login.tsx`
+
+Substituir textos fixos:
+- "Bem-vindo ao..." → `branding.welcome_title` ou fallback
+- "Plataforma de estudos sagrados" → `branding.welcome_subtitle` ou fallback
+
+#### 5. Tornar branding e dominio acessiveis para org admins
+
+**Arquivo**: `src/components/layout/AdminLayout.tsx`
+
+Adicionar ao `orgAdminItems` (e ao menu contextual de global admin):
+- Link "Branding" apontando para `/admin/organizations/${activeOrg.id}/branding`
+- Link "Dominio" apontando para `/admin/organizations/${activeOrg.id}/domain`
+
+Os links devem usar o ID da org ativa do switcher.
+
+**Arquivo**: `src/pages/admin/AdminOrganizationBranding.tsx`
+
+Remover a restricao `if (!isAdmin) navigate('/dashboard')` — permitir tambem `isOrgAdmin`. Usar `organizationId` do param OU da org ativa.
+
+**Arquivo**: `src/pages/admin/AdminOrganizationDomain.tsx`
+
+Mesma mudanca de acesso.
+
+#### 6. Atualizar preview do login na pagina de branding
+
+Usar os novos campos `welcome_title` e `welcome_subtitle` no preview, em vez de textos fixos.
+
+#### 7. Atualizar preview do footer na pagina de branding
+
+Usar os novos campos de contato e descricao no preview.
 
 ### Secao tecnica
 
-**Tipo atualizado (`OrganizationContext.tsx`, linha 5-13):**
-```typescript
-export interface OrganizationBranding {
-  logo_url: string | null;
-  favicon_url: string | null;
-  primary_color: string;
-  secondary_color: string;
-  accent_color: string;
-  font_family: string;
-  login_background_url: string | null;
-  banner_prompt?: string | null;
-}
+**Arquivos modificados:**
+1. `src/contexts/OrganizationContext.tsx` — novos campos na interface
+2. `src/pages/admin/AdminOrganizationBranding.tsx` — novo card de textos/contato, acesso org admin, previews dinamicos
+3. `src/pages/admin/AdminOrganizationDomain.tsx` — acesso org admin
+4. `src/components/layout/AdminLayout.tsx` — links Branding/Dominio no menu contextual
+5. `src/components/layout/Footer.tsx` — dados dinamicos do branding
+6. `src/pages/Login.tsx` — textos dinamicos do branding
+
+**Nenhuma migracao SQL necessaria** — os novos campos ficam dentro do JSON `branding` que ja existe.
+
+**Acesso no sidebar (AdminLayout):**
+```text
+orgAdminItems + [
+  { icon: Palette, label: 'Branding', path: `/admin/organizations/${activeOrg?.id}/branding` },
+  { icon: Globe, label: 'Domínio', path: `/admin/organizations/${activeOrg?.id}/domain` },
+]
 ```
 
-**Edge function - trecho principal da alteracao:**
-```typescript
-// Buscar org do modulo
-const { data: moduleData } = await supabase
-  .from('modules')
-  .select('organization_id')
-  .eq('id', moduleId)
-  .single();
+Esses links so aparecem quando `activeOrg` esta definida e o usuario e org admin ou global admin.
 
-let customPrompt: string | null = null;
-if (moduleData?.organization_id) {
-  const { data: orgData } = await supabase
-    .from('organizations')
-    .select('branding')
-    .eq('id', moduleData.organization_id)
-    .single();
-  
-  customPrompt = (orgData?.branding as any)?.banner_prompt || null;
-}
-
-// Usar customPrompt ou fallback
-const prompt = customPrompt 
-  ? buildCustomPrompt(customPrompt, title, description, isRetry)
-  : buildPrompt(title, description, isRetry);
-```
-
-**Nova funcao `buildCustomPrompt`:**
-Recebe o prompt base da org e adiciona instrucoes tecnicas fixas (formato 16:9, sem texto, alta resolucao) + elementos contextuais do titulo.
-
-**Prompt padrao para org principal (ifatokun):**
-O prompt Ifa/Yoruba atual completo sera salvo no campo `banner_prompt` da org.
-
-**Prompt padrao para novas orgs:**
-```
-Create a professional banner image for an educational module titled "{title}".
-Module description: {description}.
-Style: Clean, modern, professional educational platform aesthetic.
-Format: Horizontal banner (16:9), no text or letters in the image, high resolution.
-```
-
-### Arquivos modificados
-
-1. `src/contexts/OrganizationContext.tsx` - adicionar campo ao tipo
-2. `src/pages/admin/AdminOrganizationBranding.tsx` - adicionar textarea de edicao
-3. `supabase/functions/generate-module-banner/index.ts` - ler prompt da org
-4. Migracao SQL - popular orgs existentes com prompts padrao
