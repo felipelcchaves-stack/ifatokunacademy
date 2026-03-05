@@ -11,6 +11,13 @@ export interface OrganizationBranding {
   font_family: string;
   login_background_url: string | null;
   banner_prompt?: string | null;
+  tagline?: string | null;
+  contact_email?: string | null;
+  contact_phone?: string | null;
+  contact_address?: string | null;
+  welcome_title?: string | null;
+  welcome_subtitle?: string | null;
+  footer_description?: string | null;
 }
 
 export interface OrganizationSettings {

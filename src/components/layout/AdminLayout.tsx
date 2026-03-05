@@ -16,7 +16,9 @@ import {
   GripVertical,
   Building2,
   ChevronDown,
-  Check
+  Check,
+  Palette,
+  Globe
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -75,13 +77,19 @@ const AdminLayout: React.FC = () => {
     { icon: BarChart3, label: 'Relatórios', path: '/admin/reports' },
   ];
 
+  // Links contextuais de branding/domínio (quando há org ativa)
+  const contextualOrgItems = activeOrg ? [
+    { icon: Palette, label: 'Branding', path: `/admin/organizations/${activeOrg.id}/branding` },
+    { icon: Globe, label: 'Domínio', path: `/admin/organizations/${activeOrg.id}/domain` },
+  ] : [];
+
   // Usar menu apropriado baseado no tipo de admin e org ativa
   const isPrimaryOrg = !activeOrg || activeOrg.slug === 'ifatokun';
   const sidebarItems = isAdmin && isPrimaryOrg 
-    ? globalAdminItems 
+    ? [...globalAdminItems, ...contextualOrgItems]
     : isAdmin 
-      ? [...orgAdminItems, { icon: Settings, label: 'Configurações', path: '/admin/settings' }]
-      : orgAdminItems;
+      ? [...orgAdminItems, ...contextualOrgItems, { icon: Settings, label: 'Configurações', path: '/admin/settings' }]
+      : [...orgAdminItems, ...contextualOrgItems];
 
   const handleLogout = async () => {
     await signOut();

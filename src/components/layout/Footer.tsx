@@ -11,6 +11,10 @@ const Footer = forwardRef<HTMLElement>((_, ref) => {
   const displayPlatformSuffix = orgName.split(' ').slice(2).join(' ') || 'Learning';
   const fullPlatformName = orgName;
   const logoUrl = branding?.logo_url;
+  const footerDescription = branding?.footer_description || 'Plataforma de estudos sagrados para aprofundamento nos conhecimentos tradicionais.';
+  const contactEmail = branding?.contact_email || `contato@${fullPlatformName.toLowerCase().replace(/\s/g, '')}.com`;
+  const contactPhone = branding?.contact_phone || '(11) 99999-9999';
+  const contactAddress = branding?.contact_address || 'São Paulo, Brasil';
   return (
     <footer ref={ref} className="bg-card border-t border-border py-8">
       <div className="container mx-auto px-4">
@@ -42,7 +46,7 @@ const Footer = forwardRef<HTMLElement>((_, ref) => {
               </h3>
             </div>
             <p className="text-muted-foreground text-sm">
-              Plataforma de estudos sagrados para aprofundamento nos conhecimentos tradicionais.
+              {footerDescription}
             </p>
           </div>
           
@@ -51,15 +55,15 @@ const Footer = forwardRef<HTMLElement>((_, ref) => {
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li className="flex items-center gap-2">
                 <Mail className="w-4 h-4" />
-                <span>contato@{fullPlatformName.toLowerCase().replace(/\s/g, '')}.com</span>
+                <span>{contactEmail}</span>
               </li>
               <li className="flex items-center gap-2">
                 <Phone className="w-4 h-4" />
-                <span>(11) 99999-9999</span>
+                <span>{contactPhone}</span>
               </li>
               <li className="flex items-center gap-2">
                 <MapPin className="w-4 h-4" />
-                <span>São Paulo, Brasil</span>
+                <span>{contactAddress}</span>
               </li>
             </ul>
           </div>

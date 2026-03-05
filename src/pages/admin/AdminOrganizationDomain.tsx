@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Organization, OrganizationBranding, OrganizationSettings } from '@/contexts/OrganizationContext';
+import { Organization, OrganizationBranding, OrganizationSettings, useOrganization as useOrganizationContext } from '@/contexts/OrganizationContext';
 
 const defaultBranding: OrganizationBranding = {
   logo_url: null,
@@ -42,8 +42,9 @@ interface DomainStatus {
 }
 
 const AdminOrganizationDomain: React.FC = () => {
-  const { organizationId } = useParams<{ organizationId: string }>();
+  const { organizationId: paramOrgId } = useParams<{ organizationId: string }>();
   const { isAdmin } = useAuth();
+  const { isOrgAdmin, organization: contextOrg } = useOrganizationContext();
   const navigate = useNavigate();
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [loading, setLoading] = useState(true);
@@ -60,15 +61,17 @@ const AdminOrganizationDomain: React.FC = () => {
   // O domínio de destino para CNAME (Lovable)
   const targetDomain = 'ifatokunacademy.lovable.app';
 
+  const organizationId = paramOrgId || contextOrg?.id;
+
   useEffect(() => {
-    if (!isAdmin) {
+    if (!isAdmin && !isOrgAdmin) {
       navigate('/dashboard');
       return;
     }
     if (organizationId) {
       fetchOrganization();
     }
-  }, [isAdmin, organizationId, navigate]);
+  }, [isAdmin, isOrgAdmin, organizationId, navigate]);
 
   const fetchOrganization = async () => {
     try {
