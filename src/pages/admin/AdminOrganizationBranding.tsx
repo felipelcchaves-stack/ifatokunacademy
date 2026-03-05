@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ArrowLeft, Palette, Save, Loader2, Eye, Upload, X, Image, Mail, Lock, Monitor, Smartphone, LayoutDashboard, Brain, Trophy, Mic, BarChart3, ChevronDown, Phone, MapPin, Wand2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Organization, OrganizationBranding, OrganizationSettings } from '@/contexts/OrganizationContext';
+import { Organization, OrganizationBranding, OrganizationSettings, useOrganization as useOrganizationContext } from '@/contexts/OrganizationContext';
 
 const defaultBranding: OrganizationBranding = {
   logo_url: null,
@@ -180,23 +180,27 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
 };
 
 const AdminOrganizationBranding: React.FC = () => {
-  const { organizationId } = useParams<{ organizationId: string }>();
+  const { organizationId: paramOrgId } = useParams<{ organizationId: string }>();
   const { isAdmin } = useAuth();
+  const { isOrgAdmin, organization: contextOrg } = useOrganizationContext();
   const navigate = useNavigate();
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [branding, setBranding] = useState<OrganizationBranding>(defaultBranding);
 
+  // Usar orgId do param ou da org do contexto (para org admins)
+  const organizationId = paramOrgId || contextOrg?.id;
+
   useEffect(() => {
-    if (!isAdmin) {
+    if (!isAdmin && !isOrgAdmin) {
       navigate('/dashboard');
       return;
     }
     if (organizationId) {
       fetchOrganization();
     }
-  }, [isAdmin, organizationId, navigate]);
+  }, [isAdmin, isOrgAdmin, organizationId, navigate]);
 
   const fetchOrganization = async () => {
     try {
@@ -504,6 +508,80 @@ const AdminOrganizationBranding: React.FC = () => {
           </CardContent>
         </Card>
 
+        {/* Textos e Contato */}
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-lg">Textos e Contato</CardTitle>
+            <CardDescription>
+              Configure textos da tela de login, footer e informações de contato
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-6 md:grid-cols-2">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Tagline / Descrição curta</Label>
+                <Input
+                  value={branding.tagline || ''}
+                  onChange={(e) => setBranding({ ...branding, tagline: e.target.value || null })}
+                  placeholder="Ex: Plataforma de estudos sagrados"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Título de boas-vindas (Login)</Label>
+                <Input
+                  value={branding.welcome_title || ''}
+                  onChange={(e) => setBranding({ ...branding, welcome_title: e.target.value || null })}
+                  placeholder="Ex: Bem-vindo de volta"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Subtítulo de boas-vindas (Login)</Label>
+                <Input
+                  value={branding.welcome_subtitle || ''}
+                  onChange={(e) => setBranding({ ...branding, welcome_subtitle: e.target.value || null })}
+                  placeholder="Ex: Entre na sua conta para continuar sua jornada de aprendizado."
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Descrição do Footer</Label>
+                <Textarea
+                  value={branding.footer_description || ''}
+                  onChange={(e) => setBranding({ ...branding, footer_description: e.target.value || null })}
+                  placeholder="Ex: Plataforma de estudos sagrados para aprofundamento nos conhecimentos tradicionais."
+                  rows={3}
+                />
+              </div>
+            </div>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>E-mail de contato</Label>
+                <Input
+                  type="email"
+                  value={branding.contact_email || ''}
+                  onChange={(e) => setBranding({ ...branding, contact_email: e.target.value || null })}
+                  placeholder="Ex: contato@suaorg.com"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Telefone de contato</Label>
+                <Input
+                  value={branding.contact_phone || ''}
+                  onChange={(e) => setBranding({ ...branding, contact_phone: e.target.value || null })}
+                  placeholder="Ex: (11) 99999-9999"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Endereço</Label>
+                <Input
+                  value={branding.contact_address || ''}
+                  onChange={(e) => setBranding({ ...branding, contact_address: e.target.value || null })}
+                  placeholder="Ex: São Paulo, Brasil"
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Preview Completo da Tela de Login */}
         <Card className="lg:col-span-2">
           <CardHeader>
@@ -616,10 +694,10 @@ const AdminOrganizationBranding: React.FC = () => {
                   {/* Content */}
                   <div className="relative z-10 text-center text-white">
                     <h3 className="text-xl font-bold mb-2">
-                      Bem-vindo ao {organization.name.split(' ').slice(0, 2).join(' ')}
+                      {branding.welcome_title || `Bem-vindo ao ${organization.name.split(' ').slice(0, 2).join(' ')}`}
                     </h3>
                     <p className="text-sm opacity-90">
-                      Plataforma de estudos sagrados
+                      {branding.welcome_subtitle || branding.tagline || 'Plataforma de estudos sagrados'}
                     </p>
                   </div>
                   
@@ -842,7 +920,7 @@ const AdminOrganizationBranding: React.FC = () => {
                     </h3>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Plataforma de estudos sagrados para aprofundamento nos conhecimentos tradicionais.
+                    {branding.footer_description || 'Plataforma de estudos sagrados para aprofundamento nos conhecimentos tradicionais.'}
                   </p>
                 </div>
 
@@ -854,15 +932,15 @@ const AdminOrganizationBranding: React.FC = () => {
                   <ul className="space-y-1.5 text-xs text-muted-foreground">
                     <li className="flex items-center gap-2">
                       <Mail className="w-3 h-3" />
-                      <span>contato@{organization.slug}.com</span>
+                      <span>{branding.contact_email || `contato@${organization.slug}.com`}</span>
                     </li>
                     <li className="flex items-center gap-2">
                       <Phone className="w-3 h-3" />
-                      <span>(11) 99999-9999</span>
+                      <span>{branding.contact_phone || '(11) 99999-9999'}</span>
                     </li>
                     <li className="flex items-center gap-2">
                       <MapPin className="w-3 h-3" />
-                      <span>São Paulo, Brasil</span>
+                      <span>{branding.contact_address || 'São Paulo, Brasil'}</span>
                     </li>
                   </ul>
                 </div>

@@ -331,10 +331,10 @@ const Login: React.FC = () => {
           <LogoComponent />
 
           <h2 className="font-serif text-3xl font-bold text-foreground mb-2">
-            Bem-vindo de volta
+            {branding?.welcome_title || 'Bem-vindo de volta'}
           </h2>
           <p className="text-muted-foreground mb-8">
-            Entre na sua conta para continuar sua jornada de aprendizado.
+            {branding?.welcome_subtitle || 'Entre na sua conta para continuar sua jornada de aprendizado.'}
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-6">
