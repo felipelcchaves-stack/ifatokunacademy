@@ -21,6 +21,7 @@ import { AnimatedCounter } from '@/components/engagement/AnimatedCounter';
 import { StudyPlanSummaryCard } from '@/components/study-plan/StudyPlanSummaryCard';
 import { StudyModeCard } from '@/components/dashboard/StudyModeCard';
 import ModuleRetentionAlert from '@/components/dashboard/ModuleRetentionAlert';
+import DuesAlert from '@/components/dashboard/DuesAlert';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSpacedRepetition } from '@/hooks/useSpacedRepetition';
@@ -164,6 +165,11 @@ const Dashboard: React.FC<DashboardProps> = ({ organizationId, orgName }) => {
         <Header />
         
         <main className="pt-20">
+          {/* Dues Alert for religious association members */}
+          <div className="container mx-auto px-4 pt-4">
+            <DuesAlert />
+          </div>
+
           {/* FIRST FOLD - Hero Study Track */}
           <section className="min-h-[calc(100vh-5rem)] relative">
             {/* Floating stats bar */}

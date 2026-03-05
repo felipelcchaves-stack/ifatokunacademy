@@ -1,6 +1,6 @@
 import React, { forwardRef, useState, useMemo } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Menu, X, LogOut, Settings, Lock, Shield, LayoutDashboard, Brain, Trophy, BarChart3, Mic } from 'lucide-react';
+import { Menu, X, LogOut, Settings, Lock, Shield, LayoutDashboard, Brain, Trophy, BarChart3, Mic, Crown, ScrollText, Gift, Receipt } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -42,10 +42,19 @@ const Header = forwardRef<HTMLElement>((_, ref) => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Links institucionais condicionais
+  const isReligiousAssociation = organization?.organization_type === 'religious_association';
+  const institutionalLinks = isReligiousAssociation ? [
+    { label: 'Hierarquia', path: '/hierarchy', icon: Crown },
+    { label: 'Estatuto', path: '/bylaws', icon: ScrollText },
+    { label: 'Benefícios', path: '/benefits', icon: Gift },
+    { label: 'Mensalidades', path: '/dues', icon: Receipt },
+  ] : [];
+
   // Gerar links com prefixo de org quando necessário
   const studentLinks = useMemo(() => 
-    baseStudentLinks.map(link => ({ ...link, to: getOrgPath(link.path) })),
-    [getOrgPath]
+    [...baseStudentLinks, ...institutionalLinks].map(link => ({ ...link, to: getOrgPath(link.path) })),
+    [getOrgPath, isReligiousAssociation]
   );
 
   const branding = organization?.branding;
