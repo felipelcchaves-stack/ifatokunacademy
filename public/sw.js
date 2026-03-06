@@ -9,7 +9,7 @@ const PRE_CACHE_URLS = [
   '/favicon.ico',
 ];
 
-// Install: pre-cache critical assets
+// Install: pre-cache critical assets (no skipWaiting to avoid forcing reload)
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(STATIC_CACHE).then((cache) => {
@@ -18,10 +18,9 @@ self.addEventListener('install', (event) => {
       });
     })
   );
-  self.skipWaiting();
 });
 
-// Activate: clean old caches
+// Activate: clean old caches (no clients.claim to avoid forced takeover)
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
@@ -32,7 +31,6 @@ self.addEventListener('activate', (event) => {
       );
     })
   );
-  self.clients.claim();
 });
 
 // Fetch strategies
@@ -45,6 +43,9 @@ self.addEventListener('fetch', (event) => {
 
   // Skip chrome-extension and other non-http(s) requests
   if (!url.protocol.startsWith('http')) return;
+
+  // Skip HTML navigation — let the browser handle it naturally (avoids Safari refresh issues)
+  if (request.mode === 'navigate') return;
 
   // API calls (Supabase): Network First with cache fallback
   if (url.hostname.includes('supabase') || url.pathname.startsWith('/rest/')) {
@@ -61,12 +62,6 @@ self.addEventListener('fetch', (event) => {
   // Static assets (JS, CSS, images): Cache First
   if (isStaticAsset(url.pathname)) {
     event.respondWith(cacheFirst(request, STATIC_CACHE));
-    return;
-  }
-
-  // HTML navigation: Network First
-  if (request.headers.get('accept')?.includes('text/html')) {
-    event.respondWith(networkFirst(request, STATIC_CACHE));
     return;
   }
 
