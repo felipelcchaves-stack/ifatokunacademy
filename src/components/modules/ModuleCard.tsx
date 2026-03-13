@@ -223,12 +223,14 @@ const ModuleCard: React.FC<ModuleCardProps> = ({
             </div>
           )}
           
-          {/* Title - Bottom with backdrop blur */}
-          <div className="absolute bottom-0 inset-x-0 p-5">
-            <h3 className="font-serif text-2xl font-bold text-white drop-shadow-lg">
-              {module.title}
-            </h3>
-          </div>
+          {/* Title - Bottom with backdrop blur (hidden when locked) */}
+          {!isLocked && (
+            <div className="absolute bottom-0 inset-x-0 bg-black/40 backdrop-blur-sm px-4 py-3">
+              <h3 className="text-lg font-semibold text-white drop-shadow-md line-clamp-1">
+                {module.title}
+              </h3>
+            </div>
+          )}
         </div>
 
         {/* Content with decorative separator */}
@@ -236,10 +238,15 @@ const ModuleCard: React.FC<ModuleCardProps> = ({
           {/* Decorative golden line */}
           <div className="absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-sacred-400/50 to-transparent" />
           
-          <p className="text-sm text-muted-foreground line-clamp-2 mb-5 min-h-[40px] pt-2">
-            {isLocked && unlockRequirement 
-              ? unlockRequirement 
-              : module.description}
+          {/* Title moved here for locked modules */}
+          {isLocked && (
+            <h3 className="text-lg font-semibold text-foreground pt-2 mb-2 line-clamp-1">
+              {module.title}
+            </h3>
+          )}
+          
+          <p className={cn("text-sm text-muted-foreground line-clamp-2 mb-5 min-h-[40px]", !isLocked && "pt-2")}>
+            {module.description}
           </p>
 
           <div className="flex items-center gap-5 text-sm text-muted-foreground mb-5">
@@ -283,47 +290,54 @@ const ModuleCard: React.FC<ModuleCardProps> = ({
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button 
-                  className={cn(
-                    "w-full font-semibold h-12 text-base transition-all duration-300",
-                    isLocked 
-                      ? isThematicLocked 
-                        ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 cursor-not-allowed border border-amber-200 dark:border-amber-800"
-                        : "bg-muted text-muted-foreground cursor-not-allowed" 
-                      : "bg-gradient-to-r from-forest-600 to-forest-700 hover:from-forest-700 hover:to-forest-800 text-white shadow-lg hover:shadow-xl"
-                  )}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleClick();
-                  }}
-                  disabled={isLocked}
-                >
-                  {isLocked ? (
-                    <>
-                      {isThematicLocked ? (
-                        <AlertCircle className="w-4 h-4 mr-2" />
-                      ) : (
-                        <Lock className="w-4 h-4 mr-2" />
-                      )}
-                      Bloqueado
-                    </>
-                  ) : module.progress > 0 ? (
-                    <>
-                      <Play className="w-4 h-4 mr-2" />
-                      Continuar
-                    </>
-                  ) : (
-                    'Começar'
-                  )}
-                </Button>
-              </TooltipTrigger>
+              {/* Unlock requirement badge */}
               {isLocked && unlockRequirement && (
-                <TooltipContent side="top" className="max-w-xs text-center">
-                  <p>{unlockRequirement}</p>
-                </TooltipContent>
+                <p className="text-xs text-amber-600 dark:text-amber-400 mb-2 text-center">
+                  {unlockRequirement}
+                </p>
               )}
-            </Tooltip>
-          </TooltipProvider>
+
+              <Button 
+                className={cn(
+                  "w-full font-semibold h-12 text-base transition-all duration-300",
+                  isLocked 
+                    ? isThematicLocked 
+                      ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 cursor-not-allowed border border-amber-200 dark:border-amber-800"
+                      : "bg-muted text-muted-foreground cursor-not-allowed" 
+                    : "bg-gradient-to-r from-forest-600 to-forest-700 hover:from-forest-700 hover:to-forest-800 text-white shadow-lg hover:shadow-xl"
+                )}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleClick();
+                }}
+                disabled={isLocked}
+              >
+                {isLocked ? (
+                  <>
+                    {isThematicLocked ? (
+                      <AlertCircle className="w-4 h-4 mr-2" />
+                    ) : (
+                      <Lock className="w-4 h-4 mr-2" />
+                    )}
+                    Bloqueado
+                  </>
+                ) : module.progress > 0 ? (
+                  <>
+                    <Play className="w-4 h-4 mr-2" />
+                    Continuar
+                  </>
+                ) : (
+                  'Começar'
+                )}
+              </Button>
+            </TooltipTrigger>
+            {isLocked && unlockRequirement && (
+              <TooltipContent side="top" className="max-w-xs text-center">
+                <p>{unlockRequirement}</p>
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider>
         </div>
       </div>
     );
@@ -385,12 +399,14 @@ const ModuleCard: React.FC<ModuleCardProps> = ({
           </div>
         )}
         
-        {/* Title - Bottom with backdrop blur */}
-        <div className="absolute bottom-0 inset-x-0 p-4">
-          <h3 className="font-serif text-xl font-bold text-white drop-shadow-lg">
-            {module.title}
-          </h3>
-        </div>
+        {/* Title - Bottom with backdrop blur (hidden when locked) */}
+        {!isLocked && (
+          <div className="absolute bottom-0 inset-x-0 bg-black/40 backdrop-blur-sm px-3 py-2">
+            <h3 className="text-base font-semibold text-white drop-shadow-md line-clamp-1">
+              {module.title}
+            </h3>
+          </div>
+        )}
       </div>
 
       {/* Content with decorative separator */}
@@ -398,10 +414,15 @@ const ModuleCard: React.FC<ModuleCardProps> = ({
         {/* Decorative golden line */}
         <div className="absolute top-0 left-5 right-5 h-px bg-gradient-to-r from-transparent via-sacred-400/50 to-transparent" />
         
-        <p className="text-sm text-muted-foreground line-clamp-2 mb-4 pt-2">
-          {isLocked && unlockRequirement 
-            ? unlockRequirement 
-            : module.description}
+        {/* Title moved here for locked modules */}
+        {isLocked && (
+          <h3 className="text-base font-semibold text-foreground pt-2 mb-2 line-clamp-1">
+            {module.title}
+          </h3>
+        )}
+        
+        <p className={cn("text-sm text-muted-foreground line-clamp-2 mb-4", !isLocked && "pt-2")}>
+          {module.description}
         </p>
 
         <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
@@ -435,6 +456,13 @@ const ModuleCard: React.FC<ModuleCardProps> = ({
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
+              {/* Unlock requirement badge */}
+              {isLocked && unlockRequirement && (
+                <p className="text-xs text-amber-600 dark:text-amber-400 mb-2 text-center">
+                  {unlockRequirement}
+                </p>
+              )}
+
               <Button 
                 className={cn(
                   "w-full font-semibold transition-all duration-300",
