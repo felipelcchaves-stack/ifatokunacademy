@@ -102,6 +102,8 @@ export default function AdminInvites() {
   const [loading, setLoading] = useState(true);
   const [invites, setInvites] = useState<Invite[]>([]);
   const [modules, setModules] = useState<Module[]>([]);
+  const [cohorts, setCohorts] = useState<Cohort[]>([]);
+  const isEducational = activeOrg?.organization_type === 'educational';
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   
