@@ -70,6 +70,122 @@ export type Database = {
           },
         ]
       }
+      cohort_members: {
+        Row: {
+          cohort_id: string
+          enrolled_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          cohort_id: string
+          enrolled_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          cohort_id?: string
+          enrolled_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cohort_members_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "cohorts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cohort_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cohort_modules: {
+        Row: {
+          cohort_id: string
+          display_order: number
+          id: string
+          module_id: string
+        }
+        Insert: {
+          cohort_id: string
+          display_order?: number
+          id?: string
+          module_id: string
+        }
+        Update: {
+          cohort_id?: string
+          display_order?: number
+          id?: string
+          module_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cohort_modules_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "cohorts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cohort_modules_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cohorts: {
+        Row: {
+          created_at: string
+          description: string | null
+          ends_at: string | null
+          id: string
+          is_active: boolean
+          name: string
+          organization_id: string
+          starts_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          ends_at?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          organization_id: string
+          starts_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          ends_at?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          organization_id?: string
+          starts_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cohorts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       daily_goals: {
         Row: {
           completed_at: string | null
@@ -1609,12 +1725,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_cohort_organization_id: {
+        Args: { p_cohort_id: string }
+        Returns: string
+      }
       get_module_organization_id: {
         Args: { p_module_id: string }
         Returns: string
       }
       get_user_organization_id: { Args: { p_user_id: string }; Returns: string }
       is_admin: { Args: { user_id: string }; Returns: boolean }
+      is_cohort_member: {
+        Args: { p_cohort_id: string; p_user_id: string }
+        Returns: boolean
+      }
       is_module_phase1_complete: {
         Args: { p_module_id: string; p_user_id: string }
         Returns: boolean
