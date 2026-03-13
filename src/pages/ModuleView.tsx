@@ -10,6 +10,9 @@ import { Progress } from '@/components/ui/progress';
 import { supabase } from '@/integrations/supabase/client';
 import { useModuleProgress } from '@/hooks/useModuleProgress';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCohortFilter } from '@/hooks/useCohortFilter';
+import { useOrganization } from '@/contexts/OrganizationContext';
+import { toast } from '@/hooks/use-toast';
 
 interface Module {
   id: string;
