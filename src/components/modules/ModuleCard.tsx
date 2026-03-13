@@ -223,12 +223,14 @@ const ModuleCard: React.FC<ModuleCardProps> = ({
             </div>
           )}
           
-          {/* Title - Bottom with backdrop blur */}
-          <div className="absolute bottom-0 inset-x-0 p-5">
-            <h3 className="font-serif text-2xl font-bold text-white drop-shadow-lg">
-              {module.title}
-            </h3>
-          </div>
+          {/* Title - Bottom with backdrop blur (hidden when locked) */}
+          {!isLocked && (
+            <div className="absolute bottom-0 inset-x-0 bg-black/40 backdrop-blur-sm px-4 py-3">
+              <h3 className="text-lg font-semibold text-white drop-shadow-md line-clamp-1">
+                {module.title}
+              </h3>
+            </div>
+          )}
         </div>
 
         {/* Content with decorative separator */}
@@ -236,10 +238,15 @@ const ModuleCard: React.FC<ModuleCardProps> = ({
           {/* Decorative golden line */}
           <div className="absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-sacred-400/50 to-transparent" />
           
-          <p className="text-sm text-muted-foreground line-clamp-2 mb-5 min-h-[40px] pt-2">
-            {isLocked && unlockRequirement 
-              ? unlockRequirement 
-              : module.description}
+          {/* Title moved here for locked modules */}
+          {isLocked && (
+            <h3 className="text-lg font-semibold text-foreground pt-2 mb-2 line-clamp-1">
+              {module.title}
+            </h3>
+          )}
+          
+          <p className={cn("text-sm text-muted-foreground line-clamp-2 mb-5 min-h-[40px]", !isLocked && "pt-2")}>
+            {module.description}
           </p>
 
           <div className="flex items-center gap-5 text-sm text-muted-foreground mb-5">
