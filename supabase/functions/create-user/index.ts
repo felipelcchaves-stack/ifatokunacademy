@@ -179,6 +179,19 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Matricular na turma se cohortId fornecido
+    if (cohortId) {
+      const { error: cohortError } = await supabaseAdmin
+        .from('cohort_members')
+        .insert({ cohort_id: cohortId, user_id: newUserId })
+
+      if (cohortError) {
+        console.error('Error enrolling in cohort:', cohortError)
+      } else {
+        console.log(`Enrolled user in cohort: ${cohortId}`)
+      }
+    }
+
     console.log(`User created successfully: ${newUserId}`)
 
     return new Response(
