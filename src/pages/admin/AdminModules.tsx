@@ -14,7 +14,8 @@ import {
   Image,
   Wand2,
   RefreshCw,
-  ImageOff
+  ImageOff,
+  CalendarIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,12 +44,35 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAdminOrganization } from '@/hooks/useAdminOrganization';
 import MediaUploader from '@/components/admin/MediaUploader';
 import BannerGenerator from '@/components/admin/BannerGenerator';
 import BatchBannerGenerator from '@/components/admin/BatchBannerGenerator';
+import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface Module {
   id: string;
@@ -64,6 +88,8 @@ interface Module {
   created_at: string;
   organization_id: string | null;
   lessons_count?: number;
+  unlock_rule: string;
+  unlock_date: string | null;
 }
 
 const colorOptions = [
@@ -74,6 +100,267 @@ const colorOptions = [
   { value: 'from-blue-500 to-indigo-600', label: 'Azul' },
   { value: 'from-red-500 to-orange-600', label: 'Vermelho' },
 ];
+
+const unlockRuleOptions = [
+  { value: 'sequential', label: 'Sequencial', description: 'Desbloqueia ao completar o anterior' },
+  { value: 'date_based', label: 'Por Data', description: 'Desbloqueia a partir de uma data' },
+  { value: 'always_unlocked', label: 'Sempre Liberado', description: 'Sem pré-requisito' },
+  { value: 'manual', label: 'Manual', description: 'Bloqueado até liberação manual' },
+];
+
+// Sortable Module Card Component
+const SortableModuleCard: React.FC<{
+  module: Module;
+  index: number;
+  regeneratingBanner: string | null;
+  onEdit: (module: Module) => void;
+  onTogglePublish: (module: Module) => void;
+  onRegenerate: (module: Module) => void;
+  onDelete: (module: Module) => void;
+  onNavigate: (moduleId: string) => void;
+}> = ({ module, index, regeneratingBanner, onEdit, onTogglePublish, onRegenerate, onDelete, onNavigate }) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: module.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : undefined,
+    opacity: isDragging ? 0.8 : undefined,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`
+        bg-card rounded-xl overflow-hidden group transition-all duration-300
+        ${module.image_url 
+          ? 'border border-sacred-300/40 hover:border-sacred-400/60 hover:shadow-sacred' 
+          : 'border border-border hover:border-primary/30 hover:shadow-soft'
+        }
+        ${!module.is_published ? 'opacity-80' : ''}
+        ${isDragging ? 'shadow-2xl ring-2 ring-primary/50' : ''}
+      `}
+    >
+      {/* Banner Area */}
+      <div className={`aspect-[16/9] bg-gradient-to-br ${module.color || 'from-amber-500 to-orange-600'} relative overflow-hidden`}>
+        {module.image_url ? (
+          <>
+            <img 
+              src={module.image_url} 
+              alt={module.title}
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+            />
+            {regeneratingBanner === module.id && (
+              <div className="absolute inset-0 module-card-shimmer" />
+            )}
+          </>
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center pattern-adinkra">
+            <div className="w-16 h-16 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center border border-white/20 transition-transform duration-300 group-hover:scale-110">
+              <Wand2 className="w-8 h-8 text-white/70" />
+            </div>
+          </div>
+        )}
+        
+        <div className="absolute inset-0 module-card-overlay pointer-events-none" />
+        
+        {/* Badges - Top Right */}
+        <div className="absolute top-3 right-3 flex flex-col items-end gap-2">
+          <span className="px-2.5 py-1 bg-black/40 backdrop-blur-md rounded-full text-xs font-medium text-white border border-white/20">
+            {module.type === 'proficiency' 
+              ? `Nível ${module.level?.charAt(0).toUpperCase()}${module.level?.slice(1)}` 
+              : module.theme}
+          </span>
+          {module.is_published ? (
+            <span className="px-2.5 py-1 bg-green-500/80 backdrop-blur-md rounded-full text-xs font-medium text-white flex items-center gap-1.5 shadow-lg">
+              <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+              Publicado
+            </span>
+          ) : (
+            <span className="px-2.5 py-1 bg-gray-600/80 backdrop-blur-md rounded-full text-xs font-medium text-white/80">
+              Rascunho
+            </span>
+          )}
+          {module.unlock_rule !== 'sequential' && (
+            <span className="px-2.5 py-1 bg-blue-500/80 backdrop-blur-md rounded-full text-xs font-medium text-white">
+              {unlockRuleOptions.find(o => o.value === module.unlock_rule)?.label || module.unlock_rule}
+            </span>
+          )}
+        </div>
+        
+        {/* Module Title */}
+        <div className="absolute bottom-0 inset-x-0 p-4 pt-10">
+          <h3 className="font-serif text-lg font-bold text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] line-clamp-1">
+            {module.title}
+          </h3>
+        </div>
+        
+        {/* Drag handle */}
+        <div 
+          className="absolute top-3 left-3 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing"
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="w-5 h-5 text-white/60 drop-shadow-lg" />
+        </div>
+      </div>
+
+      {/* Content Area */}
+      <div className="p-4 relative">
+        <div className="absolute top-0 left-4 right-4 h-px bg-gradient-to-r from-transparent via-sacred-400/40 to-transparent" />
+        
+        <div className="flex items-start justify-between pt-1 mb-2">
+          <div className="flex-1 min-w-0">
+            {!module.image_url && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 mb-2 bg-orange-500/10 rounded text-xs font-medium text-orange-600 dark:text-orange-400">
+                <ImageOff className="w-3 h-3" />
+                Sem banner
+              </span>
+            )}
+            <p className="text-sm text-muted-foreground line-clamp-2">
+              {module.description || 'Sem descrição'}
+            </p>
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0 ml-2">
+                <MoreVertical className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => onEdit(module)}>
+                <Edit className="w-4 h-4 mr-2" />
+                Editar
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onTogglePublish(module)}>
+                {module.is_published ? (
+                  <>
+                    <EyeOff className="w-4 h-4 mr-2" />
+                    Despublicar
+                  </>
+                ) : (
+                  <>
+                    <Eye className="w-4 h-4 mr-2" />
+                    Publicar
+                  </>
+                )}
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => onRegenerate(module)}
+                disabled={regeneratingBanner === module.id}
+              >
+                {regeneratingBanner === module.id ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    Gerando...
+                  </>
+                ) : (
+                  <>
+                    <Wand2 className="w-4 h-4 mr-2" />
+                    {module.image_url ? 'Regenerar Banner' : 'Gerar Banner'}
+                  </>
+                )}
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                className="text-destructive"
+                onClick={() => onDelete(module)}
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Excluir
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+        
+        <div className="flex items-center justify-between text-sm pt-2 border-t border-border/50">
+          <div className="flex items-center gap-1 text-muted-foreground">
+            <BookOpen className="w-4 h-4" />
+            <span>{module.lessons_count || 0} lições</span>
+          </div>
+          <Button 
+            variant="outline" 
+            size="sm"
+            className="hover:bg-sacred-100 hover:text-sacred-700 hover:border-sacred-300 dark:hover:bg-sacred-900/20 dark:hover:text-sacred-400"
+            onClick={() => onNavigate(module.id)}
+          >
+            Gerenciar Lições
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Unlock Rule Fields component for dialogs
+const UnlockRuleFields: React.FC<{
+  unlockRule: string;
+  unlockDate: string | null;
+  onRuleChange: (rule: string) => void;
+  onDateChange: (date: string | null) => void;
+}> = ({ unlockRule, unlockDate, onRuleChange, onDateChange }) => {
+  const selectedDate = unlockDate ? new Date(unlockDate) : undefined;
+
+  return (
+    <>
+      <div className="space-y-2">
+        <Label>Regra de Desbloqueio</Label>
+        <Select value={unlockRule} onValueChange={onRuleChange}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {unlockRuleOptions.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                <div className="flex flex-col">
+                  <span>{option.label}</span>
+                  <span className="text-xs text-muted-foreground">{option.description}</span>
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      {unlockRule === 'date_based' && (
+        <div className="space-y-2">
+          <Label>Data de Desbloqueio</Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "w-full justify-start text-left font-normal",
+                  !selectedDate && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {selectedDate 
+                  ? format(selectedDate, "PPP 'às' HH:mm", { locale: ptBR })
+                  : 'Selecione a data'}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={(date) => onDateChange(date ? date.toISOString() : null)}
+                initialFocus
+                className={cn("p-3 pointer-events-auto")}
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
+      )}
+    </>
+  );
+};
 
 const AdminModules: React.FC = () => {
   const navigate = useNavigate();
@@ -95,7 +382,14 @@ const AdminModules: React.FC = () => {
     color: 'from-amber-500 to-orange-600',
     image_url: '',
     is_published: false,
+    unlock_rule: 'sequential',
+    unlock_date: null as string | null,
   });
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
 
   useEffect(() => {
     if (!orgLoading && activeOrg) {
@@ -109,7 +403,6 @@ const AdminModules: React.FC = () => {
     try {
       setLoading(true);
       
-      // Fetch modules with lessons count - FILTERED BY ORGANIZATION
       const { data, error } = await supabase
         .from('modules')
         .select(`
@@ -138,6 +431,34 @@ const AdminModules: React.FC = () => {
     }
   };
 
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = modules.findIndex(m => m.id === active.id);
+    const newIndex = modules.findIndex(m => m.id === over.id);
+    
+    const reordered = arrayMove(modules, oldIndex, newIndex);
+    setModules(reordered);
+
+    // Update display_order in DB
+    try {
+      const updates = reordered.map((m, i) => 
+        supabase.from('modules').update({ display_order: i }).eq('id', m.id)
+      );
+      await Promise.all(updates);
+      
+      toast({ title: 'Ordem atualizada!' });
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao reordenar',
+        description: error.message,
+        variant: 'destructive',
+      });
+      fetchModules(); // revert
+    }
+  };
+
   const handleCreateModule = async () => {
     try {
       const maxOrder = modules.reduce((max, m) => Math.max(max, m.display_order), -1);
@@ -155,6 +476,8 @@ const AdminModules: React.FC = () => {
           display_order: maxOrder + 1,
           is_published: newModule.is_published,
           organization_id: activeOrg?.id || null,
+          unlock_rule: newModule.unlock_rule,
+          unlock_date: newModule.unlock_rule === 'date_based' ? newModule.unlock_date : null,
         })
         .select()
         .single();
@@ -173,6 +496,8 @@ const AdminModules: React.FC = () => {
         color: 'from-amber-500 to-orange-600',
         image_url: '',
         is_published: false,
+        unlock_rule: 'sequential',
+        unlock_date: null,
       });
       
       toast({
@@ -203,6 +528,8 @@ const AdminModules: React.FC = () => {
           color: editingModule.color,
           image_url: editingModule.image_url,
           is_published: editingModule.is_published,
+          unlock_rule: editingModule.unlock_rule,
+          unlock_date: editingModule.unlock_rule === 'date_based' ? editingModule.unlock_date : null,
         })
         .eq('id', editingModule.id);
 
@@ -343,7 +670,7 @@ const AdminModules: React.FC = () => {
               Gerenciar Módulos
             </h1>
             <p className="text-muted-foreground mt-1">
-              Crie, edite e organize os módulos da plataforma
+              Crie, edite e organize os módulos da plataforma. Arraste para reordenar.
             </p>
           </div>
           <BatchBannerGenerator 
@@ -449,6 +776,15 @@ const AdminModules: React.FC = () => {
                     </SelectContent>
                   </Select>
                 </div>
+                
+                {/* Unlock Rule */}
+                <UnlockRuleFields
+                  unlockRule={newModule.unlock_rule}
+                  unlockDate={newModule.unlock_date}
+                  onRuleChange={(rule) => setNewModule({ ...newModule, unlock_rule: rule })}
+                  onDateChange={(date) => setNewModule({ ...newModule, unlock_date: date })}
+                />
+
                 <div className="space-y-2">
                   <Label>Imagem de Capa</Label>
                   <MediaUploader
@@ -515,168 +851,35 @@ const AdminModules: React.FC = () => {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredModules.map((module, index) => (
-              <div 
-                key={module.id}
-                className={`
-                  bg-card rounded-xl overflow-hidden group transition-all duration-300
-                  ${module.image_url 
-                    ? 'border border-sacred-300/40 hover:border-sacred-400/60 hover:shadow-sacred' 
-                    : 'border border-border hover:border-primary/30 hover:shadow-soft'
-                  }
-                  ${!module.is_published ? 'opacity-80' : ''}
-                  animate-fade-in
-                `}
-                style={{ animationDelay: `${index * 50}ms` }}
-              >
-                {/* Banner Area - Expanded */}
-                <div className={`aspect-[16/9] bg-gradient-to-br ${module.color || 'from-amber-500 to-orange-600'} relative overflow-hidden`}>
-                  {module.image_url ? (
-                    <>
-                      <img 
-                        src={module.image_url} 
-                        alt={module.title}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
-                      />
-                      {/* Shimmer overlay when regenerating */}
-                      {regeneratingBanner === module.id && (
-                        <div className="absolute inset-0 module-card-shimmer" />
-                      )}
-                    </>
-                  ) : (
-                    /* Placeholder for modules without banner */
-                    <div className="absolute inset-0 flex items-center justify-center pattern-adinkra">
-                      <div className="w-16 h-16 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center border border-white/20 transition-transform duration-300 group-hover:scale-110">
-                        <Wand2 className="w-8 h-8 text-white/70" />
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Subtle gradient overlay - only at bottom */}
-                  <div className="absolute inset-0 module-card-overlay pointer-events-none" />
-                  
-                  {/* Badges - Top Right */}
-                  <div className="absolute top-3 right-3 flex flex-col items-end gap-2">
-                    <span className="px-2.5 py-1 bg-black/40 backdrop-blur-md rounded-full text-xs font-medium text-white border border-white/20">
-                      {module.type === 'proficiency' 
-                        ? `Nível ${module.level?.charAt(0).toUpperCase()}${module.level?.slice(1)}` 
-                        : module.theme}
-                    </span>
-                    {module.is_published ? (
-                      <span className="px-2.5 py-1 bg-green-500/80 backdrop-blur-md rounded-full text-xs font-medium text-white flex items-center gap-1.5 shadow-lg">
-                        <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                        Publicado
-                      </span>
-                    ) : (
-                      <span className="px-2.5 py-1 bg-gray-600/80 backdrop-blur-md rounded-full text-xs font-medium text-white/80">
-                        Rascunho
-                      </span>
-                    )}
-                  </div>
-                  
-                  {/* Module Title - Bottom with backdrop */}
-                  <div className="absolute bottom-0 inset-x-0 p-4 pt-10">
-                    <h3 className="font-serif text-lg font-bold text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] line-clamp-1">
-                      {module.title}
-                    </h3>
-                  </div>
-                  
-                  {/* Drag handle */}
-                  <div className="absolute top-3 left-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <GripVertical className="w-5 h-5 text-white/60 cursor-grab drop-shadow-lg" />
-                  </div>
-                </div>
-
-                {/* Content Area */}
-                <div className="p-4 relative">
-                  {/* Decorative golden line */}
-                  <div className="absolute top-0 left-4 right-4 h-px bg-gradient-to-r from-transparent via-sacred-400/40 to-transparent" />
-                  
-                  <div className="flex items-start justify-between pt-1 mb-2">
-                    <div className="flex-1 min-w-0">
-                      {!module.image_url && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 mb-2 bg-orange-500/10 rounded text-xs font-medium text-orange-600 dark:text-orange-400">
-                          <ImageOff className="w-3 h-3" />
-                          Sem banner
-                        </span>
-                      )}
-                      <p className="text-sm text-muted-foreground line-clamp-2">
-                        {module.description || 'Sem descrição'}
-                      </p>
-                    </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0 ml-2">
-                          <MoreVertical className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => {
-                          setEditingModule(module);
-                          setIsEditDialogOpen(true);
-                        }}>
-                          <Edit className="w-4 h-4 mr-2" />
-                          Editar
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => togglePublish(module)}>
-                          {module.is_published ? (
-                            <>
-                              <EyeOff className="w-4 h-4 mr-2" />
-                              Despublicar
-                            </>
-                          ) : (
-                            <>
-                              <Eye className="w-4 h-4 mr-2" />
-                              Publicar
-                            </>
-                          )}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          onClick={() => handleQuickRegenerate(module)}
-                          disabled={regeneratingBanner === module.id}
-                        >
-                          {regeneratingBanner === module.id ? (
-                            <>
-                              <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                              Gerando...
-                            </>
-                          ) : (
-                            <>
-                              <Wand2 className="w-4 h-4 mr-2" />
-                              {module.image_url ? 'Regenerar Banner' : 'Gerar Banner'}
-                            </>
-                          )}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          className="text-destructive"
-                          onClick={() => handleDeleteModule(module)}
-                        >
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Excluir
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                  
-                  <div className="flex items-center justify-between text-sm pt-2 border-t border-border/50">
-                    <div className="flex items-center gap-1 text-muted-foreground">
-                      <BookOpen className="w-4 h-4" />
-                      <span>{module.lessons_count || 0} lições</span>
-                    </div>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      className="hover:bg-sacred-100 hover:text-sacred-700 hover:border-sacred-300 dark:hover:bg-sacred-900/20 dark:hover:text-sacred-400"
-                      onClick={() => navigate(`/admin/modules/${module.id}/lessons`)}
-                    >
-                      Gerenciar Lições
-                    </Button>
-                  </div>
-                </div>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={filteredModules.map(m => m.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredModules.map((module, index) => (
+                  <SortableModuleCard
+                    key={module.id}
+                    module={module}
+                    index={index}
+                    regeneratingBanner={regeneratingBanner}
+                    onEdit={(m) => {
+                      setEditingModule(m);
+                      setIsEditDialogOpen(true);
+                    }}
+                    onTogglePublish={togglePublish}
+                    onRegenerate={handleQuickRegenerate}
+                    onDelete={handleDeleteModule}
+                    onNavigate={(id) => navigate(`/admin/modules/${id}/lessons`)}
+                  />
+                ))}
               </div>
-            ))}
-          </div>
+            </SortableContext>
+          </DndContext>
         )}
       
 
@@ -772,6 +975,15 @@ const AdminModules: React.FC = () => {
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Unlock Rule */}
+              <UnlockRuleFields
+                unlockRule={editingModule.unlock_rule || 'sequential'}
+                unlockDate={editingModule.unlock_date}
+                onRuleChange={(rule) => setEditingModule({ ...editingModule, unlock_rule: rule })}
+                onDateChange={(date) => setEditingModule({ ...editingModule, unlock_date: date })}
+              />
+
               <div className="space-y-2">
                 <Label>Imagem de Capa</Label>
                 <MediaUploader
