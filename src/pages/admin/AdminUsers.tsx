@@ -259,7 +259,8 @@ export default function AdminUsers() {
           password: inviteForm.password,
           fullName: inviteForm.fullName,
           moduleIds: inviteForm.moduleIds,
-          organizationId: activeOrg?.id // Usar org ativa do admin
+          organizationId: activeOrg?.id,
+          cohortId: inviteForm.cohortId || undefined
         },
         headers: {
           Authorization: `Bearer ${session?.access_token}`
