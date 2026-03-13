@@ -697,6 +697,8 @@ export type Database = {
           theme: string | null
           title: string
           type: string
+          unlock_date: string | null
+          unlock_rule: string
           updated_at: string
         }
         Insert: {
@@ -712,6 +714,8 @@ export type Database = {
           theme?: string | null
           title: string
           type: string
+          unlock_date?: string | null
+          unlock_rule?: string
           updated_at?: string
         }
         Update: {
@@ -727,6 +731,8 @@ export type Database = {
           theme?: string | null
           title?: string
           type?: string
+          unlock_date?: string | null
+          unlock_rule?: string
           updated_at?: string
         }
         Relationships: [
