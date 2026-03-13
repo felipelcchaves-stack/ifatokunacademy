@@ -142,6 +142,48 @@ Deno.serve(async (req) => {
       } else {
         console.log(`Updated profile with organization_id: ${organizationId}`)
       }
+
+      // Inserir em organization_members para que o usuário apareça na lista
+      const { error: memberError } = await supabaseAdmin
+        .from('organization_members')
+        .insert({
+          user_id: newUserId,
+          organization_id: organizationId,
+          role: 'member',
+          is_primary: true
+        })
+
+      if (memberError) {
+        console.error('Error inserting organization member:', memberError)
+      } else {
+        console.log(`Inserted organization_members for user: ${newUserId}`)
+      }
+
+      // Inserir registro em user_invites como "accepted" para histórico
+      const callerProfile = await supabaseAdmin
+        .from('profiles')
+        .select('full_name')
+        .eq('id', callerUser.id)
+        .single()
+
+      const { error: inviteRecordError } = await supabaseAdmin
+        .from('user_invites')
+        .insert({
+          email,
+          full_name: fullName || null,
+          organization_id: organizationId,
+          cohort_id: cohortId || null,
+          invited_by_id: callerUser.id,
+          invited_by_name: callerProfile.data?.full_name || callerUser.email,
+          status: 'accepted',
+          accepted_at: new Date().toISOString()
+        })
+
+      if (inviteRecordError) {
+        console.error('Error inserting invite record:', inviteRecordError)
+      } else {
+        console.log(`Inserted invite record for: ${email}`)
+      }
     }
 
     // Inserir permissões de módulos
