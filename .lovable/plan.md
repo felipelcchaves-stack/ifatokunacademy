@@ -1,44 +1,33 @@
 
 
-## Plano: Evitar Refresh ao Trocar de Janela/Workspace no Safari
+## Plano: Corrigir usuários e convites não aparecendo no admin
 
-### Diagnóstico
+### Problema raiz
 
-Identifiquei duas causas prováveis:
+1. **Usuários criados não aparecem na lista**: O edge function `create-user` atualiza `profiles.organization_id` mas **não insere na tabela `organization_members`**. A página `AdminUsers` busca usuários via `organization_members` — logo, o usuário criado fica invisível.
 
-1. **React Query com `refetchOnWindowFocus: true` (padrão)** — O `QueryClient` está criado sem configuração, então toda vez que você volta à aba, TODAS as queries disparam refetch simultaneamente. No Safari (macOS), trocar de workspace conta como perda/ganho de foco, gerando dezenas de requisições simultâneas que podem causar re-render pesado ou até "flash" visual que parece reload.
+2. **Convites não aparecem na página de convites**: Quando o admin cria um usuário diretamente em `AdminUsers`, nenhum registro é inserido na tabela `user_invites`. A página `AdminInvites` lista apenas registros de `user_invites`.
 
-2. **Service Worker agressivo** — O `sw.js` usa `skipWaiting()` + `clients.claim()` na ativação. Quando o SW se atualiza enquanto você está em outro workspace, ele toma controle imediato e pode forçar o Safari a recarregar a página. Além disso, a estratégia "Network First" para navegação HTML pode conflitar com o cache do Safari.
+### Correções
 
-### Solução
+**1. Edge Function `create-user/index.ts`**
+- Após criar o usuário e atualizar o perfil, **inserir registro em `organization_members`** com `user_id`, `organization_id`, `role: 'member'`, `is_primary: true`
+- **Inserir registro em `user_invites`** com status `accepted`, `accepted_at: now()`, para que o convite apareça como "aceito" na página de convites
 
-**Arquivo 1: `src/App.tsx`** — Configurar o `QueryClient` para desabilitar refetch automático no foco:
+**2. Nenhuma mudança no front-end** — as queries já estão corretas, o problema é que os dados não existem nas tabelas.
 
-```typescript
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      refetchOnWindowFocus: false,
-      retry: 1,
-      staleTime: 5 * 60 * 1000, // 5 minutos
-    },
-  },
-});
+### Detalhe técnico da mudança no edge function
+
+```text
+Após createUser e update profile:
+  1. INSERT organization_members (user_id, organization_id, role='member', is_primary=true)
+  2. INSERT user_invites (email, full_name, organization_id, cohort_id, 
+     invited_by_id, invited_by_name, status='accepted', accepted_at=now())
 ```
 
-**Arquivo 2: `public/sw.js`** — Tornar o Service Worker menos agressivo:
-
-- Remover `self.skipWaiting()` do evento `install` (evita que novo SW force reload)
-- Remover `self.clients.claim()` do evento `activate`
-- Para navegação HTML, usar estratégia **Cache First com fallback para network** em vez de Network First (evita que o SW tente buscar uma nova versão da página toda vez)
-- Alternativa mais simples: **não interceptar requisições de navegação HTML** — deixar o browser lidar normalmente
-
-### Resumo
+### Arquivos afetados
 
 | Arquivo | Mudança |
 |---|---|
-| `src/App.tsx` | `refetchOnWindowFocus: false` + `staleTime: 5min` no QueryClient |
-| `public/sw.js` | Remover `skipWaiting`/`clients.claim`, não interceptar navegação HTML |
-
-Essas duas mudanças eliminam os dois gatilhos que causam o reload no Safari ao trocar de workspace.
+| `supabase/functions/create-user/index.ts` | Adicionar insert em `organization_members` e `user_invites` |
 
