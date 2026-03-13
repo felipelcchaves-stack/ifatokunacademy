@@ -121,7 +121,8 @@ export default function AdminInvites() {
   const [inviteForm, setInviteForm] = useState({
     email: '',
     fullName: '',
-    moduleIds: [] as string[]
+    moduleIds: [] as string[],
+    cohortId: '' as string
   });
   const [activateForm, setActivateForm] = useState({
     password: '',
