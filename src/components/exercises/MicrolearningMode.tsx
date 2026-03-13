@@ -51,7 +51,7 @@ const MicrolearningMode: React.FC<MicrolearningModeProps> = ({
   const [audioLoading, setAudioLoading] = useState(false);
   const [masteredChunks, setMasteredChunks] = useState<Set<number>>(new Set());
   
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const currentChunk = chunks[currentChunkIndex];
   const isComplete = masteredChunks.size === chunks.length;
 

@@ -31,7 +31,7 @@ const KaraokeMode: React.FC<KaraokeModeProps> = ({
   const [showSettings, setShowSettings] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const [audioLoading, setAudioLoading] = useState(false);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const words = text.split(/\s+/).filter(w => w.length > 0);
