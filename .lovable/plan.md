@@ -1,64 +1,44 @@
 
 
-## Plano: Reordenar Módulos + Regras Flexíveis de Desbloqueio
+## Plano: Evitar Refresh ao Trocar de Janela/Workspace no Safari
 
-### Melhoria 1: Reordenar Módulos (Drag & Drop)
+### Diagnóstico
 
-A página AdminLessons já usa `@dnd-kit` para reordenação. Vamos replicar o mesmo padrão em AdminModules.
+Identifiquei duas causas prováveis:
 
-**Arquivo: `src/pages/admin/AdminModules.tsx`**
+1. **React Query com `refetchOnWindowFocus: true` (padrão)** — O `QueryClient` está criado sem configuração, então toda vez que você volta à aba, TODAS as queries disparam refetch simultaneamente. No Safari (macOS), trocar de workspace conta como perda/ganho de foco, gerando dezenas de requisições simultâneas que podem causar re-render pesado ou até "flash" visual que parece reload.
 
-1. Importar `DndContext`, `SortableContext`, `useSortable`, `arrayMove` do `@dnd-kit` (já instalado)
-2. Trocar o grid de módulos por um layout sortable (lista vertical ou grid com sortable)
-3. No `onDragEnd`, reordenar o array local e fazer `UPDATE` no `display_order` de cada módulo reordenado no banco
-4. Extrair cada card de módulo para um componente `SortableModuleCard` com handle de arrasto (o `GripVertical` já existe no card mas é só visual)
+2. **Service Worker agressivo** — O `sw.js` usa `skipWaiting()` + `clients.claim()` na ativação. Quando o SW se atualiza enquanto você está em outro workspace, ele toma controle imediato e pode forçar o Safari a recarregar a página. Além disso, a estratégia "Network First" para navegação HTML pode conflitar com o cache do Safari.
 
----
+### Solução
 
-### Melhoria 2: Regras Flexíveis de Desbloqueio
+**Arquivo 1: `src/App.tsx`** — Configurar o `QueryClient` para desabilitar refetch automático no foco:
 
-**Migração SQL** — Adicionar 2 colunas à tabela `modules`:
-
-```sql
-ALTER TABLE modules ADD COLUMN unlock_rule text NOT NULL DEFAULT 'sequential';
-ALTER TABLE modules ADD COLUMN unlock_date timestamptz NULL;
+```typescript
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1,
+      staleTime: 5 * 60 * 1000, // 5 minutos
+    },
+  },
+});
 ```
 
-Valores de `unlock_rule`:
-- `sequential` — comportamento atual (desbloqueia quando o anterior é completado)
-- `date_based` — desbloqueia automaticamente a partir de uma data/hora
-- `manual` — sempre bloqueado até admin liberar (via `is_published` ou flag dedicada)
-- `always_unlocked` — sempre desbloqueado, sem pré-requisito
+**Arquivo 2: `public/sw.js`** — Tornar o Service Worker menos agressivo:
 
-**Arquivo: `src/pages/admin/AdminModules.tsx`** (diálogos de criar/editar)
+- Remover `self.skipWaiting()` do evento `install` (evita que novo SW force reload)
+- Remover `self.clients.claim()` do evento `activate`
+- Para navegação HTML, usar estratégia **Cache First com fallback para network** em vez de Network First (evita que o SW tente buscar uma nova versão da página toda vez)
+- Alternativa mais simples: **não interceptar requisições de navegação HTML** — deixar o browser lidar normalmente
 
-- Adicionar campo "Regra de Desbloqueio" com Select: Sequencial, Por Data, Manual, Sempre Liberado
-- Quando "Por Data" for selecionado, mostrar input de data/hora
-- Salvar `unlock_rule` e `unlock_date` no create/update
-
-**Arquivo: `src/hooks/useSequentialProgress.ts`**
-
-- Na função `isModuleUnlocked`, antes de aplicar a lógica sequencial, verificar o `unlock_rule` do módulo:
-  - `always_unlocked` → retorna `true`
-  - `date_based` → retorna `true` se `now() >= unlock_date`
-  - `manual` → retorna `false` (fica bloqueado)
-  - `sequential` → lógica atual (Fase 1 do anterior)
-- Na função `getUnlockRequirement`, retornar mensagens adequadas:
-  - `date_based` → "Disponível a partir de {data}"
-  - `manual` → "Este módulo ainda não foi liberado"
-
-**Arquivo: `src/hooks/useDashboardData.ts`**
-
-- Incluir `unlock_rule` e `unlock_date` no select de módulos para que fiquem disponíveis no dashboard
-
----
-
-### Resumo de Arquivos
+### Resumo
 
 | Arquivo | Mudança |
 |---|---|
-| **Migração SQL** | Adicionar `unlock_rule` e `unlock_date` à tabela `modules` |
-| `AdminModules.tsx` | Drag-and-drop com dnd-kit + campos de regra de desbloqueio nos diálogos |
-| `useSequentialProgress.ts` | Respeitar `unlock_rule` e `unlock_date` ao verificar desbloqueio |
-| `useDashboardData.ts` | Incluir novos campos no fetch de módulos |
+| `src/App.tsx` | `refetchOnWindowFocus: false` + `staleTime: 5min` no QueryClient |
+| `public/sw.js` | Remover `skipWaiting`/`clients.claim`, não interceptar navegação HTML |
+
+Essas duas mudanças eliminam os dois gatilhos que causam o reload no Safari ao trocar de workspace.
 

@@ -13,6 +13,8 @@ interface Module {
   color: string | null;
   display_order: number;
   is_published: boolean;
+  unlock_rule: string;
+  unlock_date: string | null;
   totalLessons?: number;
   progress?: number;
 }

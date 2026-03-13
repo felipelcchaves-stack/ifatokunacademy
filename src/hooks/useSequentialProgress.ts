@@ -168,15 +168,30 @@ export const useSequentialProgress = () => {
 
   /**
    * Verifica se um módulo está desbloqueado baseado na progressão sequencial.
-   * NOVA LÓGICA: Fase 1 do módulo anterior completa = próximo desbloqueado
+   * Agora respeita unlock_rule do módulo antes de aplicar lógica sequencial.
    */
   const isModuleUnlocked = (
-    module: Module,
+    module: Module & { unlock_rule?: string; unlock_date?: string | null },
     allModules: Module[],
     completions: ModuleCompletion[],
     userProgress: Record<string, number> = {},
     phaseProgress: PhaseProgress[] = []
   ): boolean => {
+    // Verificar unlock_rule primeiro
+    const unlockRule = (module as any).unlock_rule || 'sequential';
+    
+    if (unlockRule === 'always_unlocked') return true;
+    if (unlockRule === 'manual') return false;
+    if (unlockRule === 'date_based') {
+      const unlockDate = (module as any).unlock_date;
+      if (unlockDate) {
+        return new Date() >= new Date(unlockDate);
+      }
+      return false;
+    }
+
+    // unlock_rule === 'sequential' — lógica existente
+
     // Módulos temáticos: regras especiais
     if (module.type === 'thematic') {
       const lockInfo = getThematicLockInfo(module, allModules, completions, userProgress, phaseProgress);
@@ -185,31 +200,17 @@ export const useSequentialProgress = () => {
 
     // Módulos de proficiência
     const proficiencyModules = allModules.filter(m => m.type === 'proficiency');
-    
-    // Ordena por display_order dentro do mesmo nível
     const sortedModules = [...proficiencyModules].sort((a, b) => a.display_order - b.display_order);
-
-    // Encontra índice do módulo atual
     const currentIndex = sortedModules.findIndex(m => m.id === module.id);
     
-    // Primeiro módulo sempre desbloqueado
-    if (currentIndex === 0) {
-      return true;
-    }
+    if (currentIndex === 0) return true;
 
-    // Para os demais, verifica se a Fase 1 do módulo anterior foi completada
     const previousModule = sortedModules[currentIndex - 1];
-    if (!previousModule) {
-      return true;
-    }
+    if (!previousModule) return true;
 
-    // NOVA LÓGICA: Verificar Fase 1 do módulo anterior
     const previousPhaseProgress = phaseProgress.find(p => p.moduleId === previousModule.id);
-    if (previousPhaseProgress?.phase1CompletedAt) {
-      return true;
-    }
+    if (previousPhaseProgress?.phase1CompletedAt) return true;
 
-    // Fallback: se tiver completion com quiz (legado), também desbloqueia
     const previousCompletion = completions.find(c => c.moduleId === previousModule.id);
     return previousCompletion !== undefined && previousCompletion.quizScore >= 90;
   };
@@ -243,12 +244,31 @@ export const useSequentialProgress = () => {
    * Retorna a mensagem de requisito para desbloquear um módulo.
    */
   const getUnlockRequirement = (
-    module: Module,
+    module: Module & { unlock_rule?: string; unlock_date?: string | null },
     allModules: Module[],
     completions: ModuleCompletion[],
     userProgress: Record<string, number> = {},
     phaseProgress: PhaseProgress[] = []
   ): string | null => {
+    // Verificar unlock_rule primeiro
+    const unlockRule = (module as any).unlock_rule || 'sequential';
+    
+    if (unlockRule === 'always_unlocked') return null;
+    if (unlockRule === 'manual') return 'Este módulo ainda não foi liberado';
+    if (unlockRule === 'date_based') {
+      const unlockDate = (module as any).unlock_date;
+      if (unlockDate && new Date() < new Date(unlockDate)) {
+        const dateStr = new Date(unlockDate).toLocaleDateString('pt-BR', {
+          day: '2-digit', month: '2-digit', year: 'numeric',
+          hour: '2-digit', minute: '2-digit',
+        });
+        return `Disponível a partir de ${dateStr}`;
+      }
+      return null;
+    }
+
+    // unlock_rule === 'sequential'
+
     // Módulos temáticos: mensagens específicas
     if (module.type === 'thematic') {
       const lockInfo = getThematicLockInfo(module, allModules, completions, userProgress, phaseProgress);
@@ -271,21 +291,13 @@ export const useSequentialProgress = () => {
 
     const currentIndex = sortedModules.findIndex(m => m.id === module.id);
     
-    if (currentIndex === 0) {
-      return null;
-    }
+    if (currentIndex === 0) return null;
 
     const previousModule = sortedModules[currentIndex - 1];
-    if (!previousModule) {
-      return null;
-    }
+    if (!previousModule) return null;
 
-    // Verificar Fase 1 do módulo anterior
     const previousPhaseProgress = phaseProgress.find(p => p.moduleId === previousModule.id);
-    
-    if (previousPhaseProgress?.phase1CompletedAt) {
-      return null; // Desbloqueado
-    }
+    if (previousPhaseProgress?.phase1CompletedAt) return null;
 
     return `Complete a Fase 1 do módulo anterior para desbloquear`;
   };
