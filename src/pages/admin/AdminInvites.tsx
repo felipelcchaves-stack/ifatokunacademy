@@ -165,6 +165,17 @@ export default function AdminInvites() {
 
       if (modulesError) throw modulesError;
       setModules(modulesData || []);
+
+      // Buscar turmas ativas (apenas para orgs educacionais)
+      if (activeOrg.organization_type === 'educational') {
+        const { data: cohortsData } = await supabase
+          .from('cohorts')
+          .select('id, name')
+          .eq('organization_id', activeOrg.id)
+          .eq('is_active', true)
+          .order('name');
+        setCohorts(cohortsData || []);
+      }
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
       toast.error('Erro ao carregar dados');
