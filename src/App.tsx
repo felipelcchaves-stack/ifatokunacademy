@@ -66,6 +66,7 @@ import MemberDuesView from "./pages/MemberDuesView";
 
 // Admin pages (lazy)
 import AdminDues from "./pages/admin/AdminDues";
+import AdminCohorts from "./pages/admin/AdminCohorts";
 
 /**
  * Componente que redireciona /org/:slug/admin para /admin
