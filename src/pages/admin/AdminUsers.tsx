@@ -98,6 +98,7 @@ export default function AdminUsers() {
   const { activeOrg, loading: orgLoading } = useAdminOrganization();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [cohorts, setCohorts] = useState<{ id: string; name: string }[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [modules, setModules] = useState<Module[]>([]);
   const [adminEmails, setAdminEmails] = useState<Set<string>>(new Set());
