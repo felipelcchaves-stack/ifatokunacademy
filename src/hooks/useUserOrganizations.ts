@@ -27,7 +27,7 @@ interface UseUserOrganizationsReturn {
 }
 
 export const useUserOrganizations = (): UseUserOrganizationsReturn => {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [organizations, setOrganizations] = useState<UserOrganization[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -44,40 +44,80 @@ export const useUserOrganizations = (): UseUserOrganizationsReturn => {
       setLoading(true);
       setError(null);
 
-      // Buscar memberships do usuário com dados da organização
-      const { data, error: fetchError } = await supabase
-        .from('organization_members')
-        .select(`
-          id,
-          organization_id,
-          role,
-          is_primary,
-          joined_at,
-          organizations:organization_id (
+      let orgs: UserOrganization[] = [];
+
+      if (isAdmin) {
+        // Admin global: buscar TODAS as organizações ativas
+        const { data, error: fetchError } = await supabase
+          .from('organizations')
+          .select('id, name, slug, branding')
+          .eq('is_active', true)
+          .order('name');
+
+        if (fetchError) throw fetchError;
+
+        // Buscar memberships do admin para saber quais são primárias
+        const { data: memberships } = await supabase
+          .from('organization_members')
+          .select('organization_id, is_primary, role')
+          .eq('user_id', user.id);
+
+        const membershipMap = new Map(
+          (memberships || []).map(m => [m.organization_id, m])
+        );
+
+        orgs = (data || []).map(org => {
+          const membership = membershipMap.get(org.id);
+          return {
+            id: membership?.organization_id || org.id,
+            organization_id: org.id,
+            role: (membership?.role as 'member' | 'admin' | 'owner') || 'admin',
+            is_primary: membership?.is_primary || false,
+            joined_at: new Date().toISOString(),
+            organization: {
+              id: org.id,
+              name: org.name,
+              slug: org.slug,
+              branding: org.branding as Record<string, unknown> | null,
+            },
+          };
+        });
+
+        // Ordenar: primária primeiro
+        orgs.sort((a, b) => (b.is_primary ? 1 : 0) - (a.is_primary ? 1 : 0));
+      } else {
+        // Usuário normal: buscar via organization_members
+        const { data, error: fetchError } = await supabase
+          .from('organization_members')
+          .select(`
             id,
-            name,
-            slug,
-            branding
-          )
-        `)
-        .eq('user_id', user.id)
-        .order('is_primary', { ascending: false });
+            organization_id,
+            role,
+            is_primary,
+            joined_at,
+            organizations:organization_id (
+              id,
+              name,
+              slug,
+              branding
+            )
+          `)
+          .eq('user_id', user.id)
+          .order('is_primary', { ascending: false });
 
-      if (fetchError) {
-        throw fetchError;
+        if (fetchError) throw fetchError;
+
+        orgs = (data || [])
+          .filter(item => item.organizations)
+          .map(item => ({
+            id: item.id,
+            organization_id: item.organization_id,
+            role: item.role as 'member' | 'admin' | 'owner',
+            is_primary: item.is_primary,
+            joined_at: item.joined_at,
+            organization: item.organizations as unknown as UserOrganization['organization'],
+          }));
       }
-
-      // Transformar dados para o formato esperado
-      const orgs: UserOrganization[] = (data || [])
-        .filter(item => item.organizations)
-        .map(item => ({
-          id: item.id,
-          organization_id: item.organization_id,
-          role: item.role as 'member' | 'admin' | 'owner',
-          is_primary: item.is_primary,
-          joined_at: item.joined_at,
-          organization: item.organizations as unknown as UserOrganization['organization'],
-        }));
 
       setOrganizations(orgs);
 
@@ -92,7 +132,7 @@ export const useUserOrganizations = (): UseUserOrganizationsReturn => {
     } finally {
       setLoading(false);
     }
-  }, [user, currentOrgId]);
+  }, [user, isAdmin, currentOrgId]);
 
   useEffect(() => {
     fetchOrganizations();
