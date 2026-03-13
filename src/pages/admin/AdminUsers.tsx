@@ -120,6 +120,7 @@ export default function AdminUsers() {
     email: '',
     fullName: '',
     password: '',
+    cohortId: '',
     moduleIds: [] as string[]
   });
   const [showPassword, setShowPassword] = useState(false);
