@@ -22,7 +22,8 @@ import {
   Crown,
   ScrollText,
   Gift,
-  Receipt
+  Receipt,
+  GraduationCap
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -87,6 +88,11 @@ const AdminLayout: React.FC = () => {
     { icon: Globe, label: 'Domínio', path: `/admin/organizations/${activeOrg.id}/domain` },
   ] : [];
 
+  // Itens de turmas para orgs educacionais
+  const cohortItems = activeOrg ? [
+    { icon: GraduationCap, label: 'Turmas', path: '/admin/cohorts' },
+  ] : [];
+
   // Itens institucionais para orgs afroculturais
   const orgType = activeOrg?.organization_type;
   const institutionalItems = activeOrg && orgType === 'religious_association' ? [
@@ -99,10 +105,10 @@ const AdminLayout: React.FC = () => {
   // Usar menu apropriado baseado no tipo de admin e org ativa
   const isPrimaryOrg = !activeOrg || activeOrg.slug === 'ifatokun';
   const sidebarItems = isAdmin && isPrimaryOrg 
-    ? [...globalAdminItems, ...contextualOrgItems, ...institutionalItems]
+    ? [...globalAdminItems, ...contextualOrgItems, ...cohortItems, ...institutionalItems]
     : isAdmin 
-      ? [...orgAdminItems, ...contextualOrgItems, ...institutionalItems, { icon: Settings, label: 'Configurações', path: '/admin/settings' }]
-      : [...orgAdminItems, ...contextualOrgItems, ...institutionalItems];
+      ? [...orgAdminItems, ...contextualOrgItems, ...cohortItems, ...institutionalItems, { icon: Settings, label: 'Configurações', path: '/admin/settings' }]
+      : [...orgAdminItems, ...contextualOrgItems, ...cohortItems, ...institutionalItems];
 
   const handleLogout = async () => {
     await signOut();

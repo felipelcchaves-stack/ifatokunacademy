@@ -10,6 +10,9 @@ import { Progress } from '@/components/ui/progress';
 import { supabase } from '@/integrations/supabase/client';
 import { useModuleProgress } from '@/hooks/useModuleProgress';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCohortFilter } from '@/hooks/useCohortFilter';
+import { useOrganization } from '@/contexts/OrganizationContext';
+import { toast } from '@/hooks/use-toast';
 
 interface Module {
   id: string;
@@ -37,6 +40,8 @@ const ModuleView: React.FC = () => {
   const { moduleId } = useParams<{ moduleId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { organization } = useOrganization();
+  const { hasCohorts, allowedModuleIds, loading: cohortLoading } = useCohortFilter(user, organization?.id);
   const { getLessonProgress } = useModuleProgress();
   const [module, setModule] = useState<Module | null>(null);
   const [lessons, setLessons] = useState<Lesson[]>([]);
@@ -50,10 +55,16 @@ const ModuleView: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (moduleId) {
+    if (moduleId && !cohortLoading) {
+      // Check cohort access
+      if (hasCohorts && !allowedModuleIds.has(moduleId)) {
+        toast({ title: 'Módulo não disponível', description: 'Este módulo não pertence à sua turma.', variant: 'destructive' });
+        navigate(-1);
+        return;
+      }
       fetchModuleAndLessons();
     }
-  }, [moduleId]);
+  }, [moduleId, cohortLoading, hasCohorts, allowedModuleIds]);
 
   useEffect(() => {
     if (user && lessons.length > 0) {

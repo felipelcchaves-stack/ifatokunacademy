@@ -66,6 +66,7 @@ import MemberDuesView from "./pages/MemberDuesView";
 
 // Admin pages (lazy)
 import AdminDues from "./pages/admin/AdminDues";
+import AdminCohorts from "./pages/admin/AdminCohorts";
 
 /**
  * Componente que redireciona /org/:slug/admin para /admin
@@ -323,6 +324,7 @@ const App = () => (
                 <Route path="organizations/:organizationId/bylaws" element={<AdminBylaws />} />
                 <Route path="organizations/:organizationId/benefits" element={<AdminBenefits />} />
                 <Route path="organizations/:organizationId/dues" element={<AdminDues />} />
+                <Route path="cohorts" element={<AdminCohorts />} />
                 
                 <Route path="users" element={<AdminUsers />} />
                 <Route path="invites" element={<AdminInvites />} />

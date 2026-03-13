@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User } from '@supabase/supabase-js';
+import { useCohortFilter } from './useCohortFilter';
 
 interface Module {
   id: string;
@@ -39,8 +40,10 @@ export const useDashboardData = (user: User | null, organizationId?: string | nu
   const [userProgress, setUserProgress] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const { hasCohorts, allowedModuleIds, cohortModuleOrder, loading: cohortLoading } = useCohortFilter(user, organizationId);
 
   const fetchData = useCallback(async () => {
+    if (cohortLoading) return;
     try {
       setLoading(true);
       setError(null);
@@ -62,12 +65,23 @@ export const useDashboardData = (user: User | null, organizationId?: string | nu
 
       console.log('[useDashboardData] Modules fetched:', modulesData?.length, modulesData);
 
-      const modulesWithCount: Module[] = (modulesData || []).map((m: any) => ({
+      let modulesWithCount: Module[] = (modulesData || []).map((m: any) => ({
         ...m,
         type: m.type as 'proficiency' | 'thematic',
         totalLessons: m.lessons?.[0]?.count || 0,
         progress: 0,
       }));
+
+      // Cohort filtering: if user is enrolled in cohorts, show only cohort modules
+      if (hasCohorts && allowedModuleIds.size > 0) {
+        modulesWithCount = modulesWithCount
+          .filter(m => allowedModuleIds.has(m.id))
+          .sort((a, b) => {
+            const orderA = cohortModuleOrder.get(a.id) ?? a.display_order;
+            const orderB = cohortModuleOrder.get(b.id) ?? b.display_order;
+            return orderA - orderB;
+          });
+      }
 
       setModules(modulesWithCount);
 
@@ -165,7 +179,7 @@ export const useDashboardData = (user: User | null, organizationId?: string | nu
     } finally {
       setLoading(false);
     }
-  }, [user, organizationId]);
+  }, [user, organizationId, cohortLoading, hasCohorts, allowedModuleIds, cohortModuleOrder]);
 
   useEffect(() => {
     fetchData();
