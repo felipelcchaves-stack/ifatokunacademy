@@ -186,6 +186,17 @@ export default function AdminUsers() {
       if (modulesError) throw modulesError;
       setModules(modulesData || []);
 
+      // Buscar turmas ativas da organização (apenas para orgs educacionais)
+      if (activeOrg.organization_type === 'educational') {
+        const { data: cohortsData } = await supabase
+          .from('cohorts')
+          .select('id, name')
+          .eq('organization_id', activeOrg.id)
+          .eq('is_active', true)
+          .order('name');
+        setCohorts(cohortsData || []);
+      }
+
       // Buscar permissões de módulos (apenas dos módulos da org)
       const moduleIds = (modulesData || []).map(m => m.id);
       let permissionsMap = new Map<string, string[]>();
