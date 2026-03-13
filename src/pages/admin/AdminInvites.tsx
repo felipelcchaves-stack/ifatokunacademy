@@ -246,7 +246,8 @@ export default function AdminInvites() {
           fullName: selectedInvite.full_name,
           moduleIds: activateForm.moduleIds,
           inviteId: selectedInvite.id,
-          organizationId: selectedInvite.organization_id || activeOrg?.id
+          organizationId: selectedInvite.organization_id || activeOrg?.id,
+          cohortId: selectedInvite.cohort_id || null
         },
         headers: {
           Authorization: `Bearer ${session?.access_token}`
