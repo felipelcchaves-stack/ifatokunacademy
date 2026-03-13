@@ -200,7 +200,8 @@ export default function AdminInvites() {
           invited_by_id: user?.id || '',
           invited_by_name: profile?.full_name || user?.email || null,
           status: 'pending',
-          organization_id: activeOrg?.id || null
+          organization_id: activeOrg?.id || null,
+          cohort_id: inviteForm.cohortId || null
         });
 
       if (error) {
