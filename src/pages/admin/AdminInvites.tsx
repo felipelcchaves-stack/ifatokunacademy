@@ -89,6 +89,11 @@ interface Module {
   level: string | null;
 }
 
+interface Cohort {
+  id: string;
+  name: string;
+}
+
 export default function AdminInvites() {
   const { isAdmin, user, profile } = useAuth();
   const { organization, isOrgAdmin } = useOrganization();
