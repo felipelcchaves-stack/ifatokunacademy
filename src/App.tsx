@@ -324,6 +324,7 @@ const App = () => (
                 <Route path="organizations/:organizationId/bylaws" element={<AdminBylaws />} />
                 <Route path="organizations/:organizationId/benefits" element={<AdminBenefits />} />
                 <Route path="organizations/:organizationId/dues" element={<AdminDues />} />
+                <Route path="cohorts" element={<AdminCohorts />} />
                 
                 <Route path="users" element={<AdminUsers />} />
                 <Route path="invites" element={<AdminInvites />} />
