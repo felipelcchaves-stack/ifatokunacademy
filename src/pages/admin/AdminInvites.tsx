@@ -215,7 +215,7 @@ export default function AdminInvites() {
 
       toast.success(`Convite criado para ${inviteForm.email}`);
       setCreateDialogOpen(false);
-      setInviteForm({ email: '', fullName: '', moduleIds: [] });
+      setInviteForm({ email: '', fullName: '', moduleIds: [], cohortId: '' });
       fetchData();
     } catch (error: any) {
       console.error('Erro ao criar convite:', error);
