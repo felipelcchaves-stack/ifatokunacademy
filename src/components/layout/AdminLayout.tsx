@@ -22,7 +22,8 @@ import {
   Crown,
   ScrollText,
   Gift,
-  Receipt
+  Receipt,
+  GraduationCap
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
