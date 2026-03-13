@@ -80,6 +80,7 @@ interface Invite {
   expires_at: string;
   accepted_at: string | null;
   organization_id: string | null;
+  cohort_id: string | null;
 }
 
 interface Module {
