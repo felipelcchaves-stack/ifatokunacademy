@@ -273,7 +273,7 @@ export default function AdminUsers() {
 
       toast.success(`Usuário ${inviteForm.email} criado com sucesso!`);
       setInviteDialogOpen(false);
-      setInviteForm({ email: '', fullName: '', password: '', moduleIds: [] });
+      setInviteForm({ email: '', fullName: '', password: '', cohortId: '', moduleIds: [] });
       fetchData();
     } catch (error: any) {
       console.error('Erro ao criar usuário:', error);
