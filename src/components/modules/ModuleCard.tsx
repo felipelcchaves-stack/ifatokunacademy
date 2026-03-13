@@ -456,6 +456,13 @@ const ModuleCard: React.FC<ModuleCardProps> = ({
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
+              {/* Unlock requirement badge */}
+              {isLocked && unlockRequirement && (
+                <p className="text-xs text-amber-600 dark:text-amber-400 mb-2 text-center">
+                  {unlockRequirement}
+                </p>
+              )}
+
               <Button 
                 className={cn(
                   "w-full font-semibold transition-all duration-300",

@@ -235,6 +235,13 @@ const HeroModuleSlider: React.FC<HeroModuleSliderProps> = ({
                         </div>
                       )}
 
+                  {/* Unlock requirement badge */}
+                  {isLocked && unlockRequirements[module.id] && (
+                    <p className="text-xs text-amber-600 dark:text-amber-400 mb-2 text-center">
+                      {unlockRequirements[module.id]}
+                    </p>
+                  )}
+
                   <Button 
                     className={cn(
                       "w-full font-semibold h-11 transition-all duration-300",
