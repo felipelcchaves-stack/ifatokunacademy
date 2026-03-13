@@ -767,6 +767,26 @@ export default function AdminUsers() {
               <PasswordStrengthIndicator password={inviteForm.password} />
             </div>
 
+            {cohorts.length > 0 && (
+              <div className="space-y-2">
+                <Label htmlFor="invite-cohort">Turma (opcional)</Label>
+                <Select
+                  value={inviteForm.cohortId}
+                  onValueChange={(value) => setInviteForm(prev => ({ ...prev, cohortId: value === 'none' ? '' : value }))}
+                >
+                  <SelectTrigger id="invite-cohort">
+                    <SelectValue placeholder="Selecione uma turma" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nenhuma turma</SelectItem>
+                    {cohorts.map(c => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label>Módulos Permitidos</Label>
               <p className="text-sm text-muted-foreground mb-2">
