@@ -206,6 +206,15 @@ const AdminCohorts: React.FC = () => {
     );
   }
 
+  if (activeOrg.organization_type !== 'educational') {
+    return (
+      <div className="text-center py-12 text-muted-foreground">
+        <GraduationCap className="w-12 h-12 mx-auto mb-4 opacity-50" />
+        <p>O recurso de turmas está disponível apenas para organizações educacionais.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">

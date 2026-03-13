@@ -1,0 +1,1 @@
+ALTER TABLE public.user_invites ADD COLUMN cohort_id uuid REFERENCES public.cohorts(id) ON DELETE SET NULL;

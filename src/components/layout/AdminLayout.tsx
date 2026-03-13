@@ -88,13 +88,13 @@ const AdminLayout: React.FC = () => {
     { icon: Globe, label: 'Domínio', path: `/admin/organizations/${activeOrg.id}/domain` },
   ] : [];
 
-  // Itens de turmas para orgs educacionais
-  const cohortItems = activeOrg ? [
-    { icon: GraduationCap, label: 'Turmas', path: '/admin/cohorts' },
-  ] : [];
-
   // Itens institucionais para orgs afroculturais
   const orgType = activeOrg?.organization_type;
+
+  // Itens de turmas apenas para orgs educacionais
+  const cohortItems = activeOrg && orgType === 'educational' ? [
+    { icon: GraduationCap, label: 'Turmas', path: '/admin/cohorts' },
+  ] : [];
   const institutionalItems = activeOrg && orgType === 'religious_association' ? [
     { icon: Crown, label: 'Hierarquia do Templo', path: `/admin/organizations/${activeOrg.id}/hierarchy` },
     { icon: ScrollText, label: 'Estatuto', path: `/admin/organizations/${activeOrg.id}/bylaws` },
