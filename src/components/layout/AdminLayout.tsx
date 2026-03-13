@@ -88,6 +88,11 @@ const AdminLayout: React.FC = () => {
     { icon: Globe, label: 'Domínio', path: `/admin/organizations/${activeOrg.id}/domain` },
   ] : [];
 
+  // Itens de turmas para orgs educacionais
+  const cohortItems = activeOrg ? [
+    { icon: GraduationCap, label: 'Turmas', path: '/admin/cohorts' },
+  ] : [];
+
   // Itens institucionais para orgs afroculturais
   const orgType = activeOrg?.organization_type;
   const institutionalItems = activeOrg && orgType === 'religious_association' ? [
