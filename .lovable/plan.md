@@ -1,25 +1,44 @@
 
 
-## Plano: Corrigir Switcher de Organizações — Mostrar Todas as Orgs
+## Plano: Evitar Refresh ao Trocar de Janela/Workspace no Safari
 
 ### Diagnóstico
 
-O hook `useUserOrganizations` busca organizações **apenas** da tabela `organization_members`. Se você é admin global (via `admin_emails`), provavelmente não tem registros em `organization_members` para todas as organizações — apenas para aquelas onde foi adicionado como membro explicitamente. Por isso o combobox mostra apenas um subconjunto.
+Identifiquei duas causas prováveis:
 
-O hook `useAdminOrganization` (usado no painel admin) já resolve isso corretamente: quando `isAdmin === true`, busca **todas** as organizações ativas diretamente da tabela `organizations`.
+1. **React Query com `refetchOnWindowFocus: true` (padrão)** — O `QueryClient` está criado sem configuração, então toda vez que você volta à aba, TODAS as queries disparam refetch simultaneamente. No Safari (macOS), trocar de workspace conta como perda/ganho de foco, gerando dezenas de requisições simultâneas que podem causar re-render pesado ou até "flash" visual que parece reload.
+
+2. **Service Worker agressivo** — O `sw.js` usa `skipWaiting()` + `clients.claim()` na ativação. Quando o SW se atualiza enquanto você está em outro workspace, ele toma controle imediato e pode forçar o Safari a recarregar a página. Além disso, a estratégia "Network First" para navegação HTML pode conflitar com o cache do Safari.
 
 ### Solução
 
-**Arquivo: `src/hooks/useUserOrganizations.ts`**
+**Arquivo 1: `src/App.tsx`** — Configurar o `QueryClient` para desabilitar refetch automático no foco:
 
-Adicionar a mesma lógica do `useAdminOrganization`:
+```typescript
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1,
+      staleTime: 5 * 60 * 1000, // 5 minutos
+    },
+  },
+});
+```
 
-1. Importar `isAdmin` do `useAuth()`
-2. Quando `isAdmin === true`, buscar todas as orgs ativas da tabela `organizations` (não depender de `organization_members`)
-3. Mapear essas orgs para o formato `UserOrganization` com role `'admin'`
-4. Quando não for admin global, manter a lógica atual (buscar via `organization_members`)
+**Arquivo 2: `public/sw.js`** — Tornar o Service Worker menos agressivo:
 
-### Resultado
+- Remover `self.skipWaiting()` do evento `install` (evita que novo SW force reload)
+- Remover `self.clients.claim()` do evento `activate`
+- Para navegação HTML, usar estratégia **Cache First com fallback para network** em vez de Network First (evita que o SW tente buscar uma nova versão da página toda vez)
+- Alternativa mais simples: **não interceptar requisições de navegação HTML** — deixar o browser lidar normalmente
 
-Admin global verá **todas** as organizações ativas no switcher. Usuários normais continuam vendo apenas as organizações onde são membros.
+### Resumo
+
+| Arquivo | Mudança |
+|---|---|
+| `src/App.tsx` | `refetchOnWindowFocus: false` + `staleTime: 5min` no QueryClient |
+| `public/sw.js` | Remover `skipWaiting`/`clients.claim`, não interceptar navegação HTML |
+
+Essas duas mudanças eliminam os dois gatilhos que causam o reload no Safari ao trocar de workspace.
 
