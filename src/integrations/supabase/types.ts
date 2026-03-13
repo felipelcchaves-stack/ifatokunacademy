@@ -1429,6 +1429,7 @@ export type Database = {
       user_invites: {
         Row: {
           accepted_at: string | null
+          cohort_id: string | null
           created_at: string
           email: string
           expires_at: string
@@ -1441,6 +1442,7 @@ export type Database = {
         }
         Insert: {
           accepted_at?: string | null
+          cohort_id?: string | null
           created_at?: string
           email: string
           expires_at?: string
@@ -1453,6 +1455,7 @@ export type Database = {
         }
         Update: {
           accepted_at?: string | null
+          cohort_id?: string | null
           created_at?: string
           email?: string
           expires_at?: string
@@ -1464,6 +1467,13 @@ export type Database = {
           status?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "user_invites_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "cohorts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "user_invites_organization_id_fkey"
             columns: ["organization_id"]

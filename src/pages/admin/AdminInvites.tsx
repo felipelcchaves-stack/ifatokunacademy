@@ -80,6 +80,7 @@ interface Invite {
   expires_at: string;
   accepted_at: string | null;
   organization_id: string | null;
+  cohort_id: string | null;
 }
 
 interface Module {
@@ -87,6 +88,11 @@ interface Module {
   title: string;
   type: string;
   level: string | null;
+}
+
+interface Cohort {
+  id: string;
+  name: string;
 }
 
 export default function AdminInvites() {
@@ -97,6 +103,8 @@ export default function AdminInvites() {
   const [loading, setLoading] = useState(true);
   const [invites, setInvites] = useState<Invite[]>([]);
   const [modules, setModules] = useState<Module[]>([]);
+  const [cohorts, setCohorts] = useState<Cohort[]>([]);
+  const isEducational = activeOrg?.organization_type === 'educational';
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   
@@ -114,7 +122,8 @@ export default function AdminInvites() {
   const [inviteForm, setInviteForm] = useState({
     email: '',
     fullName: '',
-    moduleIds: [] as string[]
+    moduleIds: [] as string[],
+    cohortId: '' as string
   });
   const [activateForm, setActivateForm] = useState({
     password: '',
@@ -157,6 +166,17 @@ export default function AdminInvites() {
 
       if (modulesError) throw modulesError;
       setModules(modulesData || []);
+
+      // Buscar turmas ativas (apenas para orgs educacionais)
+      if (activeOrg.organization_type === 'educational') {
+        const { data: cohortsData } = await supabase
+          .from('cohorts')
+          .select('id, name')
+          .eq('organization_id', activeOrg.id)
+          .eq('is_active', true)
+          .order('name');
+        setCohorts(cohortsData || []);
+      }
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
       toast.error('Erro ao carregar dados');
@@ -181,7 +201,8 @@ export default function AdminInvites() {
           invited_by_id: user?.id || '',
           invited_by_name: profile?.full_name || user?.email || null,
           status: 'pending',
-          organization_id: activeOrg?.id || null
+          organization_id: activeOrg?.id || null,
+          cohort_id: inviteForm.cohortId || null
         });
 
       if (error) {
@@ -195,7 +216,7 @@ export default function AdminInvites() {
 
       toast.success(`Convite criado para ${inviteForm.email}`);
       setCreateDialogOpen(false);
-      setInviteForm({ email: '', fullName: '', moduleIds: [] });
+      setInviteForm({ email: '', fullName: '', moduleIds: [], cohortId: '' });
       fetchData();
     } catch (error: any) {
       console.error('Erro ao criar convite:', error);
@@ -225,7 +246,8 @@ export default function AdminInvites() {
           fullName: selectedInvite.full_name,
           moduleIds: activateForm.moduleIds,
           inviteId: selectedInvite.id,
-          organizationId: selectedInvite.organization_id || activeOrg?.id
+          organizationId: selectedInvite.organization_id || activeOrg?.id,
+          cohortId: selectedInvite.cohort_id || null
         },
         headers: {
           Authorization: `Bearer ${session?.access_token}`
@@ -602,6 +624,29 @@ export default function AdminInvites() {
                 onChange={(e) => setInviteForm(prev => ({ ...prev, fullName: e.target.value }))}
               />
             </div>
+
+            {isEducational && cohorts.length > 0 && (
+              <div className="space-y-2">
+                <Label htmlFor="invite-cohort">Turma (opcional)</Label>
+                <Select 
+                  value={inviteForm.cohortId} 
+                  onValueChange={(value) => setInviteForm(prev => ({ ...prev, cohortId: value === 'none' ? '' : value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecionar turma..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nenhuma turma</SelectItem>
+                    {cohorts.map(c => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  O aluno será matriculado automaticamente nesta turma ao ser ativado.
+                </p>
+              </div>
+            )}
           </div>
 
           <DialogFooter>
