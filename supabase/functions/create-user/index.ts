@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
     
     // Ler o body para verificar organizationId (precisamos fazer isso antes de consumir o stream)
     const body = await req.json()
-    const { email, password, fullName, moduleIds, inviteId, organizationId } = body
+    const { email, password, fullName, moduleIds, inviteId, organizationId, cohortId } = body
     
     // Verificar se é org admin para a organização específica (se não for admin global)
     let canCreate = isAdminData
