@@ -98,6 +98,7 @@ export default function AdminUsers() {
   const { activeOrg, loading: orgLoading } = useAdminOrganization();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [cohorts, setCohorts] = useState<{ id: string; name: string }[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [modules, setModules] = useState<Module[]>([]);
   const [adminEmails, setAdminEmails] = useState<Set<string>>(new Set());
@@ -119,6 +120,7 @@ export default function AdminUsers() {
     email: '',
     fullName: '',
     password: '',
+    cohortId: '',
     moduleIds: [] as string[]
   });
   const [showPassword, setShowPassword] = useState(false);
@@ -184,6 +186,17 @@ export default function AdminUsers() {
       if (modulesError) throw modulesError;
       setModules(modulesData || []);
 
+      // Buscar turmas ativas da organização (apenas para orgs educacionais)
+      if (activeOrg.organization_type === 'educational') {
+        const { data: cohortsData } = await supabase
+          .from('cohorts')
+          .select('id, name')
+          .eq('organization_id', activeOrg.id)
+          .eq('is_active', true)
+          .order('name');
+        setCohorts(cohortsData || []);
+      }
+
       // Buscar permissões de módulos (apenas dos módulos da org)
       const moduleIds = (modulesData || []).map(m => m.id);
       let permissionsMap = new Map<string, string[]>();
@@ -246,7 +259,8 @@ export default function AdminUsers() {
           password: inviteForm.password,
           fullName: inviteForm.fullName,
           moduleIds: inviteForm.moduleIds,
-          organizationId: activeOrg?.id // Usar org ativa do admin
+          organizationId: activeOrg?.id,
+          cohortId: inviteForm.cohortId || undefined
         },
         headers: {
           Authorization: `Bearer ${session?.access_token}`
@@ -259,7 +273,7 @@ export default function AdminUsers() {
 
       toast.success(`Usuário ${inviteForm.email} criado com sucesso!`);
       setInviteDialogOpen(false);
-      setInviteForm({ email: '', fullName: '', password: '', moduleIds: [] });
+      setInviteForm({ email: '', fullName: '', password: '', cohortId: '', moduleIds: [] });
       fetchData();
     } catch (error: any) {
       console.error('Erro ao criar usuário:', error);
@@ -752,6 +766,26 @@ export default function AdminUsers() {
               </div>
               <PasswordStrengthIndicator password={inviteForm.password} />
             </div>
+
+            {cohorts.length > 0 && (
+              <div className="space-y-2">
+                <Label htmlFor="invite-cohort">Turma (opcional)</Label>
+                <Select
+                  value={inviteForm.cohortId}
+                  onValueChange={(value) => setInviteForm(prev => ({ ...prev, cohortId: value === 'none' ? '' : value }))}
+                >
+                  <SelectTrigger id="invite-cohort">
+                    <SelectValue placeholder="Selecione uma turma" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nenhuma turma</SelectItem>
+                    {cohorts.map(c => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label>Módulos Permitidos</Label>
