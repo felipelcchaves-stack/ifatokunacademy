@@ -24,6 +24,7 @@ interface Module {
   theme: string | null;
   color: string | null;
   image_url: string | null;
+  requires_quiz: boolean;
 }
 
 interface Lesson {
