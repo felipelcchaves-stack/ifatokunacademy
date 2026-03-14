@@ -91,7 +91,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    console.log(`Updating permissions for user ${userId}: ${moduleIds.length} modules`)
+    console.log(`Updating permissions for user ${userId}: ${finalModuleIds.length} modules (including auto-unlocked)`)
 
     // Deletar todas as permissões existentes do usuário
     const { error: deleteError } = await supabaseAdmin
