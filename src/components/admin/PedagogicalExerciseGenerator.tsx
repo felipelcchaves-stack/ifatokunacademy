@@ -484,7 +484,7 @@ const PedagogicalExerciseGenerator: React.FC<PedagogicalExerciseGeneratorProps> 
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar substituição</AlertDialogTitle>
             <AlertDialogDescription>
-              Você está prestes a excluir {existingExercises.length} exercício(s) existente(s) e substituí-los por 11 novos exercícios do método pedagógico.
+              Você está prestes a excluir {existingExercises.length} exercício(s) existente(s) e substituí-los por {selectedCount} novo(s) exercício(s) do método pedagógico.
               <br /><br />
               Esta ação não pode ser desfeita.
             </AlertDialogDescription>
