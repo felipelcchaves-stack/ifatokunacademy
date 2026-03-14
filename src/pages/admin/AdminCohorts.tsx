@@ -191,7 +191,7 @@ const AdminCohorts: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Turmas</h1>
-          <p className="text-muted-foreground">Gerencie turmas e o isolamento de conteúdo por grupo de alunos.</p>
+          <p className="text-muted-foreground">Gerencie turmas e agrupe alunos.</p>
         </div>
         <Button onClick={openCreate}>
           <Plus className="w-4 h-4 mr-2" />
