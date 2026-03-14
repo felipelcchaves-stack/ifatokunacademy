@@ -168,22 +168,6 @@ const AdminCohorts: React.FC = () => {
     }
   };
 
-  const toggleModule = async (moduleId: string) => {
-    if (!selectedCohort) return;
-    const isAssigned = cohortModuleIds.includes(moduleId);
-
-    if (isAssigned) {
-      const { error } = await supabase.from('cohort_modules').delete().eq('cohort_id', selectedCohort.id).eq('module_id', moduleId);
-      if (error) { toast({ title: 'Erro', description: error.message, variant: 'destructive' }); return; }
-      setCohortModuleIds(prev => prev.filter(id => id !== moduleId));
-    } else {
-      const nextOrder = cohortModuleIds.length;
-      const { error } = await supabase.from('cohort_modules').insert({ cohort_id: selectedCohort.id, module_id: moduleId, display_order: nextOrder });
-      if (error) { toast({ title: 'Erro', description: error.message, variant: 'destructive' }); return; }
-      setCohortModuleIds(prev => [...prev, moduleId]);
-    }
-  };
-
   if (!activeOrg) {
     return (
       <div className="text-center py-12 text-muted-foreground">
