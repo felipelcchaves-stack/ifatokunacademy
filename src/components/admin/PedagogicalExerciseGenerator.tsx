@@ -234,7 +234,6 @@ const PedagogicalExerciseGenerator: React.FC<PedagogicalExerciseGeneratorProps> 
   };
 
   const handleGenerate = () => {
-    if (!contextoText.trim() || !versoText.trim()) {
     if (selectedCount === 0) {
       toast({ title: 'Selecione ao menos 1 exercício', variant: 'destructive' });
       return;
