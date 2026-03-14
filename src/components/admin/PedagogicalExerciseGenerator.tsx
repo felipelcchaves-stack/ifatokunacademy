@@ -235,11 +235,16 @@ const PedagogicalExerciseGenerator: React.FC<PedagogicalExerciseGeneratorProps> 
 
   const handleGenerate = () => {
     if (!contextoText.trim() || !versoText.trim()) {
-      toast({
-        title: 'Textos obrigatórios',
-        description: 'Por favor, preencha ambos os campos de texto.',
-        variant: 'destructive',
-      });
+    if (selectedCount === 0) {
+      toast({ title: 'Selecione ao menos 1 exercício', variant: 'destructive' });
+      return;
+    }
+    if (needsContexto && !contextoText.trim()) {
+      toast({ title: 'Texto do Contexto obrigatório', description: 'Preencha o campo de Contexto para os exercícios selecionados da Fase 1.', variant: 'destructive' });
+      return;
+    }
+    if (needsVerso && !versoText.trim()) {
+      toast({ title: 'Texto do Verso obrigatório', description: 'Preencha o campo de Verso para os exercícios selecionados da Fase 2.', variant: 'destructive' });
       return;
     }
 
