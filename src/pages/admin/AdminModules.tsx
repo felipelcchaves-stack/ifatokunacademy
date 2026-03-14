@@ -480,6 +480,7 @@ const AdminModules: React.FC = () => {
           organization_id: activeOrg?.id || null,
           unlock_rule: newModule.unlock_rule,
           unlock_date: newModule.unlock_rule === 'date_based' ? newModule.unlock_date : null,
+          requires_quiz: newModule.requires_quiz ?? true,
         })
         .select()
         .single();
