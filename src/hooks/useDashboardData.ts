@@ -70,17 +70,6 @@ export const useDashboardData = (user: User | null, organizationId?: string | nu
         progress: 0,
       }));
 
-      // Cohort filtering: if user is enrolled in cohorts, show only cohort modules
-      if (hasCohorts && allowedModuleIds.size > 0) {
-        modulesWithCount = modulesWithCount
-          .filter(m => allowedModuleIds.has(m.id))
-          .sort((a, b) => {
-            const orderA = cohortModuleOrder.get(a.id) ?? a.display_order;
-            const orderB = cohortModuleOrder.get(b.id) ?? b.display_order;
-            return orderA - orderB;
-          });
-      }
-
       setModules(modulesWithCount);
 
       if (!user) {
