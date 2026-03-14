@@ -153,7 +153,6 @@ const LessonView: React.FC = () => {
         .from('exercises')
         .select('*')
         .eq('lesson_id', lessonId)
-        .eq('is_published', true)
         .order('display_order', { ascending: true });
 
       if (exercisesError) throw exercisesError;
