@@ -1019,6 +1019,13 @@ const AdminModules: React.FC = () => {
               </div>
               <div className="flex items-center gap-2">
                 <Switch
+                  checked={editingModule.requires_quiz ?? true}
+                  onCheckedChange={(checked) => setEditingModule({ ...editingModule, requires_quiz: checked })}
+                />
+                <Label>Requer Quiz Final</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch
                   checked={editingModule.is_published}
                   onCheckedChange={(checked) => setEditingModule({ ...editingModule, is_published: checked })}
                 />

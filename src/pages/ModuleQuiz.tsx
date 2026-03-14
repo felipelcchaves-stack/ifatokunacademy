@@ -101,6 +101,15 @@ const ModuleQuiz: React.FC = () => {
 
       if (moduleError) throw moduleError;
       if (moduleData) {
+        // Redirect if quiz not required
+        if (moduleData.requires_quiz === false) {
+          toast({
+            title: 'Quiz não necessário',
+            description: 'Este módulo não requer quiz final.',
+          });
+          navigate(getOrgPath(`/module/${moduleId}`));
+          return;
+        }
         setModule({
           ...moduleData,
           type: moduleData.type as 'proficiency' | 'thematic',
