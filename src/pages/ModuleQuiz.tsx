@@ -21,6 +21,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useModuleProgress } from '@/hooks/useModuleProgress';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { useOrgNavigate } from '@/hooks/useOrgNavigate';
 
 interface Module {
   id: string;
