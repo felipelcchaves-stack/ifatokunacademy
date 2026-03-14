@@ -20,6 +20,8 @@ interface DatabaseModule {
   is_published: boolean;
   totalLessons?: number;
   progress: number;
+  unlock_rule?: string;
+  unlock_date?: string | null;
 }
 
 interface HeroStudyTrackProps {
