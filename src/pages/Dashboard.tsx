@@ -31,6 +31,7 @@ import { useDashboardData } from '@/hooks/useDashboardData';
 import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { useModulePhaseProgress } from '@/hooks/useModulePhaseProgress';
 import { useOrgNavigate } from '@/hooks/useOrgNavigate';
+import { useCohortFilter } from '@/hooks/useCohortFilter';
 
 interface DashboardProps {
   organizationId?: string | null;
