@@ -337,15 +337,16 @@ export const useSequentialProgress = () => {
     modules: Module[],
     completions: ModuleCompletion[],
     userProgress: Record<string, number> = {},
-    phaseProgress: PhaseProgress[] = []
+    phaseProgress: PhaseProgress[] = [],
+    cohortModuleMap?: Map<string, { unlock_rule: string; unlock_date: string | null }>
   ): { lockedModules: Set<string>; unlockRequirements: Record<string, string> } => {
     const lockedModules = new Set<string>();
     const unlockRequirements: Record<string, string> = {};
 
     modules.forEach(module => {
-      if (!isModuleUnlocked(module, modules, completions, userProgress, phaseProgress)) {
+      if (!isModuleUnlocked(module, modules, completions, userProgress, phaseProgress, cohortModuleMap)) {
         lockedModules.add(module.id);
-        const requirement = getUnlockRequirement(module, modules, completions, userProgress, phaseProgress);
+        const requirement = getUnlockRequirement(module, modules, completions, userProgress, phaseProgress, cohortModuleMap);
         if (requirement) {
           unlockRequirements[module.id] = requirement;
         }
