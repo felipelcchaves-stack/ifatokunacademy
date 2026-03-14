@@ -8,6 +8,7 @@ import { useOrgNavigate } from '@/hooks/useOrgNavigate';
 
 const ModuleRetentionAlert: React.FC = () => {
   const navigate = useNavigate();
+  const { getOrgPath } = useOrgNavigate();
   const { modulesNeedingReview, loading } = useModuleRetention();
 
   if (loading || modulesNeedingReview.length === 0) {
