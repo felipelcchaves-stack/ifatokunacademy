@@ -88,7 +88,7 @@ const Dashboard: React.FC<DashboardProps> = ({ organizationId, orgName }) => {
       phase2CompletedAt: p.phase2CompletedAt,
     }));
     
-    const lockResult = calculateLockedModules(formattedModules, formattedCompletions, userProgress, formattedPhaseProgress);
+    const lockResult = calculateLockedModules(formattedModules, formattedCompletions, userProgress, formattedPhaseProgress, cohortModuleMap.size > 0 ? cohortModuleMap : undefined);
     const thematicsUnlocked = areThematicsUnlocked(formattedModules, formattedCompletions, formattedPhaseProgress);
     const thematicProgress = getThematicUnlockProgress(formattedModules, formattedCompletions, formattedPhaseProgress);
     
