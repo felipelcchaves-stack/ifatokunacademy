@@ -55,6 +55,7 @@ const ModuleQuiz: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { getOrgPath } = useOrgNavigate();
   const { getModuleProgress, completeModule } = useModuleProgress();
   
   const [module, setModule] = useState<Module | null>(null);
