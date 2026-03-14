@@ -593,7 +593,7 @@ const LessonView: React.FC = () => {
                   <Button
                     variant="ghost"
                     className="text-muted-foreground text-sm"
-                    onClick={() => navigate(`/module/${moduleId}`)}
+                    onClick={() => navigate(getOrgPath(`/module/${moduleId}`))}
                   >
                     Voltar ao Módulo
                   </Button>
