@@ -42,6 +42,7 @@ const ModuleView: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { organization } = useOrganization();
+  const { getOrgPath } = useOrgNavigate();
   const { hasCohorts, allowedModuleIds, loading: cohortLoading } = useCohortFilter(user, organization?.id);
   const { getLessonProgress } = useModuleProgress();
   const [module, setModule] = useState<Module | null>(null);
