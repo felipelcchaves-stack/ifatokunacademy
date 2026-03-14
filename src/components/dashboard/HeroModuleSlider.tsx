@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { useOrgNavigate } from '@/hooks/useOrgNavigate';
 
 // Interface for modules from database
 interface DatabaseModule {
@@ -35,6 +36,7 @@ const HeroModuleSlider: React.FC<HeroModuleSliderProps> = ({
   activeModuleIndex = 0,
 }) => {
   const navigate = useNavigate();
+  const { getOrgPath } = useOrgNavigate();
   const sliderRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
@@ -71,7 +73,7 @@ const HeroModuleSlider: React.FC<HeroModuleSliderProps> = ({
 
   const handleModuleClick = (moduleId: string, isLocked: boolean) => {
     if (!isLocked) {
-      navigate(`/module/${moduleId}`);
+      navigate(getOrgPath(`/module/${moduleId}`));
     }
   };
 

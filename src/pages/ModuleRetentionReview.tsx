@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useOrgNavigate } from '@/hooks/useOrgNavigate';
 import { Brain, ChevronLeft, CheckCircle, XCircle, Loader2, Trophy, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -27,6 +28,7 @@ interface ReviewItem {
 const ModuleRetentionReview: React.FC = () => {
   const { moduleId } = useParams<{ moduleId: string }>();
   const navigate = useNavigate();
+  const { getOrgPath } = useOrgNavigate();
   const { user } = useAuth();
   const { updateRetentionAfterReview } = useModuleRetention();
   const { recordReview } = useSpacedRepetition();
@@ -168,7 +170,7 @@ const ModuleRetentionReview: React.FC = () => {
                 <p className="text-muted-foreground mb-6">
                   Você ainda não tem itens de memorização neste módulo.
                 </p>
-                <Button onClick={() => navigate(`/module/${moduleId}`)}>
+                <Button onClick={() => navigate(getOrgPath(`/module/${moduleId}`))}>
                   <ChevronLeft className="w-4 h-4 mr-2" />
                   Voltar ao Módulo
                 </Button>
@@ -242,7 +244,7 @@ const ModuleRetentionReview: React.FC = () => {
                 </div>
 
                 <div className="flex gap-4 justify-center">
-                  <Button variant="outline" onClick={() => navigate('/dashboard')}>
+                  <Button variant="outline" onClick={() => navigate(getOrgPath('/dashboard'))}>
                     <ChevronLeft className="w-4 h-4 mr-2" />
                     Dashboard
                   </Button>

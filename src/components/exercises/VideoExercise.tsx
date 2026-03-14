@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Play, Pause, RotateCcw, Maximize, Volume2, VolumeX, CheckCircle } from 'lucide-react';
+import { Play, Pause, RotateCcw, Maximize, Volume2, VolumeX, CheckCircle, Video } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 
@@ -135,9 +135,13 @@ const VideoExercise: React.FC<VideoExerciseProps> = ({ videoUrl, description, on
             onClick={togglePlay}
           />
         ) : (
-          // No video
-          <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
-            <p>Vídeo não disponível</p>
+          // No video - show friendly message with completion option
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground gap-4 p-6">
+            <Video className="w-12 h-12 text-muted-foreground/50" />
+            <p className="text-center">Vídeo não disponível no momento</p>
+            <p className="text-sm text-center text-muted-foreground/70">
+              O conteúdo em vídeo será adicionado em breve.
+            </p>
           </div>
         )}
 
@@ -237,8 +241,8 @@ const VideoExercise: React.FC<VideoExerciseProps> = ({ videoUrl, description, on
         </div>
       )}
 
-      {/* Mark complete button for embedded videos */}
-      {embedUrl && !isCompleted && (
+      {/* Mark complete button for embedded videos OR missing videos */}
+      {(embedUrl || !videoUrl) && !isCompleted && (
         <div className="p-4 border-t border-border">
           <Button 
             className="w-full gradient-gold text-secondary shadow-gold"

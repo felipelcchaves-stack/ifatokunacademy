@@ -4,9 +4,11 @@ import { Brain, AlertTriangle, CheckCircle, Clock, ChevronRight } from 'lucide-r
 import { Button } from '@/components/ui/button';
 import { useModuleRetention, ModuleWithRetention } from '@/hooks/useModuleRetention';
 import { cn } from '@/lib/utils';
+import { useOrgNavigate } from '@/hooks/useOrgNavigate';
 
 const ModuleRetentionAlert: React.FC = () => {
   const navigate = useNavigate();
+  const { getOrgPath } = useOrgNavigate();
   const { modulesNeedingReview, loading } = useModuleRetention();
 
   if (loading || modulesNeedingReview.length === 0) {
@@ -102,7 +104,7 @@ const ModuleRetentionAlert: React.FC = () => {
                 "flex items-center justify-between p-3 rounded-lg border transition-colors cursor-pointer hover:border-primary/30",
                 getStatusColor(module.status)
               )}
-              onClick={() => navigate(`/module/${module.module_id}/retention`)}
+              onClick={() => navigate(getOrgPath(`/module/${module.module_id}/retention`))}
             >
               <div className="flex items-center gap-2">
                 {getStatusIcon(module.status)}
@@ -133,7 +135,7 @@ const ModuleRetentionAlert: React.FC = () => {
           onClick={() => {
             const firstModule = modulesNeedingReview[0];
             if (firstModule) {
-              navigate(`/module/${firstModule.module_id}/retention`);
+              navigate(getOrgPath(`/module/${firstModule.module_id}/retention`));
             }
           }}
         >
