@@ -195,7 +195,7 @@ const ModuleView: React.FC = () => {
 
   const progress = calculateModuleProgress();
 
-  if (loading) {
+  if (loading || cohortLoading) {
     return (
       <ContentProtection>
         <div className="min-h-screen bg-background">
@@ -204,6 +204,31 @@ const ModuleView: React.FC = () => {
             <div className="flex items-center gap-3 text-muted-foreground">
               <Loader2 className="w-6 h-6 animate-spin" />
               <span>Carregando módulo...</span>
+            </div>
+          </main>
+        </div>
+      </ContentProtection>
+    );
+  }
+
+  // Check cohort access: if user has cohorts and this module is not in their allowed list
+  if (hasCohorts && allowedModuleIds.size > 0 && moduleId && !allowedModuleIds.has(moduleId)) {
+    return (
+      <ContentProtection>
+        <div className="min-h-screen bg-background">
+          <Header />
+          <main className="pt-24 pb-16 flex items-center justify-center">
+            <div className="text-center max-w-md">
+              <ShieldAlert className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+              <h1 className="font-serif text-2xl font-bold text-foreground mb-3">
+                Módulo não liberado
+              </h1>
+              <p className="text-muted-foreground mb-6">
+                Este módulo ainda não foi liberado para sua turma. Aguarde a liberação pelo seu instrutor.
+              </p>
+              <Button onClick={() => navigate(getOrgPath('/dashboard'))}>
+                Voltar ao Dashboard
+              </Button>
             </div>
           </main>
         </div>
