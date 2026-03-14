@@ -534,6 +534,7 @@ const AdminModules: React.FC = () => {
           is_published: editingModule.is_published,
           unlock_rule: editingModule.unlock_rule,
           unlock_date: editingModule.unlock_rule === 'date_based' ? editingModule.unlock_date : null,
+          requires_quiz: editingModule.requires_quiz ?? true,
         })
         .eq('id', editingModule.id);
 
