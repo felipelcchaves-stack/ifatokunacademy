@@ -1,44 +1,56 @@
 
+Objetivo: corrigir com prioridade máxima os 2 problemas de produção reportados: (1) vazamento de tenant na navegação e (2) módulo sequencial não desbloqueando após concluir vídeo.
 
-## Plano: Evitar Refresh ao Trocar de Janela/Workspace no Safari
+1) Diagnóstico confirmado (raiz do problema)
+- Vazamento de tenant: há navegação hardcoded para rota global em componente crítico do dashboard:
+  - `src/components/dashboard/HeroModuleSlider.tsx` usa `navigate(\`/module/${moduleId}\`)` (sem `/org/:slug`).
+  - Isso tira o usuário do contexto da organização e, ao voltar para dashboard, pode cair no tenant principal.
+- Módulo não desbloqueia: no tenant Akapo, o 1º módulo tem 1 exercício de vídeo com `content.videoUrl` vazio no banco.
+  - Sem URL, o aluno não consegue concluir corretamente esse exercício.
+  - Sem conclusão, não grava `user_progress` nem `module_phase_progress` da Fase 1, então o módulo seguinte permanece bloqueado.
 
-### Diagnóstico
+2) Implementação (hotfix + hardening)
+A) Corrigir isolamento de tenant em toda navegação de aluno
+- `src/components/dashboard/HeroModuleSlider.tsx`
+  - Adicionar `useOrgNavigate`.
+  - Trocar `navigate('/module/...')` por `navigate(getOrgPath('/module/...'))`.
+- `src/components/dashboard/ModuleRetentionAlert.tsx`
+  - Também trocar `navigate('/module/.../retention')` por `getOrgPath(...)` (evita novo vazamento em revisões).
+- Fazer varredura rápida dos fluxos de aluno com `/dashboard`, `/module`, `/review`, `/challenge` e padronizar `getOrgPath` onde faltar.
 
-Identifiquei duas causas prováveis:
+B) Garantir conclusão em módulo “somente vídeo”
+- `src/components/exercises/VideoExercise.tsx`
+  - Exibir ação de conclusão manual em cenários onde tracking automático não é possível (YouTube/Vimeo e também URL ausente).
+  - Se `videoUrl` estiver vazio, mostrar aviso claro (“Vídeo não configurado”) + botão de conclusão (para não travar progressão do aluno).
+  - Manter auto-complete em vídeo direto (>=90%) como já existe.
 
-1. **React Query com `refetchOnWindowFocus: true` (padrão)** — O `QueryClient` está criado sem configuração, então toda vez que você volta à aba, TODAS as queries disparam refetch simultaneamente. No Safari (macOS), trocar de workspace conta como perda/ganho de foco, gerando dezenas de requisições simultâneas que podem causar re-render pesado ou até "flash" visual que parece reload.
+C) Evitar reincidência na criação/edição de exercício
+- `src/components/admin/ExerciseEditor.tsx`
+  - Validar exercício do tipo `video`:
+    - permitir salvar rascunho vazio;
+    - bloquear publicação quando `videoUrl` estiver vazio (mensagem objetiva ao admin).
+- `src/pages/admin/AdminExercises.tsx`
+  - Reforçar regra ao alternar publicação de vídeo sem URL (não publicar e avisar).
 
-2. **Service Worker agressivo** — O `sw.js` usa `skipWaiting()` + `clients.claim()` na ativação. Quando o SW se atualiza enquanto você está em outro workspace, ele toma controle imediato e pode forçar o Safari a recarregar a página. Além disso, a estratégia "Network First" para navegação HTML pode conflitar com o cache do Safari.
+D) Ajuste imediato de conteúdo já em produção
+- Corrigir o exercício de vídeo já criado no módulo “Começa por aqui!” (tenant Akapo), preenchendo `videoUrl` no conteúdo.
+- Enquanto isso, o hotfix B já evita bloqueio de progressão mesmo sem URL.
 
-### Solução
+3) Critérios de aceite (E2E obrigatório)
+- Dentro de `/org/akapo-ifa/dashboard`, abrir módulo pelo card/CTA e confirmar que URL continua com `/org/akapo-ifa/...`.
+- Concluir a lição do módulo 1 e validar no banco:
+  - existe linha em `user_progress` para o exercício;
+  - existe/atualiza linha em `module_phase_progress` com `phase1_completed_at` do módulo 1.
+- Voltar ao dashboard e confirmar:
+  - módulo “Fundamentos Éticos...” desbloqueado;
+  - nenhum redirecionamento para tenant principal.
+- Repetir “voltar” (botão da tela e navegação do fluxo) e verificar que permanece no mesmo tenant.
 
-**Arquivo 1: `src/App.tsx`** — Configurar o `QueryClient` para desabilitar refetch automático no foco:
+4) Arquivos previstos
+- `src/components/dashboard/HeroModuleSlider.tsx`
+- `src/components/dashboard/ModuleRetentionAlert.tsx`
+- `src/components/exercises/VideoExercise.tsx`
+- `src/components/admin/ExerciseEditor.tsx`
+- `src/pages/admin/AdminExercises.tsx` (validação de publish)
 
-```typescript
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      refetchOnWindowFocus: false,
-      retry: 1,
-      staleTime: 5 * 60 * 1000, // 5 minutos
-    },
-  },
-});
-```
-
-**Arquivo 2: `public/sw.js`** — Tornar o Service Worker menos agressivo:
-
-- Remover `self.skipWaiting()` do evento `install` (evita que novo SW force reload)
-- Remover `self.clients.claim()` do evento `activate`
-- Para navegação HTML, usar estratégia **Cache First com fallback para network** em vez de Network First (evita que o SW tente buscar uma nova versão da página toda vez)
-- Alternativa mais simples: **não interceptar requisições de navegação HTML** — deixar o browser lidar normalmente
-
-### Resumo
-
-| Arquivo | Mudança |
-|---|---|
-| `src/App.tsx` | `refetchOnWindowFocus: false` + `staleTime: 5min` no QueryClient |
-| `public/sw.js` | Remover `skipWaiting`/`clients.claim`, não interceptar navegação HTML |
-
-Essas duas mudanças eliminam os dois gatilhos que causam o reload no Safari ao trocar de workspace.
-
+Se aprovado, executo em ordem: (1) navegação tenant-safe, (2) conclusão de vídeo robusta, (3) validação no admin, (4) teste E2E completo no fluxo Akapo.
