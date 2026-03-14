@@ -7,6 +7,7 @@ import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useOrgNavigate } from '@/hooks/useOrgNavigate';
 import { cn } from '@/lib/utils';
+import UnlockInfo from './UnlockInfo';
 
 interface ModuleCardProps {
   module: Module;
