@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { useOrgNavigate } from '@/hooks/useOrgNavigate';
 
 // Interface for modules from database
 interface DatabaseModule {
