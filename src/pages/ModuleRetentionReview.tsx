@@ -243,7 +243,7 @@ const ModuleRetentionReview: React.FC = () => {
                 </div>
 
                 <div className="flex gap-4 justify-center">
-                  <Button variant="outline" onClick={() => navigate('/dashboard')}>
+                  <Button variant="outline" onClick={() => navigate(getOrgPath('/dashboard'))}>
                     <ChevronLeft className="w-4 h-4 mr-2" />
                     Dashboard
                   </Button>
