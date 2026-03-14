@@ -31,13 +31,6 @@ interface OrgMember {
   email: string | null;
 }
 
-interface OrgModule {
-  id: string;
-  title: string;
-  type: string;
-  display_order: number;
-}
-
 const AdminCohorts: React.FC = () => {
   const { activeOrg } = useAdminOrganization();
   const [cohorts, setCohorts] = useState<Cohort[]>([]);
