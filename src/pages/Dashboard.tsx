@@ -120,10 +120,15 @@ const Dashboard: React.FC<DashboardProps> = ({ organizationId, orgName }) => {
     hasAccessFn: typeof hasAccess,
   });
 
-  // Filtrar módulos por permissão (admin vê todos)
-  const accessibleModules = modules.filter(m => hasAccess(m.id));
+  // Filtrar módulos por permissão (admin vê todos) e por turma
+  let accessibleModules = modules.filter(m => hasAccess(m.id));
   
-  console.log('[Dashboard] Accessible modules:', accessibleModules.length, 'of', modules.length);
+  // Se o usuário pertence a uma turma com módulos atribuídos, filtrar por turma
+  if (hasCohorts && allowedModuleIds.size > 0) {
+    accessibleModules = accessibleModules.filter(m => allowedModuleIds.has(m.id));
+  }
+  
+  console.log('[Dashboard] Accessible modules:', accessibleModules.length, 'of', modules.length, 'hasCohorts:', hasCohorts);
 
   const modulesWithProgress = accessibleModules.map(m => ({
     ...m,
