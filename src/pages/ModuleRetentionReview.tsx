@@ -28,6 +28,7 @@ interface ReviewItem {
 const ModuleRetentionReview: React.FC = () => {
   const { moduleId } = useParams<{ moduleId: string }>();
   const navigate = useNavigate();
+  const { getOrgPath } = useOrgNavigate();
   const { user } = useAuth();
   const { updateRetentionAfterReview } = useModuleRetention();
   const { recordReview } = useSpacedRepetition();
