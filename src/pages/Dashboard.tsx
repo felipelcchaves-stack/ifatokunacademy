@@ -49,6 +49,8 @@ const Dashboard: React.FC<DashboardProps> = ({ organizationId, orgName }) => {
   const { dueCount } = useSpacedRepetition();
   const { streak, loading: streakLoading } = useStreak();
   const { hasAccess, loading: permissionsLoading, isAdmin } = useModulePermissions();
+  const { hasCohorts, loading: cohortLoading, allowedModuleIds, cohortModuleMap } = useCohortFilter(user, organizationId);
+  const { hasAccess, loading: permissionsLoading, isAdmin } = useModulePermissions();
 
   const displayName = profile?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || 'Estudante';
 
