@@ -34,6 +34,8 @@ interface Lesson {
   display_order: number;
   is_published: boolean;
   exercises_count?: number;
+  published_count?: number;
+  draft_count?: number;
   completed?: boolean;
 }
 
@@ -126,11 +128,35 @@ const ModuleView: React.FC = () => {
 
       if (lessonsError) throw lessonsError;
 
-      const lessonsWithCount = (lessonsData || []).map((l: any) => ({
-        ...l,
-        exercises_count: l.exercises?.[0]?.count || 0,
-        completed: false,
-      }));
+      // Get published exercise counts separately
+      const lessonIds = (lessonsData || []).map((l: any) => l.id);
+      
+      // Count published exercises per lesson
+      const { data: publishedCounts } = lessonIds.length > 0 
+        ? await supabase
+            .from('exercises')
+            .select('lesson_id')
+            .in('lesson_id', lessonIds)
+            .eq('is_published', true)
+        : { data: [] };
+      
+      const publishedCountMap: Record<string, number> = {};
+      (publishedCounts || []).forEach((e: any) => {
+        publishedCountMap[e.lesson_id] = (publishedCountMap[e.lesson_id] || 0) + 1;
+      });
+
+      const lessonsWithCount = (lessonsData || []).map((l: any) => {
+        const totalCount = l.exercises?.[0]?.count || 0;
+        const publishedCount = publishedCountMap[l.id] || 0;
+        const draftCount = totalCount - publishedCount;
+        return {
+          ...l,
+          exercises_count: totalCount,
+          published_count: publishedCount,
+          draft_count: draftCount,
+          completed: false,
+        };
+      });
 
       setLessons(lessonsWithCount);
     } catch (error) {

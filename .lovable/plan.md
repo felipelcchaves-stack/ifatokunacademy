@@ -1,38 +1,44 @@
 
 
-## Plano: Exercícios em rascunho mostram "Será liberado em breve"
+## Plano: Evitar Refresh ao Trocar de Janela/Workspace no Safari
 
-### Problema atual
-A query de exercícios usa `.eq('is_published', true)`, então exercícios em rascunho simplesmente não aparecem. Quando uma lição tem exercícios apenas em rascunho, ela aparece vazia.
+### Diagnóstico
+
+Identifiquei duas causas prováveis:
+
+1. **React Query com `refetchOnWindowFocus: true` (padrão)** — O `QueryClient` está criado sem configuração, então toda vez que você volta à aba, TODAS as queries disparam refetch simultaneamente. No Safari (macOS), trocar de workspace conta como perda/ganho de foco, gerando dezenas de requisições simultâneas que podem causar re-render pesado ou até "flash" visual que parece reload.
+
+2. **Service Worker agressivo** — O `sw.js` usa `skipWaiting()` + `clients.claim()` na ativação. Quando o SW se atualiza enquanto você está em outro workspace, ele toma controle imediato e pode forçar o Safari a recarregar a página. Além disso, a estratégia "Network First" para navegação HTML pode conflitar com o cache do Safari.
 
 ### Solução
-Buscar **todos** os exercícios (publicados e rascunho), mas renderizar os não-publicados como placeholders "em breve" em vez de exercícios interativos.
 
-### Mudanças
+**Arquivo 1: `src/App.tsx`** — Configurar o `QueryClient` para desabilitar refetch automático no foco:
 
-**1. `src/pages/LessonView.tsx`**
-- Remover o filtro `.eq('is_published', true)` da query de exercícios
-- Na renderização do exercício atual, verificar `exercise.is_published`:
-  - Se `true`: renderiza normalmente
-  - Se `false`: renderiza um card placeholder com ícone e mensagem "Este exercício será liberado em breve"
-- Exercícios não-publicados não contam para progresso nem podem ser "completados"
-- Botão "Próximo" pula automaticamente exercícios não-publicados
+```typescript
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1,
+      staleTime: 5 * 60 * 1000, // 5 minutos
+    },
+  },
+});
+```
 
-**2. `src/components/modules/LessonCard.tsx`**
-- Mostrar contagem separada: "X exercícios disponíveis · Y em breve" quando houver exercícios não-publicados
+**Arquivo 2: `public/sw.js`** — Tornar o Service Worker menos agressivo:
 
-**3. `src/hooks/useModuleProgress.ts`**
-- Manter a query de exercícios publicados para cálculo de progresso (sem mudança — já usa `is_published = true` implicitamente via `user_progress`)
+- Remover `self.skipWaiting()` do evento `install` (evita que novo SW force reload)
+- Remover `self.clients.claim()` do evento `activate`
+- Para navegação HTML, usar estratégia **Cache First com fallback para network** em vez de Network First (evita que o SW tente buscar uma nova versão da página toda vez)
+- Alternativa mais simples: **não interceptar requisições de navegação HTML** — deixar o browser lidar normalmente
 
-### Comportamento esperado
-- Usuário abre lição → vê exercícios publicados normalmente
-- Exercícios em rascunho aparecem como cards cinza com "Exercício será liberado em breve"
-- O progresso da lição é calculado apenas sobre exercícios publicados
-- Lição sem nenhum exercício publicado mostra mensagem de "conteúdo em preparação"
+### Resumo
 
-### Arquivos afetados
 | Arquivo | Mudança |
 |---|---|
-| `src/pages/LessonView.tsx` | Buscar todos exercícios, renderizar placeholder para rascunhos |
-| `src/components/modules/LessonCard.tsx` | Exibir contagem de exercícios "em breve" |
+| `src/App.tsx` | `refetchOnWindowFocus: false` + `staleTime: 5min` no QueryClient |
+| `public/sw.js` | Remover `skipWaiting`/`clients.claim`, não interceptar navegação HTML |
+
+Essas duas mudanças eliminam os dois gatilhos que causam o reload no Safari ao trocar de workspace.
 

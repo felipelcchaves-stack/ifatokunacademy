@@ -13,6 +13,8 @@ interface Lesson {
   display_order: number;
   is_published: boolean;
   exercises_count?: number;
+  published_count?: number;
+  draft_count?: number;
   completed?: boolean;
 }
 
@@ -117,10 +119,15 @@ const LessonCard = forwardRef<HTMLDivElement, LessonCardProps>(
         {lesson.exercises_count && lesson.exercises_count > 0 && (
           <div className="mt-4 pt-4 border-t border-border">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <p className="text-sm text-muted-foreground">
-                  {lesson.exercises_count} exercício{lesson.exercises_count > 1 ? 's' : ''}
+                  {lesson.published_count !== undefined ? lesson.published_count : lesson.exercises_count} exercício{(lesson.published_count !== undefined ? lesson.published_count : lesson.exercises_count || 0) > 1 ? 's' : ''}
                 </p>
+                {lesson.draft_count && lesson.draft_count > 0 && (
+                  <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800">
+                    {lesson.draft_count} em breve
+                  </Badge>
+                )}
                 
                 {/* Phase badges */}
                 {phase1Complete && !lesson.completed && (
