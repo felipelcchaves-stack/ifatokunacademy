@@ -90,6 +90,7 @@ interface Module {
   lessons_count?: number;
   unlock_rule: string;
   unlock_date: string | null;
+  requires_quiz?: boolean;
 }
 
 const colorOptions = [
