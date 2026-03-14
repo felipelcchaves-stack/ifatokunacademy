@@ -299,7 +299,7 @@ const AdminCohorts: React.FC = () => {
             <Card>
               <CardContent className="py-12 text-center">
                 <GraduationCap className="w-10 h-10 mx-auto mb-3 text-muted-foreground/40" />
-                <p className="text-sm text-muted-foreground">Selecione uma turma para gerenciar alunos e módulos.</p>
+                <p className="text-sm text-muted-foreground">Selecione uma turma para gerenciar alunos.</p>
               </CardContent>
             </Card>
           )}

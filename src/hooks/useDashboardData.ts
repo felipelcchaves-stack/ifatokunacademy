@@ -166,7 +166,7 @@ export const useDashboardData = (user: User | null, organizationId?: string | nu
     } finally {
       setLoading(false);
     }
-  }, [user, organizationId, cohortLoading, hasCohorts, allowedModuleIds, cohortModuleOrder]);
+  }, [user, organizationId]);
 
   useEffect(() => {
     fetchData();

@@ -56,16 +56,10 @@ const ModuleView: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (moduleId && !cohortLoading) {
-      // Check cohort access
-      if (hasCohorts && !allowedModuleIds.has(moduleId)) {
-        toast({ title: 'Módulo não disponível', description: 'Este módulo não pertence à sua turma.', variant: 'destructive' });
-        navigate(-1);
-        return;
-      }
+    if (moduleId) {
       fetchModuleAndLessons();
     }
-  }, [moduleId, cohortLoading, hasCohorts, allowedModuleIds]);
+  }, [moduleId]);
 
   useEffect(() => {
     if (user && lessons.length > 0) {
