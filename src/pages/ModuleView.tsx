@@ -240,7 +240,7 @@ const ModuleView: React.FC = () => {
                 <Button
                   variant="ghost"
                   className="text-white/80 hover:text-white hover:bg-white/10 mb-6"
-                  onClick={() => navigate('/dashboard')}
+                  onClick={() => navigate(getOrgPath('/dashboard'))}
                 >
                   <ArrowLeft className="w-4 h-4 mr-2" />
                   Voltar
