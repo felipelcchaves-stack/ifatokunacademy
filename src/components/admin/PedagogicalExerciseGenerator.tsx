@@ -62,8 +62,21 @@ const PedagogicalExerciseGenerator: React.FC<PedagogicalExerciseGeneratorProps> 
   const [isGenerating, setIsGenerating] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [generatedExercises, setGeneratedExercises] = useState<GeneratedExercise[]>([]);
+  const [selectedExercises, setSelectedExercises] = useState({
+    readingContexto: true,
+    memorizationContexto: true,
+    tapCompleteContexto: true,
+    flashcardContexto: true,
+    readingVerso: true,
+    memorizationVerso: true,
+    dragDropVerso: true,
+  });
 
   const hasExistingExercises = existingExercises.length > 0;
+
+  const needsContexto = selectedExercises.readingContexto || selectedExercises.memorizationContexto || selectedExercises.tapCompleteContexto || selectedExercises.flashcardContexto;
+  const needsVerso = selectedExercises.readingVerso || selectedExercises.memorizationVerso || selectedExercises.dragDropVerso;
+  const selectedCount = Object.values(selectedExercises).filter(Boolean).length;
 
   // Initialize with default texts when provided
   React.useEffect(() => {
@@ -153,83 +166,84 @@ const PedagogicalExerciseGenerator: React.FC<PedagogicalExerciseGeneratorProps> 
     return { texts: lines.slice(0, 5) };
   };
 
-  // Generate all 7 exercises (optimized structure)
   const generateExercises = (): GeneratedExercise[] => {
     const exercises: GeneratedExercise[] = [];
     let order = 0;
 
-    // ===== FASE 1 - Contexto (4 exercícios) =====
-    
-    // 0 - Reading: Contexto
-    exercises.push({
-      title: `Contexto: ${lessonTitle}`,
-      type: 'reading',
-      content: { text: contextoText, audioUrl: '' },
-      display_order: order++,
-    });
+    // ===== FASE 1 - Contexto =====
+    if (selectedExercises.readingContexto) {
+      exercises.push({
+        title: `Contexto: ${lessonTitle}`,
+        type: 'reading',
+        content: { text: contextoText, audioUrl: '' },
+        display_order: order++,
+      });
+    }
+    if (selectedExercises.memorizationContexto) {
+      exercises.push({
+        title: `Fase 1 - Memorizar Contexto: ${lessonTitle}`,
+        type: 'memorization',
+        content: { items: generateMemorizationItems(contextoText) },
+        display_order: order++,
+      });
+    }
+    if (selectedExercises.tapCompleteContexto) {
+      exercises.push({
+        title: `Fase 1 - Ordenar Contexto: ${lessonTitle}`,
+        type: 'tap-complete',
+        content: generateTapCompleteContent(contextoText),
+        display_order: order++,
+      });
+    }
+    if (selectedExercises.flashcardContexto) {
+      exercises.push({
+        title: `Fase 1 - Revisão Contexto: ${lessonTitle}`,
+        type: 'flashcard',
+        content: { cards: generateFlashcards(contextoText, true) },
+        display_order: order++,
+      });
+    }
 
-    // 1 - Memorization: Contexto
-    exercises.push({
-      title: `Fase 1 - Memorizar Contexto: ${lessonTitle}`,
-      type: 'memorization',
-      content: { items: generateMemorizationItems(contextoText) },
-      display_order: order++,
-    });
-
-    // 2 - TapComplete Consolidado: Contexto (novo formato com múltiplos textos)
-    const tapCompleteContexto = generateTapCompleteContent(contextoText);
-    exercises.push({
-      title: `Fase 1 - Ordenar Contexto: ${lessonTitle}`,
-      type: 'tap-complete',
-      content: tapCompleteContexto,
-      display_order: order++,
-    });
-
-    // 3 - Flashcard: Contexto
-    exercises.push({
-      title: `Fase 1 - Revisão Contexto: ${lessonTitle}`,
-      type: 'flashcard',
-      content: { cards: generateFlashcards(contextoText, true) },
-      display_order: order++,
-    });
-
-    // ===== FASE 2 - Verso Completo (3 exercícios) =====
-
-    // 4 - Reading: Verso Completo
-    exercises.push({
-      title: `Fase 2 - Verso Completo: ${lessonTitle}`,
-      type: 'reading',
-      content: { text: versoText, audioUrl: '' },
-      display_order: order++,
-    });
-
-    // 5 - Memorization: Verso
-    exercises.push({
-      title: `Fase 2 - Memorizar Verso: ${lessonTitle}`,
-      type: 'memorization',
-      content: { items: generateMemorizationItems(versoText) },
-      display_order: order++,
-    });
-
-    // 6 - Drag-drop Consolidado: Verso
-    const dragDropVerso = generateDragDropItems(versoText);
-    exercises.push({
-      title: `Fase 2 - Ordenar Verso: ${lessonTitle}`,
-      type: 'drag-drop',
-      content: dragDropVerso,
-      display_order: order++,
-    });
+    // ===== FASE 2 - Verso Completo =====
+    if (selectedExercises.readingVerso) {
+      exercises.push({
+        title: `Fase 2 - Verso Completo: ${lessonTitle}`,
+        type: 'reading',
+        content: { text: versoText, audioUrl: '' },
+        display_order: order++,
+      });
+    }
+    if (selectedExercises.memorizationVerso) {
+      exercises.push({
+        title: `Fase 2 - Memorizar Verso: ${lessonTitle}`,
+        type: 'memorization',
+        content: { items: generateMemorizationItems(versoText) },
+        display_order: order++,
+      });
+    }
+    if (selectedExercises.dragDropVerso) {
+      exercises.push({
+        title: `Fase 2 - Ordenar Verso: ${lessonTitle}`,
+        type: 'drag-drop',
+        content: generateDragDropItems(versoText),
+        display_order: order++,
+      });
+    }
 
     return exercises;
   };
 
   const handleGenerate = () => {
-    if (!contextoText.trim() || !versoText.trim()) {
-      toast({
-        title: 'Textos obrigatórios',
-        description: 'Por favor, preencha ambos os campos de texto.',
-        variant: 'destructive',
-      });
+    if (selectedCount === 0) {
+      toast({ title: 'Selecione ao menos 1 exercício', variant: 'destructive' });
+      return;
+    }
+    if (needsContexto && !contextoText.trim()) {
+      toast({ title: 'Texto do Contexto obrigatório', description: 'Preencha o campo de Contexto para os exercícios selecionados da Fase 1.', variant: 'destructive' });
+      return;
+    }
+    if (needsVerso && !versoText.trim()) {
+      toast({ title: 'Texto do Verso obrigatório', description: 'Preencha o campo de Verso para os exercícios selecionados da Fase 2.', variant: 'destructive' });
       return;
     }
 
@@ -297,13 +311,13 @@ const PedagogicalExerciseGenerator: React.FC<PedagogicalExerciseGeneratorProps> 
   };
 
   const exerciseStructure = [
-    { phase: 'Fase 1', name: 'Contexto (Leitura)', type: 'reading' },
-    { phase: 'Fase 1', name: 'Memorizar Contexto', type: 'memorization' },
-    { phase: 'Fase 1', name: 'Ordenar Contexto', type: 'tap-complete' },
-    { phase: 'Fase 1', name: 'Revisão Contexto', type: 'flashcard' },
-    { phase: 'Fase 2', name: 'Verso Completo (Leitura)', type: 'reading' },
-    { phase: 'Fase 2', name: 'Memorizar Verso', type: 'memorization' },
-    { phase: 'Fase 2', name: 'Ordenar Verso', type: 'drag-drop' },
+    { key: 'readingContexto' as const, phase: 'Fase 1', name: 'Contexto (Leitura)', type: 'reading' },
+    { key: 'memorizationContexto' as const, phase: 'Fase 1', name: 'Memorizar Contexto', type: 'memorization' },
+    { key: 'tapCompleteContexto' as const, phase: 'Fase 1', name: 'Ordenar Contexto', type: 'tap-complete' },
+    { key: 'flashcardContexto' as const, phase: 'Fase 1', name: 'Revisão Contexto', type: 'flashcard' },
+    { key: 'readingVerso' as const, phase: 'Fase 2', name: 'Verso Completo (Leitura)', type: 'reading' },
+    { key: 'memorizationVerso' as const, phase: 'Fase 2', name: 'Memorizar Verso', type: 'memorization' },
+    { key: 'dragDropVerso' as const, phase: 'Fase 2', name: 'Ordenar Verso', type: 'drag-drop' },
   ];
 
   return (
@@ -316,7 +330,7 @@ const PedagogicalExerciseGenerator: React.FC<PedagogicalExerciseGeneratorProps> 
               Gerar Método Pedagógico
             </DialogTitle>
             <DialogDescription>
-              Gere automaticamente os 7 exercícios otimizados do método pedagógico a partir de dois textos base.
+              Selecione os exercícios que deseja gerar a partir dos textos base.
             </DialogDescription>
           </DialogHeader>
 
@@ -410,20 +424,25 @@ const PedagogicalExerciseGenerator: React.FC<PedagogicalExerciseGeneratorProps> 
                 </div>
               </div>
 
-              {/* Preview Structure */}
+              {/* Exercise Selection */}
               <div className="space-y-3 pt-2 border-t">
-                <h4 className="font-medium">Estrutura que será gerada (7 exercícios)</h4>
+                <h4 className="font-medium">Selecione os exercícios a gerar ({selectedCount} selecionado{selectedCount !== 1 ? 's' : ''})</h4>
                 <div className="grid grid-cols-2 gap-2">
                   {exerciseStructure.map((ex, i) => (
                     <div 
                       key={i}
-                      className={`flex items-center gap-2 p-2 rounded text-sm ${
+                      className={`flex items-center gap-2 p-2 rounded text-sm cursor-pointer transition-opacity ${
                         ex.phase === 'Fase 1' 
-                          ? 'bg-blue-500/10 text-blue-400' 
-                          : 'bg-purple-500/10 text-purple-400'
-                      }`}
+                          ? 'bg-primary/10 text-primary' 
+                          : 'bg-accent/30 text-accent-foreground'
+                      } ${!selectedExercises[ex.key] ? 'opacity-40' : ''}`}
+                      onClick={() => setSelectedExercises(prev => ({ ...prev, [ex.key]: !prev[ex.key] }))}
                     >
-                      <Check className="w-3 h-3" />
+                      <Checkbox
+                        checked={selectedExercises[ex.key]}
+                        onCheckedChange={(checked) => setSelectedExercises(prev => ({ ...prev, [ex.key]: checked === true }))}
+                        className="pointer-events-none"
+                      />
                       <span className="font-medium">{i}.</span>
                       <span>{ex.name}</span>
                       <span className="text-xs opacity-60">({ex.type})</span>
@@ -440,7 +459,7 @@ const PedagogicalExerciseGenerator: React.FC<PedagogicalExerciseGeneratorProps> 
             </Button>
             <Button 
               onClick={handleGenerate}
-              disabled={isGenerating || !contextoText.trim() || !versoText.trim()}
+              disabled={isGenerating || selectedCount === 0 || (needsContexto && !contextoText.trim()) || (needsVerso && !versoText.trim())}
               className="gradient-gold text-secondary"
             >
               {isGenerating ? (
@@ -451,7 +470,7 @@ const PedagogicalExerciseGenerator: React.FC<PedagogicalExerciseGeneratorProps> 
               ) : (
                 <>
                   <Sparkles className="w-4 h-4 mr-2" />
-                  Gerar 7 Exercícios
+                  Gerar {selectedCount} Exercício{selectedCount !== 1 ? 's' : ''}
                 </>
               )}
             </Button>
@@ -465,7 +484,7 @@ const PedagogicalExerciseGenerator: React.FC<PedagogicalExerciseGeneratorProps> 
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar substituição</AlertDialogTitle>
             <AlertDialogDescription>
-              Você está prestes a excluir {existingExercises.length} exercício(s) existente(s) e substituí-los por 11 novos exercícios do método pedagógico.
+              Você está prestes a excluir {existingExercises.length} exercício(s) existente(s) e substituí-los por {selectedCount} novo(s) exercício(s) do método pedagógico.
               <br /><br />
               Esta ação não pode ser desfeita.
             </AlertDialogDescription>
