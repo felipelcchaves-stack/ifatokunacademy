@@ -489,8 +489,18 @@ const ModuleCard: React.FC<ModuleCardProps> = ({
           </div>
         )}
 
-        {/* Unlock requirement badge */}
-        {isLocked && unlockRequirement && (
+        {isLocked && unlockRule && (
+          <div className="mb-2">
+            <UnlockInfo
+              unlockRule={unlockRule}
+              unlockDate={unlockDate}
+              unlockRequirement={unlockRequirement}
+              prerequisiteProgress={prerequisiteProgress}
+              compact
+            />
+          </div>
+        )}
+        {isLocked && !unlockRule && unlockRequirement && (
           <p className="text-xs text-amber-600 dark:text-amber-400 mb-2 text-center">
             {unlockRequirement}
           </p>
