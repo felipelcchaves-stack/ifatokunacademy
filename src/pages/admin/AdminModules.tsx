@@ -501,6 +501,7 @@ const AdminModules: React.FC = () => {
         is_published: false,
         unlock_rule: 'sequential',
         unlock_date: null,
+        requires_quiz: true,
       });
       
       toast({
