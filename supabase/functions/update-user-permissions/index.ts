@@ -65,6 +65,32 @@ Deno.serve(async (req) => {
       )
     }
 
+    // Auto-incluir módulos always_unlocked da organização do usuário
+    const { data: userProfile } = await supabaseAdmin
+      .from('profiles')
+      .select('organization_id')
+      .eq('id', userId)
+      .single()
+
+    const finalModuleIds = [...moduleIds]
+    if (userProfile?.organization_id) {
+      const { data: alwaysUnlockedModules } = await supabaseAdmin
+        .from('modules')
+        .select('id')
+        .eq('organization_id', userProfile.organization_id)
+        .eq('unlock_rule', 'always_unlocked')
+        .eq('is_published', true)
+
+      if (alwaysUnlockedModules) {
+        for (const m of alwaysUnlockedModules) {
+          if (!finalModuleIds.includes(m.id)) {
+            finalModuleIds.push(m.id)
+            console.log(`Auto-including always_unlocked module: ${m.id}`)
+          }
+        }
+      }
+    }
+
     console.log(`Updating permissions for user ${userId}: ${moduleIds.length} modules`)
 
     // Deletar todas as permissões existentes do usuário

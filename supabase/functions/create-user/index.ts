@@ -186,9 +186,29 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Buscar módulos com unlock_rule = 'always_unlocked' da organização para incluir automaticamente
+    const finalModuleIds = [...(moduleIds || [])]
+    if (organizationId) {
+      const { data: alwaysUnlockedModules } = await supabaseAdmin
+        .from('modules')
+        .select('id')
+        .eq('organization_id', organizationId)
+        .eq('unlock_rule', 'always_unlocked')
+        .eq('is_published', true)
+
+      if (alwaysUnlockedModules) {
+        for (const m of alwaysUnlockedModules) {
+          if (!finalModuleIds.includes(m.id)) {
+            finalModuleIds.push(m.id)
+            console.log(`Auto-including always_unlocked module: ${m.id}`)
+          }
+        }
+      }
+    }
+
     // Inserir permissões de módulos
-    if (moduleIds && moduleIds.length > 0) {
-      const permissions = moduleIds.map((moduleId: string) => ({
+    if (finalModuleIds.length > 0) {
+      const permissions = finalModuleIds.map((moduleId: string) => ({
         user_id: newUserId,
         module_id: moduleId,
         granted_by: callerUser.id
@@ -200,9 +220,8 @@ Deno.serve(async (req) => {
 
       if (permError) {
         console.error('Error inserting permissions:', permError)
-        // Não falhar a criação do usuário por causa das permissões
       } else {
-        console.log(`Inserted ${permissions.length} module permissions`)
+        console.log(`Inserted ${permissions.length} module permissions (including auto-unlocked)`)
       }
     }
 
