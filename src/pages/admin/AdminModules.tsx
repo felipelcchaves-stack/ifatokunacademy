@@ -385,6 +385,7 @@ const AdminModules: React.FC = () => {
     is_published: false,
     unlock_rule: 'sequential',
     unlock_date: null as string | null,
+    requires_quiz: true,
   });
 
   const sensors = useSensors(
