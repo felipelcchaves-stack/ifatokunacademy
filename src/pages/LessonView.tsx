@@ -23,6 +23,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useAchievementTriggers } from '@/hooks/useAchievementTriggers';
 import { useAchievements } from '@/hooks/useAchievements';
 import { useModulePhaseProgress } from '@/hooks/useModulePhaseProgress';
+import { useOrgNavigate } from '@/hooks/useOrgNavigate';
 import { showAchievementUnlockToast } from '@/components/achievements/AchievementUnlockToast';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -84,6 +85,7 @@ const LessonView: React.FC = () => {
   const { checkAllAchievements } = useAchievements();
   const { checkAndMarkPhaseComplete } = useModulePhaseProgress();
   const { mode, setMode, filterExercises, getModeInfo, isExpress } = useStudyMode();
+  const { getOrgPath } = useOrgNavigate();
   
   const [lesson, setLesson] = useState<Lesson | null>(null);
   const [allExercises, setAllExercises] = useState<Exercise[]>([]);
@@ -277,7 +279,7 @@ const LessonView: React.FC = () => {
           <h1 className="font-serif text-2xl font-bold text-foreground mb-4">
             Lição não encontrada
           </h1>
-          <Button onClick={() => navigate(`/module/${moduleId}`)}>
+          <Button onClick={() => navigate(getOrgPath(`/module/${moduleId}`))}>
             Voltar ao Módulo
           </Button>
         </div>
@@ -373,7 +375,7 @@ const LessonView: React.FC = () => {
         title: 'Parabéns! 🎉',
         description: 'Você concluiu esta lição!',
       });
-      navigate(`/module/${moduleId}`);
+      navigate(getOrgPath(`/module/${moduleId}`));
     }
   };
 
@@ -580,7 +582,7 @@ const LessonView: React.FC = () => {
                       <Button 
                         variant="secondary"
                         className="w-full"
-                        onClick={() => navigate(`/module/${moduleId}/lesson/${nextLesson.id}`)}
+                        onClick={() => navigate(getOrgPath(`/module/${moduleId}/lesson/${nextLesson.id}`))}
                       >
                         <BookOpen className="w-4 h-4 mr-2" />
                         Ir para: {nextLesson.title}
@@ -591,7 +593,7 @@ const LessonView: React.FC = () => {
                   <Button
                     variant="ghost"
                     className="text-muted-foreground text-sm"
-                    onClick={() => navigate(`/module/${moduleId}`)}
+                    onClick={() => navigate(getOrgPath(`/module/${moduleId}`))}
                   >
                     Voltar ao Módulo
                   </Button>
@@ -615,7 +617,7 @@ const LessonView: React.FC = () => {
             <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
               <Button
                 variant="ghost"
-                onClick={() => navigate(`/module/${moduleId}`)}
+                onClick={() => navigate(getOrgPath(`/module/${moduleId}`))}
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Voltar ao Módulo
@@ -742,7 +744,7 @@ const LessonView: React.FC = () => {
                 <p className="text-muted-foreground mb-6">
                   Os exercícios desta lição ainda não foram publicados.
                 </p>
-                <Button onClick={() => navigate(`/module/${moduleId}`)}>
+                <Button onClick={() => navigate(getOrgPath(`/module/${moduleId}`))}>
                   Voltar ao Módulo
                 </Button>
               </div>

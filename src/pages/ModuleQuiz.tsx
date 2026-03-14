@@ -21,6 +21,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useModuleProgress } from '@/hooks/useModuleProgress';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { useOrgNavigate } from '@/hooks/useOrgNavigate';
 
 interface Module {
   id: string;
@@ -54,6 +55,7 @@ const ModuleQuiz: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { getOrgPath } = useOrgNavigate();
   const { getModuleProgress, completeModule } = useModuleProgress();
   
   const [module, setModule] = useState<Module | null>(null);
@@ -265,7 +267,7 @@ const ModuleQuiz: React.FC = () => {
                 <p className="text-muted-foreground mb-6">
                   Você precisa concluir todas as lições do módulo antes de fazer o quiz final.
                 </p>
-                <Button onClick={() => navigate(`/module/${moduleId}`)}>
+                <Button onClick={() => navigate(getOrgPath(`/module/${moduleId}`))}>
                   <ArrowLeft className="w-4 h-4 mr-2" />
                   Voltar ao Módulo
                 </Button>
@@ -292,7 +294,7 @@ const ModuleQuiz: React.FC = () => {
               <Button
                 variant="ghost"
                 className="mb-6"
-                onClick={() => navigate(`/module/${moduleId}`)}
+                onClick={() => navigate(getOrgPath(`/module/${moduleId}`))}
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Voltar ao Módulo
@@ -529,7 +531,7 @@ const ModuleQuiz: React.FC = () => {
                   )}
                   <Button 
                     className="gradient-gold text-secondary shadow-gold"
-                    onClick={() => navigate('/dashboard')}
+                    onClick={() => navigate(getOrgPath('/dashboard'))}
                   >
                     Voltar ao Dashboard
                   </Button>

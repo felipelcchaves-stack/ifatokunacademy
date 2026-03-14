@@ -1,34 +1,44 @@
 
 
-## Bug: Navegação quebra isolamento de tenant
+## Plano: Evitar Refresh ao Trocar de Janela/Workspace no Safari
 
-### Problema
-Quando o usuário está em `/org/ifatokun/module/X/lesson/Y` e clica "Voltar", a navegação vai para `/module/X` ou `/dashboard` (rotas globais) em vez de `/org/ifatokun/module/X` ou `/org/ifatokun/dashboard`. Isso "vaza" o contexto da organização.
+### Diagnóstico
 
-O hook `useOrgNavigate` já existe e é usado corretamente em `LessonCard` e `ModuleCard`, mas **não é usado** nas 3 páginas principais:
+Identifiquei duas causas prováveis:
 
-### Arquivos afetados
+1. **React Query com `refetchOnWindowFocus: true` (padrão)** — O `QueryClient` está criado sem configuração, então toda vez que você volta à aba, TODAS as queries disparam refetch simultaneamente. No Safari (macOS), trocar de workspace conta como perda/ganho de foco, gerando dezenas de requisições simultâneas que podem causar re-render pesado ou até "flash" visual que parece reload.
 
-| Arquivo | Navegações quebradas |
+2. **Service Worker agressivo** — O `sw.js` usa `skipWaiting()` + `clients.claim()` na ativação. Quando o SW se atualiza enquanto você está em outro workspace, ele toma controle imediato e pode forçar o Safari a recarregar a página. Além disso, a estratégia "Network First" para navegação HTML pode conflitar com o cache do Safari.
+
+### Solução
+
+**Arquivo 1: `src/App.tsx`** — Configurar o `QueryClient` para desabilitar refetch automático no foco:
+
+```typescript
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1,
+      staleTime: 5 * 60 * 1000, // 5 minutos
+    },
+  },
+});
+```
+
+**Arquivo 2: `public/sw.js`** — Tornar o Service Worker menos agressivo:
+
+- Remover `self.skipWaiting()` do evento `install` (evita que novo SW force reload)
+- Remover `self.clients.claim()` do evento `activate`
+- Para navegação HTML, usar estratégia **Cache First com fallback para network** em vez de Network First (evita que o SW tente buscar uma nova versão da página toda vez)
+- Alternativa mais simples: **não interceptar requisições de navegação HTML** — deixar o browser lidar normalmente
+
+### Resumo
+
+| Arquivo | Mudança |
 |---|---|
-| `src/pages/LessonView.tsx` | 7 ocorrências: `/module/${moduleId}`, `/module/${moduleId}/lesson/${nextLesson.id}` |
-| `src/pages/ModuleView.tsx` | 3 ocorrências: `/dashboard`, `/module/${module.id}/quiz` |
-| `src/pages/ModuleQuiz.tsx` | 3 ocorrências: `/module/${moduleId}`, `/dashboard` |
+| `src/App.tsx` | `refetchOnWindowFocus: false` + `staleTime: 5min` no QueryClient |
+| `public/sw.js` | Remover `skipWaiting`/`clients.claim`, não interceptar navegação HTML |
 
-### Correção
-
-Em cada arquivo:
-1. Importar `useOrgNavigate` de `@/hooks/useOrgNavigate`
-2. Chamar `const { getOrgPath } = useOrgNavigate();` no componente
-3. Envolver **todas** as strings de navegação com `getOrgPath(...)`:
-   - `navigate('/dashboard')` → `navigate(getOrgPath('/dashboard'))`
-   - `navigate(\`/module/${moduleId}\`)` → `navigate(getOrgPath(\`/module/${moduleId}\`))`
-   - `navigate(\`/module/${moduleId}/lesson/${id}\`)` → `navigate(getOrgPath(\`/module/${moduleId}/lesson/${id}\`))`
-   - `navigate(\`/module/${id}/quiz\`)` → `navigate(getOrgPath(\`/module/${id}/quiz\`))`
-
-### Escopo
-- 3 arquivos modificados
-- ~13 navegações corrigidas
-- Nenhuma mudança no banco de dados
-- O hook `useOrgNavigate` já detecta automaticamente se estamos em rota `/org/:slug` e prefixa corretamente
+Essas duas mudanças eliminam os dois gatilhos que causam o reload no Safari ao trocar de workspace.
 

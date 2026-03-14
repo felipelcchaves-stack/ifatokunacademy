@@ -12,6 +12,7 @@ import { useModuleProgress } from '@/hooks/useModuleProgress';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCohortFilter } from '@/hooks/useCohortFilter';
 import { useOrganization } from '@/contexts/OrganizationContext';
+import { useOrgNavigate } from '@/hooks/useOrgNavigate';
 import { toast } from '@/hooks/use-toast';
 
 interface Module {
@@ -41,6 +42,7 @@ const ModuleView: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { organization } = useOrganization();
+  const { getOrgPath } = useOrgNavigate();
   const { hasCohorts, allowedModuleIds, loading: cohortLoading } = useCohortFilter(user, organization?.id);
   const { getLessonProgress } = useModuleProgress();
   const [module, setModule] = useState<Module | null>(null);
@@ -197,7 +199,7 @@ const ModuleView: React.FC = () => {
               <h1 className="font-serif text-2xl font-bold text-foreground mb-4">
                 Módulo não encontrado
               </h1>
-              <Button onClick={() => navigate('/dashboard')}>
+              <Button onClick={() => navigate(getOrgPath('/dashboard'))}>
                 Voltar ao Dashboard
               </Button>
             </div>
@@ -238,7 +240,7 @@ const ModuleView: React.FC = () => {
                 <Button
                   variant="ghost"
                   className="text-white/80 hover:text-white hover:bg-white/10 mb-6"
-                  onClick={() => navigate('/dashboard')}
+                  onClick={() => navigate(getOrgPath('/dashboard'))}
                 >
                   <ArrowLeft className="w-4 h-4 mr-2" />
                   Voltar
@@ -325,7 +327,7 @@ const ModuleView: React.FC = () => {
               {lessons.length > 0 && progress === 100 && (
                 <div 
                   className="bg-gradient-to-r from-primary/10 to-amber-500/10 rounded-xl p-6 border border-primary/30 cursor-pointer hover:shadow-soft transition-all mt-6"
-                  onClick={() => navigate(`/module/${module.id}/quiz`)}
+                  onClick={() => navigate(getOrgPath(`/module/${module.id}/quiz`))}
                 >
                   <div className="flex items-center gap-4">
                     <div className="w-14 h-14 rounded-full gradient-gold flex items-center justify-center shadow-gold">
