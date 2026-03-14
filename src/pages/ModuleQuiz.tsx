@@ -294,7 +294,7 @@ const ModuleQuiz: React.FC = () => {
               <Button
                 variant="ghost"
                 className="mb-6"
-                onClick={() => navigate(`/module/${moduleId}`)}
+                onClick={() => navigate(getOrgPath(`/module/${moduleId}`))}
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Voltar ao Módulo
