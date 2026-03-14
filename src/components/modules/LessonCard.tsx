@@ -13,6 +13,8 @@ interface Lesson {
   display_order: number;
   is_published: boolean;
   exercises_count?: number;
+  published_count?: number;
+  draft_count?: number;
   completed?: boolean;
 }
 
