@@ -330,7 +330,7 @@ const PedagogicalExerciseGenerator: React.FC<PedagogicalExerciseGeneratorProps> 
               Gerar Método Pedagógico
             </DialogTitle>
             <DialogDescription>
-              Gere automaticamente os 7 exercícios otimizados do método pedagógico a partir de dois textos base.
+              Selecione os exercícios que deseja gerar a partir dos textos base.
             </DialogDescription>
           </DialogHeader>
 
