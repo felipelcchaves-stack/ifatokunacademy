@@ -90,6 +90,7 @@ interface Module {
   lessons_count?: number;
   unlock_rule: string;
   unlock_date: string | null;
+  requires_quiz?: boolean;
 }
 
 const colorOptions = [
@@ -384,6 +385,7 @@ const AdminModules: React.FC = () => {
     is_published: false,
     unlock_rule: 'sequential',
     unlock_date: null as string | null,
+    requires_quiz: true,
   });
 
   const sensors = useSensors(
@@ -478,6 +480,7 @@ const AdminModules: React.FC = () => {
           organization_id: activeOrg?.id || null,
           unlock_rule: newModule.unlock_rule,
           unlock_date: newModule.unlock_rule === 'date_based' ? newModule.unlock_date : null,
+          requires_quiz: newModule.requires_quiz ?? true,
         })
         .select()
         .single();
@@ -498,6 +501,7 @@ const AdminModules: React.FC = () => {
         is_published: false,
         unlock_rule: 'sequential',
         unlock_date: null,
+        requires_quiz: true,
       });
       
       toast({
@@ -530,6 +534,7 @@ const AdminModules: React.FC = () => {
           is_published: editingModule.is_published,
           unlock_rule: editingModule.unlock_rule,
           unlock_date: editingModule.unlock_rule === 'date_based' ? editingModule.unlock_date : null,
+          requires_quiz: editingModule.requires_quiz ?? true,
         })
         .eq('id', editingModule.id);
 
@@ -797,6 +802,13 @@ const AdminModules: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   <Switch
+                    checked={newModule.requires_quiz ?? true}
+                    onCheckedChange={(checked) => setNewModule({ ...newModule, requires_quiz: checked })}
+                  />
+                  <Label>Requer Quiz Final</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch
                     checked={newModule.is_published}
                     onCheckedChange={(checked) => setNewModule({ ...newModule, is_published: checked })}
                   />
@@ -1004,6 +1016,13 @@ const AdminModules: React.FC = () => {
                   currentImageUrl={editingModule.image_url}
                   onBannerGenerated={(url) => setEditingModule({ ...editingModule, image_url: url })}
                 />
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={editingModule.requires_quiz ?? true}
+                  onCheckedChange={(checked) => setEditingModule({ ...editingModule, requires_quiz: checked })}
+                />
+                <Label>Requer Quiz Final</Label>
               </div>
               <div className="flex items-center gap-2">
                 <Switch

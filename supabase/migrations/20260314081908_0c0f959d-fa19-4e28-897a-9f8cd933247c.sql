@@ -1,0 +1,1 @@
+ALTER TABLE public.modules ADD COLUMN requires_quiz boolean NOT NULL DEFAULT true;

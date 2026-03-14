@@ -24,6 +24,7 @@ interface Module {
   theme: string | null;
   color: string | null;
   image_url: string | null;
+  requires_quiz: boolean;
 }
 
 interface Lesson {
@@ -116,6 +117,7 @@ const ModuleView: React.FC = () => {
         setModule({
           ...moduleData,
           type: moduleData.type as 'proficiency' | 'thematic',
+          requires_quiz: moduleData.requires_quiz ?? true,
         });
       }
 
@@ -323,8 +325,8 @@ const ModuleView: React.FC = () => {
                 </div>
               )}
 
-              {/* Quiz Final Card */}
-              {lessons.length > 0 && progress === 100 && (
+              {/* Quiz Final Card - only if module requires quiz */}
+              {module.requires_quiz && lessons.length > 0 && progress === 100 && (
                 <div 
                   className="bg-gradient-to-r from-primary/10 to-amber-500/10 rounded-xl p-6 border border-primary/30 cursor-pointer hover:shadow-soft transition-all mt-6"
                   onClick={() => navigate(getOrgPath(`/module/${module.id}/quiz`))}
@@ -346,7 +348,7 @@ const ModuleView: React.FC = () => {
                 </div>
               )}
 
-              {lessons.length > 0 && progress < 100 && progress > 0 && (
+              {module.requires_quiz && lessons.length > 0 && progress < 100 && progress > 0 && (
                 <div className="bg-muted/50 rounded-xl p-6 border border-border mt-6">
                   <div className="flex items-center gap-4">
                     <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center">
@@ -356,6 +358,23 @@ const ModuleView: React.FC = () => {
                       <h3 className="font-semibold text-muted-foreground text-lg">Quiz Final</h3>
                       <p className="text-sm text-muted-foreground">
                         Complete todas as lições para desbloquear o quiz ({progress}% concluído)
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Module completed without quiz */}
+              {!module.requires_quiz && lessons.length > 0 && progress === 100 && (
+                <div className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 rounded-xl p-6 border border-green-500/30 mt-6">
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 rounded-full bg-green-500/20 flex items-center justify-center">
+                      <Trophy className="w-7 h-7 text-green-600 dark:text-green-400" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-foreground text-lg">Módulo Concluído!</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Parabéns! Você completou todas as lições deste módulo.
                       </p>
                     </div>
                   </div>

@@ -810,6 +810,7 @@ export type Database = {
           is_published: boolean
           level: string | null
           organization_id: string | null
+          requires_quiz: boolean
           theme: string | null
           title: string
           type: string
@@ -827,6 +828,7 @@ export type Database = {
           is_published?: boolean
           level?: string | null
           organization_id?: string | null
+          requires_quiz?: boolean
           theme?: string | null
           title: string
           type: string
@@ -844,6 +846,7 @@ export type Database = {
           is_published?: boolean
           level?: string | null
           organization_id?: string | null
+          requires_quiz?: boolean
           theme?: string | null
           title?: string
           type?: string
