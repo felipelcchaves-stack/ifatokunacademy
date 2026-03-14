@@ -582,7 +582,7 @@ const LessonView: React.FC = () => {
                       <Button 
                         variant="secondary"
                         className="w-full"
-                        onClick={() => navigate(`/module/${moduleId}/lesson/${nextLesson.id}`)}
+                        onClick={() => navigate(getOrgPath(`/module/${moduleId}/lesson/${nextLesson.id}`))}
                       >
                         <BookOpen className="w-4 h-4 mr-2" />
                         Ir para: {nextLesson.title}
