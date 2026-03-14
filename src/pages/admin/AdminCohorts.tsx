@@ -271,54 +271,27 @@ const AdminCohorts: React.FC = () => {
                 {detailLoading ? (
                   <p className="text-muted-foreground text-center py-8">Carregando...</p>
                 ) : (
-                  <Tabs defaultValue="members">
-                    <TabsList className="w-full">
-                      <TabsTrigger value="members" className="flex-1">
-                        <Users className="w-4 h-4 mr-1" /> Alunos ({cohortMembers.length})
-                      </TabsTrigger>
-                      <TabsTrigger value="modules" className="flex-1">
-                        <BookOpen className="w-4 h-4 mr-1" /> Módulos ({cohortModuleIds.length})
-                      </TabsTrigger>
-                    </TabsList>
-
-                    <TabsContent value="members" className="mt-4 space-y-2 max-h-[400px] overflow-y-auto">
-                      {orgMembers.length === 0 ? (
-                        <p className="text-sm text-muted-foreground text-center py-4">Nenhum membro na organização.</p>
-                      ) : (
-                        orgMembers.map(m => (
-                          <div key={m.user_id} className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-muted/50">
-                            <Checkbox
-                              checked={cohortMembers.includes(m.user_id)}
-                              onCheckedChange={() => toggleMember(m.user_id)}
-                            />
-                            <div className="min-w-0">
-                              <p className="text-sm font-medium truncate">{m.full_name || 'Sem nome'}</p>
-                              <p className="text-xs text-muted-foreground truncate">{m.email}</p>
-                            </div>
+                  <div className="mt-4 space-y-2 max-h-[400px] overflow-y-auto">
+                    <p className="text-sm font-medium text-foreground mb-2">
+                      <Users className="w-4 h-4 inline mr-1" /> Alunos ({cohortMembers.length})
+                    </p>
+                    {orgMembers.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-4">Nenhum membro na organização.</p>
+                    ) : (
+                      orgMembers.map(m => (
+                        <div key={m.user_id} className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-muted/50">
+                          <Checkbox
+                            checked={cohortMembers.includes(m.user_id)}
+                            onCheckedChange={() => toggleMember(m.user_id)}
+                          />
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium truncate">{m.full_name || 'Sem nome'}</p>
+                            <p className="text-xs text-muted-foreground truncate">{m.email}</p>
                           </div>
-                        ))
-                      )}
-                    </TabsContent>
-
-                    <TabsContent value="modules" className="mt-4 space-y-2 max-h-[400px] overflow-y-auto">
-                      {orgModules.length === 0 ? (
-                        <p className="text-sm text-muted-foreground text-center py-4">Nenhum módulo publicado na organização.</p>
-                      ) : (
-                        orgModules.map(m => (
-                          <div key={m.id} className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-muted/50">
-                            <Checkbox
-                              checked={cohortModuleIds.includes(m.id)}
-                              onCheckedChange={() => toggleModule(m.id)}
-                            />
-                            <div className="min-w-0">
-                              <p className="text-sm font-medium truncate">{m.title}</p>
-                              <Badge variant="outline" className="text-xs">{m.type === 'proficiency' ? 'Proficiência' : 'Temático'}</Badge>
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </TabsContent>
-                  </Tabs>
+                        </div>
+                      ))
+                    )}
+                  </div>
                 )}
               </CardContent>
             </Card>
