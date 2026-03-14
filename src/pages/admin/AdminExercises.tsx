@@ -325,6 +325,19 @@ const AdminExercises: React.FC = () => {
   };
 
   const togglePublish = async (exercise: Exercise) => {
+    // Block publishing video exercises without a videoUrl
+    if (!exercise.is_published && exercise.type === 'video') {
+      const videoUrl = exercise.content?.videoUrl;
+      if (!videoUrl || (typeof videoUrl === 'string' && videoUrl.trim() === '')) {
+        toast({
+          title: 'Não é possível publicar',
+          description: 'Exercícios de vídeo precisam ter uma URL de vídeo configurada antes de serem publicados.',
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+
     try {
       const { error } = await supabase
         .from('exercises')

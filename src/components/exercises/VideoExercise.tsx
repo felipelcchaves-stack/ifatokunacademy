@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Play, Pause, RotateCcw, Maximize, Volume2, VolumeX, CheckCircle } from 'lucide-react';
+import { Play, Pause, RotateCcw, Maximize, Volume2, VolumeX, CheckCircle, Video } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 
