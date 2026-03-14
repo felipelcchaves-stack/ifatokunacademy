@@ -267,7 +267,7 @@ const ModuleQuiz: React.FC = () => {
                 <p className="text-muted-foreground mb-6">
                   Você precisa concluir todas as lições do módulo antes de fazer o quiz final.
                 </p>
-                <Button onClick={() => navigate(`/module/${moduleId}`)}>
+                <Button onClick={() => navigate(getOrgPath(`/module/${moduleId}`))}>
                   <ArrowLeft className="w-4 h-4 mr-2" />
                   Voltar ao Módulo
                 </Button>
