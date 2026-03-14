@@ -96,10 +96,19 @@ const LessonView: React.FC = () => {
   const [showPhaseTransition, setShowPhaseTransition] = useState(false);
   const [nextLesson, setNextLesson] = useState<{ id: string; title: string } | null>(null);
   
-  // Filter exercises based on study mode
+  // Separate published and draft exercises
+  const publishedExercises = useMemo(() => {
+    return allExercises.filter(ex => ex.is_published);
+  }, [allExercises]);
+  
+  const draftExercises = useMemo(() => {
+    return allExercises.filter(ex => !ex.is_published);
+  }, [allExercises]);
+  
+  // Filter published exercises based on study mode
   const exercises = useMemo(() => {
-    return filterExercises(allExercises);
-  }, [allExercises, filterExercises]);
+    return filterExercises(publishedExercises);
+  }, [publishedExercises, filterExercises]);
   
   // Audio state for TapComplete
   const [tapCompleteAudioLoading, setTapCompleteAudioLoading] = useState(false);
