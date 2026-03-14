@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, BookOpen, Clock, Lock, Loader2, Trophy } from 'lucide-react';
+import { ArrowLeft, BookOpen, Clock, Lock, Loader2, Trophy, ShieldAlert } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import ContentProtection from '@/components/ContentProtection';
@@ -12,6 +12,7 @@ import { useModuleProgress } from '@/hooks/useModuleProgress';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrganization } from '@/contexts/OrganizationContext';
 import { useOrgNavigate } from '@/hooks/useOrgNavigate';
+import { useCohortFilter } from '@/hooks/useCohortFilter';
 import { toast } from '@/hooks/use-toast';
 
 interface Module {
