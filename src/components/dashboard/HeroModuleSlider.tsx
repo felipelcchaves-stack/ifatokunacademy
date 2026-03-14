@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Play, BookOpen, Clock, Lock, Sparkles } from 'lucide-react';
+import UnlockInfo from '@/components/modules/UnlockInfo';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { useNavigate } from 'react-router-dom';
