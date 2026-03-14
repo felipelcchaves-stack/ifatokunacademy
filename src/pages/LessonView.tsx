@@ -743,6 +743,27 @@ const LessonView: React.FC = () => {
                   {renderExercise(currentExercise)}
                 </div>
               </div>
+            ) : draftExercises.length > 0 ? (
+              <div className="bg-card rounded-xl p-12 text-center border border-border">
+                <BookOpen className="w-16 h-16 text-amber-400 mx-auto mb-4" />
+                <h3 className="font-serif text-xl font-semibold text-foreground mb-2">
+                  Conteúdo em Preparação
+                </h3>
+                <p className="text-muted-foreground mb-4">
+                  Esta lição possui {draftExercises.length} exercício{draftExercises.length > 1 ? 's' : ''} que será{draftExercises.length > 1 ? 'ão' : ''} liberado{draftExercises.length > 1 ? 's' : ''} em breve.
+                </p>
+                <div className="space-y-2 max-w-md mx-auto mb-6">
+                  {draftExercises.map((ex) => (
+                    <div key={ex.id} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg text-left">
+                      <Lock className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                      <span className="text-sm text-muted-foreground">{ex.title}</span>
+                    </div>
+                  ))}
+                </div>
+                <Button onClick={() => navigate(getOrgPath(`/module/${moduleId}`))}>
+                  Voltar ao Módulo
+                </Button>
+              </div>
             ) : (
               <div className="bg-card rounded-xl p-12 text-center border border-border">
                 <BookOpen className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
@@ -750,7 +771,7 @@ const LessonView: React.FC = () => {
                   Conteúdo em Desenvolvimento
                 </h3>
                 <p className="text-muted-foreground mb-6">
-                  Os exercícios desta lição ainda não foram publicados.
+                  Os exercícios desta lição ainda não foram adicionados.
                 </p>
                 <Button onClick={() => navigate(getOrgPath(`/module/${moduleId}`))}>
                   Voltar ao Módulo
