@@ -1,13 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Users, BookOpen, Pencil, Trash2, GraduationCap, Calendar, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Plus, Users, Pencil, Trash2, GraduationCap, Calendar, ToggleLeft, ToggleRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
@@ -31,13 +29,6 @@ interface OrgMember {
   email: string | null;
 }
 
-interface OrgModule {
-  id: string;
-  title: string;
-  type: string;
-  display_order: number;
-}
-
 const AdminCohorts: React.FC = () => {
   const { activeOrg } = useAdminOrganization();
   const [cohorts, setCohorts] = useState<Cohort[]>([]);
@@ -55,9 +46,7 @@ const AdminCohorts: React.FC = () => {
   // Detail state
   const [selectedCohort, setSelectedCohort] = useState<Cohort | null>(null);
   const [cohortMembers, setCohortMembers] = useState<string[]>([]);
-  const [cohortModuleIds, setCohortModuleIds] = useState<string[]>([]);
   const [orgMembers, setOrgMembers] = useState<OrgMember[]>([]);
-  const [orgModules, setOrgModules] = useState<OrgModule[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
 
   const fetchCohorts = useCallback(async () => {
@@ -146,15 +135,12 @@ const AdminCohorts: React.FC = () => {
     setSelectedCohort(c);
     setDetailLoading(true);
 
-    const [membersRes, modulesRes, orgMembersRes, orgModulesRes] = await Promise.all([
+    const [membersRes, orgMembersRes] = await Promise.all([
       supabase.from('cohort_members').select('user_id').eq('cohort_id', c.id),
-      supabase.from('cohort_modules').select('module_id').eq('cohort_id', c.id),
       supabase.from('organization_members').select('user_id, profiles:user_id(full_name, email)').eq('organization_id', c.organization_id),
-      supabase.from('modules').select('id, title, type, display_order').eq('organization_id', c.organization_id).eq('is_published', true).order('display_order'),
     ]);
 
     setCohortMembers((membersRes.data || []).map((m: any) => m.user_id));
-    setCohortModuleIds((modulesRes.data || []).map((m: any) => m.module_id));
     setOrgMembers(
       (orgMembersRes.data || []).map((m: any) => ({
         user_id: m.user_id,
@@ -162,7 +148,6 @@ const AdminCohorts: React.FC = () => {
         email: m.profiles?.email || null,
       }))
     );
-    setOrgModules((orgModulesRes.data || []) as OrgModule[]);
     setDetailLoading(false);
   };
 
@@ -178,22 +163,6 @@ const AdminCohorts: React.FC = () => {
       const { error } = await supabase.from('cohort_members').insert({ cohort_id: selectedCohort.id, user_id: userId });
       if (error) { toast({ title: 'Erro', description: error.message, variant: 'destructive' }); return; }
       setCohortMembers(prev => [...prev, userId]);
-    }
-  };
-
-  const toggleModule = async (moduleId: string) => {
-    if (!selectedCohort) return;
-    const isAssigned = cohortModuleIds.includes(moduleId);
-
-    if (isAssigned) {
-      const { error } = await supabase.from('cohort_modules').delete().eq('cohort_id', selectedCohort.id).eq('module_id', moduleId);
-      if (error) { toast({ title: 'Erro', description: error.message, variant: 'destructive' }); return; }
-      setCohortModuleIds(prev => prev.filter(id => id !== moduleId));
-    } else {
-      const nextOrder = cohortModuleIds.length;
-      const { error } = await supabase.from('cohort_modules').insert({ cohort_id: selectedCohort.id, module_id: moduleId, display_order: nextOrder });
-      if (error) { toast({ title: 'Erro', description: error.message, variant: 'destructive' }); return; }
-      setCohortModuleIds(prev => [...prev, moduleId]);
     }
   };
 
@@ -220,7 +189,7 @@ const AdminCohorts: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Turmas</h1>
-          <p className="text-muted-foreground">Gerencie turmas e o isolamento de conteúdo por grupo de alunos.</p>
+          <p className="text-muted-foreground">Gerencie turmas e agrupe alunos.</p>
         </div>
         <Button onClick={openCreate}>
           <Plus className="w-4 h-4 mr-2" />
@@ -294,60 +263,33 @@ const AdminCohorts: React.FC = () => {
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">{selectedCohort.name}</CardTitle>
-                <CardDescription>Gerencie alunos e módulos desta turma</CardDescription>
+                <CardDescription>Gerencie os alunos desta turma</CardDescription>
               </CardHeader>
               <CardContent>
                 {detailLoading ? (
                   <p className="text-muted-foreground text-center py-8">Carregando...</p>
                 ) : (
-                  <Tabs defaultValue="members">
-                    <TabsList className="w-full">
-                      <TabsTrigger value="members" className="flex-1">
-                        <Users className="w-4 h-4 mr-1" /> Alunos ({cohortMembers.length})
-                      </TabsTrigger>
-                      <TabsTrigger value="modules" className="flex-1">
-                        <BookOpen className="w-4 h-4 mr-1" /> Módulos ({cohortModuleIds.length})
-                      </TabsTrigger>
-                    </TabsList>
-
-                    <TabsContent value="members" className="mt-4 space-y-2 max-h-[400px] overflow-y-auto">
-                      {orgMembers.length === 0 ? (
-                        <p className="text-sm text-muted-foreground text-center py-4">Nenhum membro na organização.</p>
-                      ) : (
-                        orgMembers.map(m => (
-                          <div key={m.user_id} className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-muted/50">
-                            <Checkbox
-                              checked={cohortMembers.includes(m.user_id)}
-                              onCheckedChange={() => toggleMember(m.user_id)}
-                            />
-                            <div className="min-w-0">
-                              <p className="text-sm font-medium truncate">{m.full_name || 'Sem nome'}</p>
-                              <p className="text-xs text-muted-foreground truncate">{m.email}</p>
-                            </div>
+                  <div className="mt-4 space-y-2 max-h-[400px] overflow-y-auto">
+                    <p className="text-sm font-medium text-foreground mb-2">
+                      <Users className="w-4 h-4 inline mr-1" /> Alunos ({cohortMembers.length})
+                    </p>
+                    {orgMembers.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-4">Nenhum membro na organização.</p>
+                    ) : (
+                      orgMembers.map(m => (
+                        <div key={m.user_id} className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-muted/50">
+                          <Checkbox
+                            checked={cohortMembers.includes(m.user_id)}
+                            onCheckedChange={() => toggleMember(m.user_id)}
+                          />
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium truncate">{m.full_name || 'Sem nome'}</p>
+                            <p className="text-xs text-muted-foreground truncate">{m.email}</p>
                           </div>
-                        ))
-                      )}
-                    </TabsContent>
-
-                    <TabsContent value="modules" className="mt-4 space-y-2 max-h-[400px] overflow-y-auto">
-                      {orgModules.length === 0 ? (
-                        <p className="text-sm text-muted-foreground text-center py-4">Nenhum módulo publicado na organização.</p>
-                      ) : (
-                        orgModules.map(m => (
-                          <div key={m.id} className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-muted/50">
-                            <Checkbox
-                              checked={cohortModuleIds.includes(m.id)}
-                              onCheckedChange={() => toggleModule(m.id)}
-                            />
-                            <div className="min-w-0">
-                              <p className="text-sm font-medium truncate">{m.title}</p>
-                              <Badge variant="outline" className="text-xs">{m.type === 'proficiency' ? 'Proficiência' : 'Temático'}</Badge>
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </TabsContent>
-                  </Tabs>
+                        </div>
+                      ))
+                    )}
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -355,7 +297,7 @@ const AdminCohorts: React.FC = () => {
             <Card>
               <CardContent className="py-12 text-center">
                 <GraduationCap className="w-10 h-10 mx-auto mb-3 text-muted-foreground/40" />
-                <p className="text-sm text-muted-foreground">Selecione uma turma para gerenciar alunos e módulos.</p>
+                <p className="text-sm text-muted-foreground">Selecione uma turma para gerenciar alunos.</p>
               </CardContent>
             </Card>
           )}
