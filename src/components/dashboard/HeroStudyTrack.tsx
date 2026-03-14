@@ -48,13 +48,18 @@ export const HeroStudyTrack: React.FC<HeroStudyTrackProps> = ({
 
   // Find active module index (first unlocked with progress or first unlocked)
   const activeModuleIndex = useMemo(() => {
+    // First: find module in progress
     const progressIndex = modules.findIndex(m => 
       !lockedModules.has(m.id) && m.progress > 0 && m.progress < 100
     );
     if (progressIndex !== -1) return progressIndex;
     
-    const firstUnlockedIndex = modules.findIndex(m => !lockedModules.has(m.id));
-    return firstUnlockedIndex !== -1 ? firstUnlockedIndex : 0;
+    // Second: find first unlocked and NOT completed module
+    const firstIncompleteIndex = modules.findIndex(m => !lockedModules.has(m.id) && m.progress < 100);
+    if (firstIncompleteIndex !== -1) return firstIncompleteIndex;
+
+    // All completed: default to last module
+    return modules.length - 1;
   }, [modules, lockedModules]);
 
   const activeModule = modules[activeModuleIndex];
