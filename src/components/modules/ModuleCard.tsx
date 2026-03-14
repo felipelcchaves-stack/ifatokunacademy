@@ -419,10 +419,19 @@ const ModuleCard: React.FC<ModuleCardProps> = ({
         </div>
         
         {isLocked && (
-          <div className="absolute inset-0 bg-black/50 flex items-center justify-center backdrop-blur-[2px]">
+          <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center backdrop-blur-[2px] gap-3">
             <div className="bg-white/10 backdrop-blur-sm rounded-full p-4 border border-white/20">
               <Lock className="w-8 h-8 text-white" />
             </div>
+            {unlockRule && (
+              <UnlockInfo
+                unlockRule={unlockRule}
+                unlockDate={unlockDate}
+                unlockRequirement={unlockRequirement}
+                prerequisiteProgress={prerequisiteProgress}
+                lightText
+              />
+            )}
           </div>
         )}
         
