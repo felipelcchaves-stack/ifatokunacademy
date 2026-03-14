@@ -23,6 +23,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useAchievementTriggers } from '@/hooks/useAchievementTriggers';
 import { useAchievements } from '@/hooks/useAchievements';
 import { useModulePhaseProgress } from '@/hooks/useModulePhaseProgress';
+import { useOrgNavigate } from '@/hooks/useOrgNavigate';
 import { showAchievementUnlockToast } from '@/components/achievements/AchievementUnlockToast';
 import { Badge } from '@/components/ui/badge';
 import {
