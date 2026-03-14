@@ -199,7 +199,7 @@ const ModuleView: React.FC = () => {
               <h1 className="font-serif text-2xl font-bold text-foreground mb-4">
                 Módulo não encontrado
               </h1>
-              <Button onClick={() => navigate('/dashboard')}>
+              <Button onClick={() => navigate(getOrgPath('/dashboard'))}>
                 Voltar ao Dashboard
               </Button>
             </div>
