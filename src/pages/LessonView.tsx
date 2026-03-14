@@ -469,8 +469,9 @@ const LessonView: React.FC = () => {
         return (
           <TapComplete
             text={content.text || ''}
+            texts={content.texts}
             onComplete={(correct) => correct && handleExerciseComplete()}
-            onPlayAudio={() => handlePlayTapCompleteAudio(content.text || '', content.audioUrl)}
+            onPlayAudio={() => handlePlayTapCompleteAudio(content.text || (content.texts?.[0]) || '', content.audioUrl)}
             audioLoading={tapCompleteAudioLoading}
             preferChunkMode={content.preferChunkMode}
             chunkSize={content.chunkSize}
