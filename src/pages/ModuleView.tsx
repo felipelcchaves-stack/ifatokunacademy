@@ -117,6 +117,7 @@ const ModuleView: React.FC = () => {
         setModule({
           ...moduleData,
           type: moduleData.type as 'proficiency' | 'thematic',
+          requires_quiz: moduleData.requires_quiz ?? true,
         });
       }
 
