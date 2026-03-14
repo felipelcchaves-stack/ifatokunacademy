@@ -311,13 +311,13 @@ const PedagogicalExerciseGenerator: React.FC<PedagogicalExerciseGeneratorProps> 
   };
 
   const exerciseStructure = [
-    { phase: 'Fase 1', name: 'Contexto (Leitura)', type: 'reading' },
-    { phase: 'Fase 1', name: 'Memorizar Contexto', type: 'memorization' },
-    { phase: 'Fase 1', name: 'Ordenar Contexto', type: 'tap-complete' },
-    { phase: 'Fase 1', name: 'Revisão Contexto', type: 'flashcard' },
-    { phase: 'Fase 2', name: 'Verso Completo (Leitura)', type: 'reading' },
-    { phase: 'Fase 2', name: 'Memorizar Verso', type: 'memorization' },
-    { phase: 'Fase 2', name: 'Ordenar Verso', type: 'drag-drop' },
+    { key: 'readingContexto' as const, phase: 'Fase 1', name: 'Contexto (Leitura)', type: 'reading' },
+    { key: 'memorizationContexto' as const, phase: 'Fase 1', name: 'Memorizar Contexto', type: 'memorization' },
+    { key: 'tapCompleteContexto' as const, phase: 'Fase 1', name: 'Ordenar Contexto', type: 'tap-complete' },
+    { key: 'flashcardContexto' as const, phase: 'Fase 1', name: 'Revisão Contexto', type: 'flashcard' },
+    { key: 'readingVerso' as const, phase: 'Fase 2', name: 'Verso Completo (Leitura)', type: 'reading' },
+    { key: 'memorizationVerso' as const, phase: 'Fase 2', name: 'Memorizar Verso', type: 'memorization' },
+    { key: 'dragDropVerso' as const, phase: 'Fase 2', name: 'Ordenar Verso', type: 'drag-drop' },
   ];
 
   return (
