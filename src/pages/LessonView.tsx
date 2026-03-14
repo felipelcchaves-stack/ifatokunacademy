@@ -375,7 +375,7 @@ const LessonView: React.FC = () => {
         title: 'Parabéns! 🎉',
         description: 'Você concluiu esta lição!',
       });
-      navigate(`/module/${moduleId}`);
+      navigate(getOrgPath(`/module/${moduleId}`));
     }
   };
 
