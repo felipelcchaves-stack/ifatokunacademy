@@ -137,15 +137,12 @@ const AdminCohorts: React.FC = () => {
     setSelectedCohort(c);
     setDetailLoading(true);
 
-    const [membersRes, modulesRes, orgMembersRes, orgModulesRes] = await Promise.all([
+    const [membersRes, orgMembersRes] = await Promise.all([
       supabase.from('cohort_members').select('user_id').eq('cohort_id', c.id),
-      supabase.from('cohort_modules').select('module_id').eq('cohort_id', c.id),
       supabase.from('organization_members').select('user_id, profiles:user_id(full_name, email)').eq('organization_id', c.organization_id),
-      supabase.from('modules').select('id, title, type, display_order').eq('organization_id', c.organization_id).eq('is_published', true).order('display_order'),
     ]);
 
     setCohortMembers((membersRes.data || []).map((m: any) => m.user_id));
-    setCohortModuleIds((modulesRes.data || []).map((m: any) => m.module_id));
     setOrgMembers(
       (orgMembersRes.data || []).map((m: any) => ({
         user_id: m.user_id,
@@ -153,7 +150,6 @@ const AdminCohorts: React.FC = () => {
         email: m.profiles?.email || null,
       }))
     );
-    setOrgModules((orgModulesRes.data || []) as OrgModule[]);
     setDetailLoading(false);
   };
 
