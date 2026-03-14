@@ -108,8 +108,8 @@ Deno.serve(async (req) => {
     }
 
     // Inserir novas permissões (se houver)
-    if (moduleIds.length > 0) {
-      const permissions = moduleIds.map((moduleId: string) => ({
+    if (finalModuleIds.length > 0) {
+      const permissions = finalModuleIds.map((moduleId: string) => ({
         user_id: userId,
         module_id: moduleId,
         granted_by: callerUser.id
