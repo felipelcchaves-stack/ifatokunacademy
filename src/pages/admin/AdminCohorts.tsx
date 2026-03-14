@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Users, BookOpen, Pencil, Trash2, GraduationCap, Calendar, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Plus, Users, Pencil, Trash2, GraduationCap, Calendar, ToggleLeft, ToggleRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
