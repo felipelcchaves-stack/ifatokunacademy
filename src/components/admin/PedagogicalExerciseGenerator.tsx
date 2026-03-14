@@ -166,72 +166,69 @@ const PedagogicalExerciseGenerator: React.FC<PedagogicalExerciseGeneratorProps> 
     return { texts: lines.slice(0, 5) };
   };
 
-  // Generate all 7 exercises (optimized structure)
   const generateExercises = (): GeneratedExercise[] => {
     const exercises: GeneratedExercise[] = [];
     let order = 0;
 
-    // ===== FASE 1 - Contexto (4 exercícios) =====
-    
-    // 0 - Reading: Contexto
-    exercises.push({
-      title: `Contexto: ${lessonTitle}`,
-      type: 'reading',
-      content: { text: contextoText, audioUrl: '' },
-      display_order: order++,
-    });
+    // ===== FASE 1 - Contexto =====
+    if (selectedExercises.readingContexto) {
+      exercises.push({
+        title: `Contexto: ${lessonTitle}`,
+        type: 'reading',
+        content: { text: contextoText, audioUrl: '' },
+        display_order: order++,
+      });
+    }
+    if (selectedExercises.memorizationContexto) {
+      exercises.push({
+        title: `Fase 1 - Memorizar Contexto: ${lessonTitle}`,
+        type: 'memorization',
+        content: { items: generateMemorizationItems(contextoText) },
+        display_order: order++,
+      });
+    }
+    if (selectedExercises.tapCompleteContexto) {
+      exercises.push({
+        title: `Fase 1 - Ordenar Contexto: ${lessonTitle}`,
+        type: 'tap-complete',
+        content: generateTapCompleteContent(contextoText),
+        display_order: order++,
+      });
+    }
+    if (selectedExercises.flashcardContexto) {
+      exercises.push({
+        title: `Fase 1 - Revisão Contexto: ${lessonTitle}`,
+        type: 'flashcard',
+        content: { cards: generateFlashcards(contextoText, true) },
+        display_order: order++,
+      });
+    }
 
-    // 1 - Memorization: Contexto
-    exercises.push({
-      title: `Fase 1 - Memorizar Contexto: ${lessonTitle}`,
-      type: 'memorization',
-      content: { items: generateMemorizationItems(contextoText) },
-      display_order: order++,
-    });
-
-    // 2 - TapComplete Consolidado: Contexto (novo formato com múltiplos textos)
-    const tapCompleteContexto = generateTapCompleteContent(contextoText);
-    exercises.push({
-      title: `Fase 1 - Ordenar Contexto: ${lessonTitle}`,
-      type: 'tap-complete',
-      content: tapCompleteContexto,
-      display_order: order++,
-    });
-
-    // 3 - Flashcard: Contexto
-    exercises.push({
-      title: `Fase 1 - Revisão Contexto: ${lessonTitle}`,
-      type: 'flashcard',
-      content: { cards: generateFlashcards(contextoText, true) },
-      display_order: order++,
-    });
-
-    // ===== FASE 2 - Verso Completo (3 exercícios) =====
-
-    // 4 - Reading: Verso Completo
-    exercises.push({
-      title: `Fase 2 - Verso Completo: ${lessonTitle}`,
-      type: 'reading',
-      content: { text: versoText, audioUrl: '' },
-      display_order: order++,
-    });
-
-    // 5 - Memorization: Verso
-    exercises.push({
-      title: `Fase 2 - Memorizar Verso: ${lessonTitle}`,
-      type: 'memorization',
-      content: { items: generateMemorizationItems(versoText) },
-      display_order: order++,
-    });
-
-    // 6 - Drag-drop Consolidado: Verso
-    const dragDropVerso = generateDragDropItems(versoText);
-    exercises.push({
-      title: `Fase 2 - Ordenar Verso: ${lessonTitle}`,
-      type: 'drag-drop',
-      content: dragDropVerso,
-      display_order: order++,
-    });
+    // ===== FASE 2 - Verso Completo =====
+    if (selectedExercises.readingVerso) {
+      exercises.push({
+        title: `Fase 2 - Verso Completo: ${lessonTitle}`,
+        type: 'reading',
+        content: { text: versoText, audioUrl: '' },
+        display_order: order++,
+      });
+    }
+    if (selectedExercises.memorizationVerso) {
+      exercises.push({
+        title: `Fase 2 - Memorizar Verso: ${lessonTitle}`,
+        type: 'memorization',
+        content: { items: generateMemorizationItems(versoText) },
+        display_order: order++,
+      });
+    }
+    if (selectedExercises.dragDropVerso) {
+      exercises.push({
+        title: `Fase 2 - Ordenar Verso: ${lessonTitle}`,
+        type: 'drag-drop',
+        content: generateDragDropItems(versoText),
+        display_order: order++,
+      });
+    }
 
     return exercises;
   };
