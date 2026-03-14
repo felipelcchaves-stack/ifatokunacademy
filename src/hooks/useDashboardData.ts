@@ -40,10 +40,8 @@ export const useDashboardData = (user: User | null, organizationId?: string | nu
   const [userProgress, setUserProgress] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  const { hasCohorts, allowedModuleIds, cohortModuleOrder, loading: cohortLoading } = useCohortFilter(user, organizationId);
 
   const fetchData = useCallback(async () => {
-    if (cohortLoading) return;
     try {
       setLoading(true);
       setError(null);
