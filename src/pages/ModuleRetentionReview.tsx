@@ -169,7 +169,7 @@ const ModuleRetentionReview: React.FC = () => {
                 <p className="text-muted-foreground mb-6">
                   Você ainda não tem itens de memorização neste módulo.
                 </p>
-                <Button onClick={() => navigate(`/module/${moduleId}`)}>
+                <Button onClick={() => navigate(getOrgPath(`/module/${moduleId}`))}>
                   <ChevronLeft className="w-4 h-4 mr-2" />
                   Voltar ao Módulo
                 </Button>
