@@ -85,6 +85,7 @@ const LessonView: React.FC = () => {
   const { checkAllAchievements } = useAchievements();
   const { checkAndMarkPhaseComplete } = useModulePhaseProgress();
   const { mode, setMode, filterExercises, getModeInfo, isExpress } = useStudyMode();
+  const { getOrgPath } = useOrgNavigate();
   
   const [lesson, setLesson] = useState<Lesson | null>(null);
   const [allExercises, setAllExercises] = useState<Exercise[]>([]);
