@@ -30,7 +30,7 @@ interface LessonCardProps {
 }
 
 const LessonCard = forwardRef<HTMLDivElement, LessonCardProps>(
-  ({ lesson, index, moduleId, isLocked, progress = 0, phase1Complete = false, phase1Total = 0, phase1Completed = 0 }, ref) => {
+  ({ lesson, index, moduleId, isLocked, progress = 0, phase1Complete = false, phase1Total = 0, phase1Completed = 0, unlockReason, previousLessonProgress }, ref) => {
     const navigate = useNavigate();
     const { getOrgPath } = useOrgNavigate();
 
