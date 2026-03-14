@@ -48,9 +48,7 @@ const AdminCohorts: React.FC = () => {
   // Detail state
   const [selectedCohort, setSelectedCohort] = useState<Cohort | null>(null);
   const [cohortMembers, setCohortMembers] = useState<string[]>([]);
-  const [cohortModuleIds, setCohortModuleIds] = useState<string[]>([]);
   const [orgMembers, setOrgMembers] = useState<OrgMember[]>([]);
-  const [orgModules, setOrgModules] = useState<OrgModule[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
 
   const fetchCohorts = useCallback(async () => {
