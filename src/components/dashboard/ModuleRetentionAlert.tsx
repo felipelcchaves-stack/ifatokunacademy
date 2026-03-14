@@ -4,6 +4,7 @@ import { Brain, AlertTriangle, CheckCircle, Clock, ChevronRight } from 'lucide-r
 import { Button } from '@/components/ui/button';
 import { useModuleRetention, ModuleWithRetention } from '@/hooks/useModuleRetention';
 import { cn } from '@/lib/utils';
+import { useOrgNavigate } from '@/hooks/useOrgNavigate';
 
 const ModuleRetentionAlert: React.FC = () => {
   const navigate = useNavigate();
