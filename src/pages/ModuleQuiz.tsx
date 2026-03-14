@@ -531,7 +531,7 @@ const ModuleQuiz: React.FC = () => {
                   )}
                   <Button 
                     className="gradient-gold text-secondary shadow-gold"
-                    onClick={() => navigate('/dashboard')}
+                    onClick={() => navigate(getOrgPath('/dashboard'))}
                   >
                     Voltar ao Dashboard
                   </Button>

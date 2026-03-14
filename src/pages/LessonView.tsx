@@ -744,7 +744,7 @@ const LessonView: React.FC = () => {
                 <p className="text-muted-foreground mb-6">
                   Os exercícios desta lição ainda não foram publicados.
                 </p>
-                <Button onClick={() => navigate(`/module/${moduleId}`)}>
+                <Button onClick={() => navigate(getOrgPath(`/module/${moduleId}`))}>
                   Voltar ao Módulo
                 </Button>
               </div>

@@ -327,7 +327,7 @@ const ModuleView: React.FC = () => {
               {lessons.length > 0 && progress === 100 && (
                 <div 
                   className="bg-gradient-to-r from-primary/10 to-amber-500/10 rounded-xl p-6 border border-primary/30 cursor-pointer hover:shadow-soft transition-all mt-6"
-                  onClick={() => navigate(`/module/${module.id}/quiz`)}
+                  onClick={() => navigate(getOrgPath(`/module/${module.id}/quiz`))}
                 >
                   <div className="flex items-center gap-4">
                     <div className="w-14 h-14 rounded-full gradient-gold flex items-center justify-center shadow-gold">
