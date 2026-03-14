@@ -1,44 +1,24 @@
 
 
-## Plano: Evitar Refresh ao Trocar de Janela/Workspace no Safari
+## Plano: Regras de desbloqueio por turma — ✅ IMPLEMENTADO
 
-### Diagnóstico
+### O que foi feito
 
-Identifiquei duas causas prováveis:
+1. **Migração SQL** — Adicionadas colunas `unlock_rule` (text, default 'manual') e `unlock_date` (timestamptz) na tabela `cohort_modules`
 
-1. **React Query com `refetchOnWindowFocus: true` (padrão)** — O `QueryClient` está criado sem configuração, então toda vez que você volta à aba, TODAS as queries disparam refetch simultaneamente. No Safari (macOS), trocar de workspace conta como perda/ganho de foco, gerando dezenas de requisições simultâneas que podem causar re-render pesado ou até "flash" visual que parece reload.
+2. **`src/hooks/useCohortFilter.ts`** — Reescrito para retornar:
+   - `hasCohorts` — se o usuário pertence a turmas ativas
+   - `allowedModuleIds` — Set com IDs dos módulos atribuídos
+   - `cohortModuleMap` — Map com regra de desbloqueio por módulo
+   - Fallback: turma sem módulos → mostra todos
 
-2. **Service Worker agressivo** — O `sw.js` usa `skipWaiting()` + `clients.claim()` na ativação. Quando o SW se atualiza enquanto você está em outro workspace, ele toma controle imediato e pode forçar o Safari a recarregar a página. Além disso, a estratégia "Network First" para navegação HTML pode conflitar com o cache do Safari.
+3. **`src/hooks/useSequentialProgress.ts`** — `isModuleUnlocked`, `getUnlockRequirement` e `calculateLockedModules` agora aceitam `cohortModuleMap` opcional que sobrescreve a regra global do módulo
 
-### Solução
+4. **`src/pages/Dashboard.tsx`** — Filtro por turma aplicado: se `hasCohorts && allowedModuleIds.size > 0`, mostra apenas módulos da turma. Regras de desbloqueio da turma passadas ao `calculateLockedModules`
 
-**Arquivo 1: `src/App.tsx`** — Configurar o `QueryClient` para desabilitar refetch automático no foco:
+5. **`src/pages/ModuleView.tsx`** — Bloqueio de acesso direto: se módulo não está nos `allowedModuleIds`, mostra "Módulo não liberado para sua turma"
 
-```typescript
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      refetchOnWindowFocus: false,
-      retry: 1,
-      staleTime: 5 * 60 * 1000, // 5 minutos
-    },
-  },
-});
-```
-
-**Arquivo 2: `public/sw.js`** — Tornar o Service Worker menos agressivo:
-
-- Remover `self.skipWaiting()` do evento `install` (evita que novo SW force reload)
-- Remover `self.clients.claim()` do evento `activate`
-- Para navegação HTML, usar estratégia **Cache First com fallback para network** em vez de Network First (evita que o SW tente buscar uma nova versão da página toda vez)
-- Alternativa mais simples: **não interceptar requisições de navegação HTML** — deixar o browser lidar normalmente
-
-### Resumo
-
-| Arquivo | Mudança |
-|---|---|
-| `src/App.tsx` | `refetchOnWindowFocus: false` + `staleTime: 5min` no QueryClient |
-| `public/sw.js` | Remover `skipWaiting`/`clients.claim`, não interceptar navegação HTML |
-
-Essas duas mudanças eliminam os dois gatilhos que causam o reload no Safari ao trocar de workspace.
-
+6. **`src/pages/admin/AdminCohorts.tsx`** — Aba "Módulos" adicionada com:
+   - Checkboxes para atribuir módulos à turma
+   - Seletor de regra (sempre liberado, sequencial, por data, manual)
+   - Campo de data para regra date_based
