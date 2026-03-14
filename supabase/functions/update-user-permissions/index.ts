@@ -65,7 +65,33 @@ Deno.serve(async (req) => {
       )
     }
 
-    console.log(`Updating permissions for user ${userId}: ${moduleIds.length} modules`)
+    // Auto-incluir módulos always_unlocked da organização do usuário
+    const { data: userProfile } = await supabaseAdmin
+      .from('profiles')
+      .select('organization_id')
+      .eq('id', userId)
+      .single()
+
+    const finalModuleIds = [...moduleIds]
+    if (userProfile?.organization_id) {
+      const { data: alwaysUnlockedModules } = await supabaseAdmin
+        .from('modules')
+        .select('id')
+        .eq('organization_id', userProfile.organization_id)
+        .eq('unlock_rule', 'always_unlocked')
+        .eq('is_published', true)
+
+      if (alwaysUnlockedModules) {
+        for (const m of alwaysUnlockedModules) {
+          if (!finalModuleIds.includes(m.id)) {
+            finalModuleIds.push(m.id)
+            console.log(`Auto-including always_unlocked module: ${m.id}`)
+          }
+        }
+      }
+    }
+
+    console.log(`Updating permissions for user ${userId}: ${finalModuleIds.length} modules (including auto-unlocked)`)
 
     // Deletar todas as permissões existentes do usuário
     const { error: deleteError } = await supabaseAdmin
@@ -82,8 +108,8 @@ Deno.serve(async (req) => {
     }
 
     // Inserir novas permissões (se houver)
-    if (moduleIds.length > 0) {
-      const permissions = moduleIds.map((moduleId: string) => ({
+    if (finalModuleIds.length > 0) {
+      const permissions = finalModuleIds.map((moduleId: string) => ({
         user_id: userId,
         module_id: moduleId,
         granted_by: callerUser.id
