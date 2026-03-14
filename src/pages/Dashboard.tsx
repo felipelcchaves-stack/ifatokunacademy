@@ -151,7 +151,7 @@ const Dashboard: React.FC<DashboardProps> = ({ organizationId, orgName }) => {
     }, 0)
   );
 
-  if (loading || permissionsLoading) {
+  if (loading || permissionsLoading || cohortLoading) {
     return (
       <ContentProtection>
         <div className="min-h-screen bg-background">
