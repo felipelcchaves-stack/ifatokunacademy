@@ -73,7 +73,7 @@ const HeroModuleSlider: React.FC<HeroModuleSliderProps> = ({
 
   const handleModuleClick = (moduleId: string, isLocked: boolean) => {
     if (!isLocked) {
-      navigate(`/module/${moduleId}`);
+      navigate(getOrgPath(`/module/${moduleId}`));
     }
   };
 

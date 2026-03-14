@@ -135,7 +135,7 @@ const ModuleRetentionAlert: React.FC = () => {
           onClick={() => {
             const firstModule = modulesNeedingReview[0];
             if (firstModule) {
-              navigate(`/module/${firstModule.module_id}/retention`);
+              navigate(getOrgPath(`/module/${firstModule.module_id}/retention`));
             }
           }}
         >
