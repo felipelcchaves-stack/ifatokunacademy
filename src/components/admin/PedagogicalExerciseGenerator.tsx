@@ -62,8 +62,21 @@ const PedagogicalExerciseGenerator: React.FC<PedagogicalExerciseGeneratorProps> 
   const [isGenerating, setIsGenerating] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [generatedExercises, setGeneratedExercises] = useState<GeneratedExercise[]>([]);
+  const [selectedExercises, setSelectedExercises] = useState({
+    readingContexto: true,
+    memorizationContexto: true,
+    tapCompleteContexto: true,
+    flashcardContexto: true,
+    readingVerso: true,
+    memorizationVerso: true,
+    dragDropVerso: true,
+  });
 
   const hasExistingExercises = existingExercises.length > 0;
+
+  const needsContexto = selectedExercises.readingContexto || selectedExercises.memorizationContexto || selectedExercises.tapCompleteContexto || selectedExercises.flashcardContexto;
+  const needsVerso = selectedExercises.readingVerso || selectedExercises.memorizationVerso || selectedExercises.dragDropVerso;
+  const selectedCount = Object.values(selectedExercises).filter(Boolean).length;
 
   // Initialize with default texts when provided
   React.useEffect(() => {
