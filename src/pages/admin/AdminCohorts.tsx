@@ -265,7 +265,7 @@ const AdminCohorts: React.FC = () => {
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">{selectedCohort.name}</CardTitle>
-                <CardDescription>Gerencie alunos e módulos desta turma</CardDescription>
+                <CardDescription>Gerencie os alunos desta turma</CardDescription>
               </CardHeader>
               <CardContent>
                 {detailLoading ? (
