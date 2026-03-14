@@ -25,6 +25,8 @@ interface LessonCardProps {
   phase1Complete?: boolean;
   phase1Total?: number;
   phase1Completed?: number;
+  unlockReason?: string;
+  previousLessonProgress?: number;
 }
 
 const LessonCard = forwardRef<HTMLDivElement, LessonCardProps>(

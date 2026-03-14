@@ -13,6 +13,9 @@ interface ModuleCardProps {
   variant?: 'default' | 'compact' | 'hero';
   isLocked?: boolean;
   unlockRequirement?: string;
+  unlockRule?: 'sequential' | 'date_based' | 'manual' | 'always_unlocked';
+  unlockDate?: string | null;
+  prerequisiteProgress?: number;
   retentionStatus?: 'fresh' | 'due_soon' | 'overdue' | 'not_started';
   retentionScore?: number;
   hasPendingPhase2?: boolean;
