@@ -175,15 +175,17 @@ export const useSequentialProgress = () => {
     allModules: Module[],
     completions: ModuleCompletion[],
     userProgress: Record<string, number> = {},
-    phaseProgress: PhaseProgress[] = []
+    phaseProgress: PhaseProgress[] = [],
+    cohortModuleMap?: Map<string, { unlock_rule: string; unlock_date: string | null }>
   ): boolean => {
-    // Verificar unlock_rule primeiro
-    const unlockRule = (module as any).unlock_rule || 'sequential';
+    // Se o usuário tem turma e o módulo está no mapa da turma, usar regra da turma
+    const cohortRule = cohortModuleMap?.get(module.id);
+    const unlockRule = cohortRule?.unlock_rule || (module as any).unlock_rule || 'sequential';
+    const unlockDate = cohortRule?.unlock_date || (module as any).unlock_date;
     
     if (unlockRule === 'always_unlocked') return true;
     if (unlockRule === 'manual') return false;
     if (unlockRule === 'date_based') {
-      const unlockDate = (module as any).unlock_date;
       if (unlockDate) {
         return new Date() >= new Date(unlockDate);
       }
@@ -248,15 +250,17 @@ export const useSequentialProgress = () => {
     allModules: Module[],
     completions: ModuleCompletion[],
     userProgress: Record<string, number> = {},
-    phaseProgress: PhaseProgress[] = []
+    phaseProgress: PhaseProgress[] = [],
+    cohortModuleMap?: Map<string, { unlock_rule: string; unlock_date: string | null }>
   ): string | null => {
-    // Verificar unlock_rule primeiro
-    const unlockRule = (module as any).unlock_rule || 'sequential';
+    // Se o usuário tem turma e o módulo está no mapa da turma, usar regra da turma
+    const cohortRule = cohortModuleMap?.get(module.id);
+    const unlockRule = cohortRule?.unlock_rule || (module as any).unlock_rule || 'sequential';
+    const unlockDate = cohortRule?.unlock_date || (module as any).unlock_date;
     
     if (unlockRule === 'always_unlocked') return null;
-    if (unlockRule === 'manual') return 'Este módulo ainda não foi liberado';
+    if (unlockRule === 'manual') return 'Este módulo ainda não foi liberado para sua turma';
     if (unlockRule === 'date_based') {
-      const unlockDate = (module as any).unlock_date;
       if (unlockDate && new Date() < new Date(unlockDate)) {
         const dateStr = new Date(unlockDate).toLocaleDateString('pt-BR', {
           day: '2-digit', month: '2-digit', year: 'numeric',
@@ -333,15 +337,16 @@ export const useSequentialProgress = () => {
     modules: Module[],
     completions: ModuleCompletion[],
     userProgress: Record<string, number> = {},
-    phaseProgress: PhaseProgress[] = []
+    phaseProgress: PhaseProgress[] = [],
+    cohortModuleMap?: Map<string, { unlock_rule: string; unlock_date: string | null }>
   ): { lockedModules: Set<string>; unlockRequirements: Record<string, string> } => {
     const lockedModules = new Set<string>();
     const unlockRequirements: Record<string, string> = {};
 
     modules.forEach(module => {
-      if (!isModuleUnlocked(module, modules, completions, userProgress, phaseProgress)) {
+      if (!isModuleUnlocked(module, modules, completions, userProgress, phaseProgress, cohortModuleMap)) {
         lockedModules.add(module.id);
-        const requirement = getUnlockRequirement(module, modules, completions, userProgress, phaseProgress);
+        const requirement = getUnlockRequirement(module, modules, completions, userProgress, phaseProgress, cohortModuleMap);
         if (requirement) {
           unlockRequirements[module.id] = requirement;
         }

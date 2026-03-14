@@ -112,18 +112,24 @@ export type Database = {
           display_order: number
           id: string
           module_id: string
+          unlock_date: string | null
+          unlock_rule: string
         }
         Insert: {
           cohort_id: string
           display_order?: number
           id?: string
           module_id: string
+          unlock_date?: string | null
+          unlock_rule?: string
         }
         Update: {
           cohort_id?: string
           display_order?: number
           id?: string
           module_id?: string
+          unlock_date?: string | null
+          unlock_rule?: string
         }
         Relationships: [
           {

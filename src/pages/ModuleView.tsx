@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, BookOpen, Clock, Lock, Loader2, Trophy } from 'lucide-react';
+import { ArrowLeft, BookOpen, Clock, Lock, Loader2, Trophy, ShieldAlert } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import ContentProtection from '@/components/ContentProtection';
@@ -12,6 +12,7 @@ import { useModuleProgress } from '@/hooks/useModuleProgress';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrganization } from '@/contexts/OrganizationContext';
 import { useOrgNavigate } from '@/hooks/useOrgNavigate';
+import { useCohortFilter } from '@/hooks/useCohortFilter';
 import { toast } from '@/hooks/use-toast';
 
 interface Module {
@@ -46,6 +47,7 @@ const ModuleView: React.FC = () => {
   const { organization } = useOrganization();
   const { getOrgPath } = useOrgNavigate();
   const { getLessonProgress } = useModuleProgress();
+  const { hasCohorts, loading: cohortLoading, allowedModuleIds } = useCohortFilter(user, organization?.id);
   const [module, setModule] = useState<Module | null>(null);
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [lessonProgressMap, setLessonProgressMap] = useState<Record<string, { 
@@ -193,7 +195,7 @@ const ModuleView: React.FC = () => {
 
   const progress = calculateModuleProgress();
 
-  if (loading) {
+  if (loading || cohortLoading) {
     return (
       <ContentProtection>
         <div className="min-h-screen bg-background">
@@ -202,6 +204,31 @@ const ModuleView: React.FC = () => {
             <div className="flex items-center gap-3 text-muted-foreground">
               <Loader2 className="w-6 h-6 animate-spin" />
               <span>Carregando módulo...</span>
+            </div>
+          </main>
+        </div>
+      </ContentProtection>
+    );
+  }
+
+  // Check cohort access: if user has cohorts and this module is not in their allowed list
+  if (hasCohorts && allowedModuleIds.size > 0 && moduleId && !allowedModuleIds.has(moduleId)) {
+    return (
+      <ContentProtection>
+        <div className="min-h-screen bg-background">
+          <Header />
+          <main className="pt-24 pb-16 flex items-center justify-center">
+            <div className="text-center max-w-md">
+              <ShieldAlert className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+              <h1 className="font-serif text-2xl font-bold text-foreground mb-3">
+                Módulo não liberado
+              </h1>
+              <p className="text-muted-foreground mb-6">
+                Este módulo ainda não foi liberado para sua turma. Aguarde a liberação pelo seu instrutor.
+              </p>
+              <Button onClick={() => navigate(getOrgPath('/dashboard'))}>
+                Voltar ao Dashboard
+              </Button>
             </div>
           </main>
         </div>

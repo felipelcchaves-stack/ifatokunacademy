@@ -31,6 +31,7 @@ import { useDashboardData } from '@/hooks/useDashboardData';
 import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { useModulePhaseProgress } from '@/hooks/useModulePhaseProgress';
 import { useOrgNavigate } from '@/hooks/useOrgNavigate';
+import { useCohortFilter } from '@/hooks/useCohortFilter';
 
 interface DashboardProps {
   organizationId?: string | null;
@@ -48,6 +49,7 @@ const Dashboard: React.FC<DashboardProps> = ({ organizationId, orgName }) => {
   const { dueCount } = useSpacedRepetition();
   const { streak, loading: streakLoading } = useStreak();
   const { hasAccess, loading: permissionsLoading, isAdmin } = useModulePermissions();
+  const { hasCohorts, loading: cohortLoading, allowedModuleIds, cohortModuleMap } = useCohortFilter(user, organizationId);
 
   const displayName = profile?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || 'Estudante';
 
@@ -85,7 +87,7 @@ const Dashboard: React.FC<DashboardProps> = ({ organizationId, orgName }) => {
       phase2CompletedAt: p.phase2CompletedAt,
     }));
     
-    const lockResult = calculateLockedModules(formattedModules, formattedCompletions, userProgress, formattedPhaseProgress);
+    const lockResult = calculateLockedModules(formattedModules, formattedCompletions, userProgress, formattedPhaseProgress, cohortModuleMap.size > 0 ? cohortModuleMap : undefined);
     const thematicsUnlocked = areThematicsUnlocked(formattedModules, formattedCompletions, formattedPhaseProgress);
     const thematicProgress = getThematicUnlockProgress(formattedModules, formattedCompletions, formattedPhaseProgress);
     
@@ -117,10 +119,15 @@ const Dashboard: React.FC<DashboardProps> = ({ organizationId, orgName }) => {
     hasAccessFn: typeof hasAccess,
   });
 
-  // Filtrar módulos por permissão (admin vê todos)
-  const accessibleModules = modules.filter(m => hasAccess(m.id));
+  // Filtrar módulos por permissão (admin vê todos) e por turma
+  let accessibleModules = modules.filter(m => hasAccess(m.id));
   
-  console.log('[Dashboard] Accessible modules:', accessibleModules.length, 'of', modules.length);
+  // Se o usuário pertence a uma turma com módulos atribuídos, filtrar por turma
+  if (hasCohorts && allowedModuleIds.size > 0) {
+    accessibleModules = accessibleModules.filter(m => allowedModuleIds.has(m.id));
+  }
+  
+  console.log('[Dashboard] Accessible modules:', accessibleModules.length, 'of', modules.length, 'hasCohorts:', hasCohorts);
 
   const modulesWithProgress = accessibleModules.map(m => ({
     ...m,
@@ -143,7 +150,7 @@ const Dashboard: React.FC<DashboardProps> = ({ organizationId, orgName }) => {
     }, 0)
   );
 
-  if (loading || permissionsLoading) {
+  if (loading || permissionsLoading || cohortLoading) {
     return (
       <ContentProtection>
         <div className="min-h-screen bg-background">
