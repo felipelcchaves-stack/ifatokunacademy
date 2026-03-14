@@ -104,7 +104,7 @@ const ModuleRetentionAlert: React.FC = () => {
                 "flex items-center justify-between p-3 rounded-lg border transition-colors cursor-pointer hover:border-primary/30",
                 getStatusColor(module.status)
               )}
-              onClick={() => navigate(`/module/${module.module_id}/retention`)}
+              onClick={() => navigate(getOrgPath(`/module/${module.module_id}/retention`))}
             >
               <div className="flex items-center gap-2">
                 {getStatusIcon(module.status)}
