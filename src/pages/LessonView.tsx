@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, CheckCircle, BookOpen, Loader2, Sparkles, Zap } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle, BookOpen, Loader2, Sparkles, Zap, Lock } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import ContentProtection from '@/components/ContentProtection';
 import { Button } from '@/components/ui/button';
