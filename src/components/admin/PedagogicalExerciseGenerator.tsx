@@ -459,7 +459,7 @@ const PedagogicalExerciseGenerator: React.FC<PedagogicalExerciseGeneratorProps> 
             </Button>
             <Button 
               onClick={handleGenerate}
-              disabled={isGenerating || !contextoText.trim() || !versoText.trim()}
+              disabled={isGenerating || selectedCount === 0 || (needsContexto && !contextoText.trim()) || (needsVerso && !versoText.trim())}
               className="gradient-gold text-secondary"
             >
               {isGenerating ? (
@@ -470,7 +470,7 @@ const PedagogicalExerciseGenerator: React.FC<PedagogicalExerciseGeneratorProps> 
               ) : (
                 <>
                   <Sparkles className="w-4 h-4 mr-2" />
-                  Gerar 7 Exercícios
+                  Gerar {selectedCount} Exercício{selectedCount !== 1 ? 's' : ''}
                 </>
               )}
             </Button>
