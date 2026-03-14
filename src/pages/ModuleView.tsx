@@ -310,6 +310,12 @@ const ModuleView: React.FC = () => {
                       phase1Complete={lessonProgress?.phase1Complete || false}
                       phase1Total={lessonProgress?.phase1Total || 0}
                       phase1Completed={lessonProgress?.phase1Completed || 0}
+                      unlockReason={isLessonLocked(index) && index > 0 ? 'Complete a lição anterior' : undefined}
+                      previousLessonProgress={
+                        index > 0 
+                          ? lessonProgressMap[lessons[index - 1].id]?.progress || 0 
+                          : undefined
+                      }
                     />
                   );
                 })

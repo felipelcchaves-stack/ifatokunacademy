@@ -25,10 +25,12 @@ interface LessonCardProps {
   phase1Complete?: boolean;
   phase1Total?: number;
   phase1Completed?: number;
+  unlockReason?: string;
+  previousLessonProgress?: number;
 }
 
 const LessonCard = forwardRef<HTMLDivElement, LessonCardProps>(
-  ({ lesson, index, moduleId, isLocked, progress = 0, phase1Complete = false, phase1Total = 0, phase1Completed = 0 }, ref) => {
+  ({ lesson, index, moduleId, isLocked, progress = 0, phase1Complete = false, phase1Total = 0, phase1Completed = 0, unlockReason, previousLessonProgress }, ref) => {
     const navigate = useNavigate();
     const { getOrgPath } = useOrgNavigate();
 
@@ -67,9 +69,28 @@ const LessonCard = forwardRef<HTMLDivElement, LessonCardProps>(
 
           <div className="flex-1 min-w-0">
             <h3 className="font-semibold text-foreground mb-1">{lesson.title}</h3>
-            <p className="text-sm text-muted-foreground line-clamp-1">
-              {lesson.description || 'Sem descrição'}
-            </p>
+            {isLocked && unlockReason ? (
+              <div className="space-y-1">
+                <p className="text-sm text-amber-600 dark:text-amber-400">
+                  {unlockReason}
+                </p>
+                {previousLessonProgress !== undefined && previousLessonProgress > 0 && (
+                  <div className="flex items-center gap-2">
+                    <div className="w-20 h-1.5 bg-muted rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-primary rounded-full transition-all"
+                        style={{ width: `${previousLessonProgress}%` }}
+                      />
+                    </div>
+                    <span className="text-xs text-muted-foreground">{previousLessonProgress}%</span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground line-clamp-1">
+                {lesson.description || 'Sem descrição'}
+              </p>
+            )}
           </div>
 
           <div className="flex items-center gap-4">

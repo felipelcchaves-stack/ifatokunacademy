@@ -7,12 +7,16 @@ import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useOrgNavigate } from '@/hooks/useOrgNavigate';
 import { cn } from '@/lib/utils';
+import UnlockInfo from './UnlockInfo';
 
 interface ModuleCardProps {
   module: Module;
   variant?: 'default' | 'compact' | 'hero';
   isLocked?: boolean;
   unlockRequirement?: string;
+  unlockRule?: 'sequential' | 'date_based' | 'manual' | 'always_unlocked';
+  unlockDate?: string | null;
+  prerequisiteProgress?: number;
   retentionStatus?: 'fresh' | 'due_soon' | 'overdue' | 'not_started';
   retentionScore?: number;
   hasPendingPhase2?: boolean;
@@ -23,6 +27,9 @@ const ModuleCard: React.FC<ModuleCardProps> = ({
   variant = 'default',
   isLocked = false,
   unlockRequirement,
+  unlockRule,
+  unlockDate,
+  prerequisiteProgress,
   retentionStatus = 'not_started',
   retentionScore,
   hasPendingPhase2 = false,
@@ -216,10 +223,19 @@ const ModuleCard: React.FC<ModuleCardProps> = ({
           </div>
           
           {isLocked && (
-            <div className="absolute inset-0 bg-black/50 flex items-center justify-center backdrop-blur-[2px]">
+            <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center backdrop-blur-[2px] gap-3">
               <div className="bg-white/10 backdrop-blur-sm rounded-full p-5 border border-white/20">
                 <Lock className="w-10 h-10 text-white" />
               </div>
+              {unlockRule && (
+                <UnlockInfo
+                  unlockRule={unlockRule}
+                  unlockDate={unlockDate}
+                  unlockRequirement={unlockRequirement}
+                  prerequisiteProgress={prerequisiteProgress}
+                  lightText
+                />
+              )}
             </div>
           )}
           
@@ -287,8 +303,18 @@ const ModuleCard: React.FC<ModuleCardProps> = ({
             </div>
           )}
 
-          {/* Unlock requirement badge */}
-          {isLocked && unlockRequirement && (
+          {isLocked && unlockRule && (
+            <div className="mb-2">
+              <UnlockInfo
+                unlockRule={unlockRule}
+                unlockDate={unlockDate}
+                unlockRequirement={unlockRequirement}
+                prerequisiteProgress={prerequisiteProgress}
+                compact
+              />
+            </div>
+          )}
+          {isLocked && !unlockRule && unlockRequirement && (
             <p className="text-xs text-amber-600 dark:text-amber-400 mb-2 text-center">
               {unlockRequirement}
             </p>
@@ -393,10 +419,19 @@ const ModuleCard: React.FC<ModuleCardProps> = ({
         </div>
         
         {isLocked && (
-          <div className="absolute inset-0 bg-black/50 flex items-center justify-center backdrop-blur-[2px]">
+          <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center backdrop-blur-[2px] gap-3">
             <div className="bg-white/10 backdrop-blur-sm rounded-full p-4 border border-white/20">
               <Lock className="w-8 h-8 text-white" />
             </div>
+            {unlockRule && (
+              <UnlockInfo
+                unlockRule={unlockRule}
+                unlockDate={unlockDate}
+                unlockRequirement={unlockRequirement}
+                prerequisiteProgress={prerequisiteProgress}
+                lightText
+              />
+            )}
           </div>
         )}
         
@@ -454,8 +489,18 @@ const ModuleCard: React.FC<ModuleCardProps> = ({
           </div>
         )}
 
-        {/* Unlock requirement badge */}
-        {isLocked && unlockRequirement && (
+        {isLocked && unlockRule && (
+          <div className="mb-2">
+            <UnlockInfo
+              unlockRule={unlockRule}
+              unlockDate={unlockDate}
+              unlockRequirement={unlockRequirement}
+              prerequisiteProgress={prerequisiteProgress}
+              compact
+            />
+          </div>
+        )}
+        {isLocked && !unlockRule && unlockRequirement && (
           <p className="text-xs text-amber-600 dark:text-amber-400 mb-2 text-center">
             {unlockRequirement}
           </p>

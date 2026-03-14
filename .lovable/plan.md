@@ -1,86 +1,44 @@
 
 
-## Plano: Informações contextuais em módulos/lições bloqueados
+## Plano: Evitar Refresh ao Trocar de Janela/Workspace no Safari
 
-### Problema atual
-Quando um módulo está bloqueado, o aluno vê apenas um cadeado sem contexto. Não sabe se precisa completar o módulo anterior, se há uma data de liberação, ou se o admin ainda não liberou.
+### Diagnóstico
 
-### O que já existe
-O hook `useSequentialProgress` já calcula `unlockRequirement` com mensagens como:
-- `"Disponível a partir de 15/03/2026"` (date_based)
-- `"Complete a Fase 1 do módulo anterior"` (sequential)
-- `"Este módulo ainda não foi liberado"` (manual)
+Identifiquei duas causas prováveis:
 
-O `ModuleCard` já exibe `unlockRequirement` como texto pequeno, mas o visual é fraco e não há countdown.
+1. **React Query com `refetchOnWindowFocus: true` (padrão)** — O `QueryClient` está criado sem configuração, então toda vez que você volta à aba, TODAS as queries disparam refetch simultaneamente. No Safari (macOS), trocar de workspace conta como perda/ganho de foco, gerando dezenas de requisições simultâneas que podem causar re-render pesado ou até "flash" visual que parece reload.
+
+2. **Service Worker agressivo** — O `sw.js` usa `skipWaiting()` + `clients.claim()` na ativação. Quando o SW se atualiza enquanto você está em outro workspace, ele toma controle imediato e pode forçar o Safari a recarregar a página. Além disso, a estratégia "Network First" para navegação HTML pode conflitar com o cache do Safari.
 
 ### Solução
 
-**1. Componente `UnlockInfo`** — Novo componente reutilizável que renderiza info contextual por tipo de bloqueio:
+**Arquivo 1: `src/App.tsx`** — Configurar o `QueryClient` para desabilitar refetch automático no foco:
 
-- **date_based**: Countdown em tempo real ("Libera em 2d 14h") com ícone de calendário
-- **sequential**: Barra de progresso do módulo anterior + texto "Complete o módulo X"  
-- **manual**: Texto "Aguardando liberação pelo professor"
-- **always_unlocked**: Nunca aparece
-
-**2. Atualizar `ModuleCard`** (todas as variantes):
-- Substituir o texto simples `unlockRequirement` pelo novo `UnlockInfo`
-- Na overlay do cadeado, adicionar a info contextual abaixo do ícone
-
-**3. Atualizar `LessonCard`**:
-- Passar `unlockReason` como prop (novo)
-- Quando bloqueado por sequência, mostrar "Complete a lição anterior" ao lado do cadeado
-- Quando o módulo é date_based, mostrar countdown
-
-**4. Passar dados necessários**:
-- `ModuleView` já tem `unlock_rule` e `unlock_date` do módulo — passar para `LessonCard`
-- `Dashboard` já passa `unlockRequirement` — enriquecer com `unlockRule` e `unlockDate`
-
-### Layout proposto
-
-```text
-┌─────────────────────────────────────┐
-│  [Banner com overlay escuro]        │
-│         🔒                          │
-│   "Libera em 2d 14h 32min"         │  ← date_based
-│   ━━━━━━━━━━━━━━ (barra countdown) │
-└─────────────────────────────────────┘
-
-┌─────────────────────────────────────┐
-│  [Banner com overlay escuro]        │
-│         🔒                          │
-│   "Complete a Fase 1 do módulo      │  ← sequential
-│    anterior para desbloquear"       │
-│   ━━━━━━━━━━ 60% ━━━━━━━━━━        │
-└─────────────────────────────────────┘
-
-┌─────────────────────────────────────┐
-│  [Banner com overlay escuro]        │
-│         🔒                          │
-│   "Aguardando liberação"            │  ← manual
-└─────────────────────────────────────┘
+```typescript
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1,
+      staleTime: 5 * 60 * 1000, // 5 minutos
+    },
+  },
+});
 ```
 
-Para LessonCard (dentro do módulo):
-```text
-┌──────────────────────────────────────────┐
-│  🔒  Lição 2 - Fundamentos              │
-│      Complete a lição anterior (75%)     │
-│      ━━━━━━━━━━ 75% ━━━━━━━             │
-└──────────────────────────────────────────┘
-```
+**Arquivo 2: `public/sw.js`** — Tornar o Service Worker menos agressivo:
 
-### Arquivos
+- Remover `self.skipWaiting()` do evento `install` (evita que novo SW force reload)
+- Remover `self.clients.claim()` do evento `activate`
+- Para navegação HTML, usar estratégia **Cache First com fallback para network** em vez de Network First (evita que o SW tente buscar uma nova versão da página toda vez)
+- Alternativa mais simples: **não interceptar requisições de navegação HTML** — deixar o browser lidar normalmente
+
+### Resumo
 
 | Arquivo | Mudança |
 |---|---|
-| `src/components/modules/UnlockInfo.tsx` | Novo componente com countdown e info contextual |
-| `src/components/modules/ModuleCard.tsx` | Usar `UnlockInfo` nas 3 variantes; receber `unlockRule` e `unlockDate` |
-| `src/components/modules/LessonCard.tsx` | Receber `unlockReason` opcional; exibir contexto quando bloqueado |
-| `src/pages/ModuleView.tsx` | Passar info de bloqueio para `LessonCard` |
-| `src/components/dashboard/HeroStudyTrack.tsx` | Passar `unlockRule`/`unlockDate` para `ModuleCard` |
+| `src/App.tsx` | `refetchOnWindowFocus: false` + `staleTime: 5min` no QueryClient |
+| `public/sw.js` | Remover `skipWaiting`/`clients.claim`, não interceptar navegação HTML |
 
-### Detalhes técnicos
-- Countdown usa `useEffect` com `setInterval` de 1 minuto para atualizar
-- Quando faltam < 24h, atualiza a cada segundo
-- Quando o countdown chega a zero, dispara refresh da página
+Essas duas mudanças eliminam os dois gatilhos que causam o reload no Safari ao trocar de workspace.
 

@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Play, BookOpen, Clock, Lock, Sparkles } from 'lucide-react';
+import UnlockInfo from '@/components/modules/UnlockInfo';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { useNavigate } from 'react-router-dom';
@@ -20,6 +21,8 @@ interface DatabaseModule {
   is_published: boolean;
   totalLessons?: number;
   progress: number;
+  unlock_rule?: string;
+  unlock_date?: string | null;
 }
 
 interface HeroModuleSliderProps {
@@ -183,10 +186,16 @@ const HeroModuleSlider: React.FC<HeroModuleSliderProps> = ({
                       </div>
                       
                       {isLocked && (
-                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center backdrop-blur-[2px]">
+                        <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center backdrop-blur-[2px] gap-3">
                           <div className="bg-white/10 backdrop-blur-sm rounded-full p-5 border border-white/20">
                             <Lock className="w-10 h-10 text-white" />
                           </div>
+                          <UnlockInfo
+                            unlockRule={(module.unlock_rule as any) || 'sequential'}
+                            unlockDate={module.unlock_date}
+                            unlockRequirement={unlockRequirements[module.id]}
+                            lightText
+                          />
                         </div>
                       )}
                       
