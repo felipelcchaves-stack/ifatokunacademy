@@ -279,7 +279,7 @@ const LessonView: React.FC = () => {
           <h1 className="font-serif text-2xl font-bold text-foreground mb-4">
             Lição não encontrada
           </h1>
-          <Button onClick={() => navigate(`/module/${moduleId}`)}>
+          <Button onClick={() => navigate(getOrgPath(`/module/${moduleId}`))}>
             Voltar ao Módulo
           </Button>
         </div>
