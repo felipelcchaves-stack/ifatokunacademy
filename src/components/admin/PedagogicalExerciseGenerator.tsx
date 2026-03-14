@@ -424,20 +424,25 @@ const PedagogicalExerciseGenerator: React.FC<PedagogicalExerciseGeneratorProps> 
                 </div>
               </div>
 
-              {/* Preview Structure */}
+              {/* Exercise Selection */}
               <div className="space-y-3 pt-2 border-t">
-                <h4 className="font-medium">Estrutura que será gerada (7 exercícios)</h4>
+                <h4 className="font-medium">Selecione os exercícios a gerar ({selectedCount} selecionado{selectedCount !== 1 ? 's' : ''})</h4>
                 <div className="grid grid-cols-2 gap-2">
                   {exerciseStructure.map((ex, i) => (
                     <div 
                       key={i}
-                      className={`flex items-center gap-2 p-2 rounded text-sm ${
+                      className={`flex items-center gap-2 p-2 rounded text-sm cursor-pointer transition-opacity ${
                         ex.phase === 'Fase 1' 
-                          ? 'bg-blue-500/10 text-blue-400' 
-                          : 'bg-purple-500/10 text-purple-400'
-                      }`}
+                          ? 'bg-primary/10 text-primary' 
+                          : 'bg-accent/30 text-accent-foreground'
+                      } ${!selectedExercises[ex.key] ? 'opacity-40' : ''}`}
+                      onClick={() => setSelectedExercises(prev => ({ ...prev, [ex.key]: !prev[ex.key] }))}
                     >
-                      <Check className="w-3 h-3" />
+                      <Checkbox
+                        checked={selectedExercises[ex.key]}
+                        onCheckedChange={(checked) => setSelectedExercises(prev => ({ ...prev, [ex.key]: checked === true }))}
+                        className="pointer-events-none"
+                      />
                       <span className="font-medium">{i}.</span>
                       <span>{ex.name}</span>
                       <span className="text-xs opacity-60">({ex.type})</span>
