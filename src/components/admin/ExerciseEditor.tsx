@@ -364,12 +364,12 @@ const ExerciseEditor: React.FC<ExerciseEditorProps> = ({ exercise, onSave, onCan
         <Label htmlFor="video-url">Ou cole a URL do Vídeo</Label>
         <Input
           id="video-url"
-          placeholder="https://www.youtube.com/watch?v=... ou URL do vídeo"
+          placeholder="YouTube, Vimeo, Google Drive ou URL direta de vídeo"
           value={editedExercise.content.videoUrl || ''}
           onChange={(e) => updateContent('videoUrl', e.target.value)}
         />
         <p className="text-sm text-muted-foreground">
-          Suporta YouTube, Vimeo ou URL direta de vídeo
+          Suporta YouTube, Vimeo, Google Drive ou URL direta de vídeo. Para Google Drive, compartilhe como "Qualquer pessoa com o link – Leitor".
         </p>
       </div>
 
@@ -386,7 +386,7 @@ const ExerciseEditor: React.FC<ExerciseEditorProps> = ({ exercise, onSave, onCan
 
       {editedExercise.content.videoUrl && (
         <div className="aspect-video bg-muted rounded-xl flex items-center justify-center overflow-hidden">
-          {editedExercise.content.videoUrl.includes('youtube') || editedExercise.content.videoUrl.includes('vimeo') ? (
+          {/youtube|vimeo|drive\.google\.com/.test(editedExercise.content.videoUrl) ? (
             <p className="text-muted-foreground">Preview disponível para o aluno</p>
           ) : (
             <video controls className="w-full h-full object-contain">
