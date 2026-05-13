@@ -29,7 +29,18 @@ const VideoExercise: React.FC<VideoExerciseProps> = ({ videoUrl, description, on
     if (vimeoMatch) {
       return `https://player.vimeo.com/video/${vimeoMatch[1]}`;
     }
-    
+
+    // Google Drive
+    // Suporta: /file/d/<ID>/..., ?id=<ID>, /uc?id=<ID>
+    const driveFileMatch = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+    if (driveFileMatch) {
+      return `https://drive.google.com/file/d/${driveFileMatch[1]}/preview`;
+    }
+    const driveIdMatch = url.match(/drive\.google\.com\/(?:open|uc)\?(?:[^#]*&)?id=([a-zA-Z0-9_-]+)/);
+    if (driveIdMatch) {
+      return `https://drive.google.com/file/d/${driveIdMatch[1]}/preview`;
+    }
+
     return null;
   };
 
