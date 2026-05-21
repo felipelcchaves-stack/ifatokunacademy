@@ -28,6 +28,7 @@ const Login: React.FC = () => {
   const parallaxRef = useRef<HTMLDivElement>(null);
   const hasCheckedMFA = useRef(false);
   const loginInProgress = useRef(false);
+  const hasRedirected = useRef(false);
   
   const { signIn, isAuthenticated } = useAuth();
   const { organization, loading: tenantLoading } = useTenantDetection();
@@ -84,8 +85,9 @@ const Login: React.FC = () => {
     console.log('[Login] Auth state changed:', { isAuthenticated, showMFA, loginInProgress: loginInProgress.current, hasCheckedMFA: hasCheckedMFA.current });
 
     // If user is already authenticated when landing on login page (not from a login attempt), redirect immediately
-    if (isAuthenticated && !loginInProgress.current && !showMFA) {
+    if (isAuthenticated && !loginInProgress.current && !showMFA && !hasRedirected.current) {
       console.log('[Login] Already authenticated, redirecting to:', safeFrom);
+      hasRedirected.current = true;
       navigate(safeFrom, { replace: true });
       return;
     }
