@@ -28,6 +28,7 @@ const Login: React.FC = () => {
   const parallaxRef = useRef<HTMLDivElement>(null);
   const hasCheckedMFA = useRef(false);
   const loginInProgress = useRef(false);
+  const hasRedirected = useRef(false);
   
   const { signIn, isAuthenticated } = useAuth();
   const { organization, loading: tenantLoading } = useTenantDetection();
