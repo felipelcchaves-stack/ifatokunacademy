@@ -1,54 +1,33 @@
-# Atalho "Adicionar vídeo aula" no editor de exercícios
+# Correção: não é possível salvar a Vídeo Aula
 
 ## Diagnóstico
 
-O sistema já suporta um exercício do tipo `video` (Vídeo Aula). Hoje, para criar um, o admin precisa:
+Na screenshot, o diálogo "Adicionar Vídeo Aula" fica maior que a altura da janela:
 
-1. Em `AdminExercises`, clicar em "Novo exercício".
-2. Abrir o dropdown de tipos, escolher "Vídeo Aula" entre 9 opções.
-3. Dar um título.
-4. Esperar abrir o editor, navegar até a aba de vídeo e colar a URL.
+- O título "Adicionar Vídeo Aula" e o campo Título ficam cortados no topo.
+- A caixa cinza "Pré-visualização disponível após salvar" empurra o conteúdo.
+- Os botões **Cancelar** e **Publicar Vídeo Aula** ficam abaixo da borda inferior da viewport — por isso parece que não dá para salvar.
 
-Ao lado disso há um botão chamativo de "Gerar exercícios pedagógicos" (`PedagogicalExerciseGenerator`) que pede textos e gera vários exercícios. Isso passa a sensação de que para ter uma aula é preciso criar "todos os exercícios", quando na prática você só quer publicar a videoaula.
+Causa: `DialogContent` (em `src/pages/admin/AdminExercises.tsx`, linha 888) usa apenas `sm:max-w-xl`, sem limitar altura nem habilitar scroll. Quando o conteúdo passa da tela (especialmente em laptops ~700px de altura, como na screenshot), o footer fica inacessível.
 
-## Plano
+## Plano (1 arquivo)
 
-### 1. Atalho direto na tela de exercícios da aula
+`src/pages/admin/AdminExercises.tsx`
 
-Em `src/pages/admin/AdminExercises.tsx`, adicionar um botão primário **"Adicionar Vídeo Aula"** ao lado de "Novo exercício" (e antes do gerador pedagógico).
+1. **Diálogo rolável** — alterar o `DialogContent` para limitar a altura e permitir scroll interno:
+   - Adicionar `max-h-[90vh]` e `overflow-hidden` no `DialogContent`.
+   - Envolver o bloco `<div className="space-y-4 py-2">` com `overflow-y-auto` e altura flexível, de modo que apenas o miolo role e o `DialogHeader`/`DialogFooter` fiquem fixos e sempre visíveis.
 
-Comportamento ao clicar:
+2. **Reduzir altura do placeholder de pré-visualização** — trocar `aspect-video` por algo como `h-24` (ou ocultar até existir URL válida confirmada), já que hoje ele só mostra um texto cinza e ocupa espaço de um vídeo inteiro sem necessidade.
 
-- Abre um diálogo enxuto com 2 campos:
-  - **Título** (pré-preenchido com o título da aula, editável).
-  - **URL do vídeo** (YouTube, Vimeo, Google Drive ou upload direto via `MediaUploader`).
-  - Campo opcional de **descrição**.
-- Ao confirmar, cria o exercício com `type='video'`, `content={ videoUrl, description }`, `display_order` no fim e `is_published=true` se a URL foi preenchida (caso contrário fica rascunho).
-- Fecha o diálogo e mostra o exercício na lista — sem abrir o editor completo.
+3. **Pequenos ajustes**:
+   - Garantir `gap-3` no `DialogFooter` em telas pequenas para evitar que os botões se empilhem com pouco espaço.
+   - Manter o botão "Publicar Vídeo Aula" com `aria-label` claro para leitores de tela.
 
-Isso elimina os passos extras: 1 clique → 2 campos → vídeo no ar.
+## Verificação
 
-### 2. Reorganizar a barra de ações
+- Abrir o diálogo em viewport ~1100×700 (mesmo da screenshot): título visível, campos roláveis, botões **Cancelar** e **Publicar Vídeo Aula** sempre visíveis no rodapé.
+- Colar URL do Drive, clicar em **Publicar Vídeo Aula**, confirmar que a aula é criada e aparece na lista.
+- Repetir sem URL: botão muda para **Salvar Rascunho** e funciona.
 
-Hoje o gerador pedagógico aparece em destaque. Vamos:
-
-- Manter "Adicionar Vídeo Aula" como botão **primário**.
-- "Novo exercício" como botão **secundário** (para os demais tipos).
-- "Gerar exercícios pedagógicos" como botão **outline/menu** dentro de um menu "Mais opções", com tooltip explicando que ele gera múltiplos exercícios a partir de textos. Assim fica claro que é opcional.
-
-### 3. Pequenos ajustes de UX no diálogo
-
-- Validação leve: se a URL parecer inválida, mostrar aviso (mas não bloquear, pois o usuário pode salvar como rascunho).
-- Pré-visualização do vídeo aparece se a URL for de YouTube/Vimeo/Drive/upload (reaproveita o trecho já existente em `ExerciseEditor`).
-- Mensagem de sucesso: "Vídeo aula publicada" ou "Salva como rascunho — adicione a URL para publicar".
-
-### 4. Verificação
-
-- Em `awo-isefa`, criar uma nova aula só com videoaula em 3 cliques.
-- Confirmar que o aluno enxerga e marca como concluída — destravando o próximo módulo (já corrigido na entrega anterior).
-- Confirmar que o gerador pedagógico continua funcionando para quem quiser usar.
-
-## Arquivos afetados
-
-- `src/pages/admin/AdminExercises.tsx` — novo botão, novo diálogo, reorganização da barra de ações.
-- Reaproveita `MediaUploader` e a lógica de criação de exercício já existente. Sem migrations de banco.
+Sem mudanças de banco ou de lógica de salvamento — somente CSS/layout do diálogo.
