@@ -10,36 +10,34 @@ interface ModulePermission {
 export const useModulePermissions = () => {
   const { user, isAdmin } = useAuth();
   const [permissions, setPermissions] = useState<string[]>([]);
+  const [userOrgId, setUserOrgId] = useState<string | null>(null);
+  const [adminOrgIds, setAdminOrgIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchPermissions = useCallback(async () => {
-    console.log('[useModulePermissions] Starting fetch, user:', user?.id, 'isAdmin:', isAdmin);
-    
     if (!user) {
       setPermissions([]);
+      setUserOrgId(null);
+      setAdminOrgIds([]);
       setLoading(false);
       return;
     }
 
-    // Admins têm acesso a todos os módulos
     if (isAdmin) {
-      console.log('[useModulePermissions] User is admin, granting full access');
       setLoading(false);
       return;
     }
 
     try {
-      const { data, error } = await supabase
-        .from('user_module_permissions')
-        .select('module_id')
-        .eq('user_id', user.id);
+      const [permsRes, profileRes, orgAdminRes] = await Promise.all([
+        supabase.from('user_module_permissions').select('module_id').eq('user_id', user.id),
+        supabase.from('profiles').select('organization_id').eq('id', user.id).maybeSingle(),
+        supabase.from('organization_admins').select('organization_id').eq('user_id', user.id),
+      ]);
 
-      if (error) {
-        console.error('Erro ao buscar permissões:', error);
-        setPermissions([]);
-      } else {
-        setPermissions(data?.map((p: ModulePermission) => p.module_id) || []);
-      }
+      setPermissions((permsRes.data || []).map((p: ModulePermission) => p.module_id));
+      setUserOrgId(profileRes.data?.organization_id || null);
+      setAdminOrgIds((orgAdminRes.data || []).map((r: any) => r.organization_id));
     } catch (error) {
       console.error('Erro ao buscar permissões:', error);
       setPermissions([]);
@@ -52,22 +50,36 @@ export const useModulePermissions = () => {
     fetchPermissions();
   }, [fetchPermissions]);
 
-  const hasAccess = useCallback((moduleId: string): boolean => {
-    // Admins têm acesso a tudo
-    if (isAdmin) return true;
-    return permissions.includes(moduleId);
-  }, [isAdmin, permissions]);
+  const hasAccess = useCallback(
+    (moduleId: string, isPublished?: boolean, moduleOrgId?: string | null): boolean => {
+      // Global admin: tudo
+      if (isAdmin) return true;
+
+      // Admin da organização do módulo
+      if (moduleOrgId && adminOrgIds.includes(moduleOrgId)) return true;
+
+      // Módulo publicado e pertence à organização do usuário (ou é global)
+      if (isPublished) {
+        if (moduleOrgId == null) return true;
+        if (userOrgId && moduleOrgId === userOrgId) return true;
+      }
+
+      // Permissão explícita (para previews de módulos despublicados)
+      return permissions.includes(moduleId);
+    },
+    [isAdmin, permissions, userOrgId, adminOrgIds]
+  );
 
   const refetch = useCallback(() => {
     setLoading(true);
     fetchPermissions();
   }, [fetchPermissions]);
 
-  return { 
-    permissions, 
-    hasAccess, 
-    loading, 
+  return {
+    permissions,
+    hasAccess,
+    loading,
     refetch,
-    isAdmin 
+    isAdmin,
   };
 };

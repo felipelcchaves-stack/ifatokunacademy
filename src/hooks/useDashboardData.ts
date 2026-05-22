@@ -16,6 +16,7 @@ interface Module {
   is_published: boolean;
   unlock_rule: string;
   unlock_date: string | null;
+  organization_id: string | null;
   totalLessons?: number;
   progress?: number;
 }
