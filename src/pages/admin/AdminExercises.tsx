@@ -61,6 +61,8 @@ import { supabase } from '@/integrations/supabase/client';
 import ExerciseEditor from '@/components/admin/ExerciseEditor';
 import QuizExerciseEditor from '@/components/admin/QuizExerciseEditor';
 import PedagogicalExerciseGenerator from '@/components/admin/PedagogicalExerciseGenerator';
+import MediaUploader from '@/components/admin/MediaUploader';
+import { Textarea } from '@/components/ui/textarea';
 import AdminErrorBoundary from '@/components/errors/AdminErrorBoundary';
 import { useAdminOrganization } from '@/hooks/useAdminOrganization';
 
