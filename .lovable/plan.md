@@ -1,78 +1,54 @@
-# Desbloqueio do próximo módulo após concluir o módulo anterior
+# Atalho "Adicionar vídeo aula" no editor de exercícios
 
 ## Diagnóstico
 
-No tenant `awo-isefa` existem 2 módulos publicados em sequência:
+O sistema já suporta um exercício do tipo `video` (Vídeo Aula). Hoje, para criar um, o admin precisa:
 
-1. `Introdução e Ojubo Ifa` (display_order 0)
-2. `Isefa` (display_order 1)
+1. Em `AdminExercises`, clicar em "Novo exercício".
+2. Abrir o dropdown de tipos, escolher "Vídeo Aula" entre 9 opções.
+3. Dar um título.
+4. Esperar abrir o editor, navegar até a aba de vídeo e colar a URL.
 
-Ambos com `unlock_rule = sequential`.
-
-A regra atual em `useSequentialProgress.isModuleUnlocked` desbloqueia o módulo seguinte **apenas** quando o anterior tem:
-
-- `module_phase_progress.phase1_completed_at` preenchido, **ou**
-- `module_completions.quiz_score >= 90`.
-
-Verificação no banco:
-
-- `ifatokun@ileaseifatokun.com.br` já tem `user_progress` para o único exercício publicado do módulo 1 ("Aula ao VIVO").
-- Mas **não existe nenhuma linha** em `module_phase_progress` nem em `module_completions` para esse módulo.
-
-Ou seja: o usuário concluiu todos os exercícios disponíveis, mas a Fase 1 nunca foi marcada como concluída — então o módulo 2 (`Isefa`) permanece travado.
-
-### Por que a Fase 1 não foi marcada
-
-`LessonView.handleExerciseComplete` chama `checkAndMarkPhaseComplete(moduleId)` depois de salvar o `user_progress`. Esse helper só marca Fase 1 quando `phase1Complete` é `true`, e ele depende de:
-
-- Todos os exercícios `is_published` do módulo cuja `getExercisePhase(title)` retorna 1 estarem em `user_progress` do usuário.
-
-Para o exercício "Aula ao VIVO" `getExercisePhase` retorna 1 (não bate em nenhum marcador de Fase 2), então deveria funcionar. Suspeitos de não ter rodado para o registro existente:
-
-- O `user_progress` atual foi criado antes do hook de fases existir, ou via outro caminho (admin/import) que não passa por `LessonView`.
-- Hoje, qualquer módulo cujo conteúdo foi todo concluído **antes** da introdução do tracking de fases fica permanentemente travado, porque o usuário não tem mais exercícios para "refazer" e disparar o marcador.
-
-Além disso, a lógica atual é frágil: se o admin criar um módulo só com vídeo/quiz (sem exercícios marcados como Fase 1) ou marcar tudo como Fase 2, o aluno nunca consegue destravar o próximo módulo.
+Ao lado disso há um botão chamativo de "Gerar exercícios pedagógicos" (`PedagogicalExerciseGenerator`) que pede textos e gera vários exercícios. Isso passa a sensação de que para ter uma aula é preciso criar "todos os exercícios", quando na prática você só quer publicar a videoaula.
 
 ## Plano
 
-### 1. Backfill de `module_phase_progress` (migration única)
+### 1. Atalho direto na tela de exercícios da aula
 
-Inserir `phase1_completed_at = now()` para todo par `(user_id, module_id)` que satisfaça:
+Em `src/pages/admin/AdminExercises.tsx`, adicionar um botão primário **"Adicionar Vídeo Aula"** ao lado de "Novo exercício" (e antes do gerador pedagógico).
 
-- O módulo tem ao menos 1 exercício publicado considerado Fase 1 (título não contendo "fase 2"/"proficiência").
-- O usuário tem `user_progress` para **todos** esses exercícios.
-- Ainda não existe linha em `module_phase_progress` ou `phase1_completed_at` é `NULL`.
+Comportamento ao clicar:
 
-Isso desbloqueia imediatamente os alunos que já terminaram o conteúdo (caso do Ifatokun).
+- Abre um diálogo enxuto com 2 campos:
+  - **Título** (pré-preenchido com o título da aula, editável).
+  - **URL do vídeo** (YouTube, Vimeo, Google Drive ou upload direto via `MediaUploader`).
+  - Campo opcional de **descrição**.
+- Ao confirmar, cria o exercício com `type='video'`, `content={ videoUrl, description }`, `display_order` no fim e `is_published=true` se a URL foi preenchida (caso contrário fica rascunho).
+- Fecha o diálogo e mostra o exercício na lista — sem abrir o editor completo.
 
-### 2. Tornar a lógica de desbloqueio sequencial mais robusta (sem migration)
+Isso elimina os passos extras: 1 clique → 2 campos → vídeo no ar.
 
-Em `src/hooks/useSequentialProgress.ts`, no ramo `unlock_rule === 'sequential'` para módulos `proficiency`, adicionar um terceiro caminho de desbloqueio: o módulo anterior está concluído quando **todos os seus exercícios publicados estão em `user_progress` do usuário** — mesmo que `module_phase_progress` ainda não tenha sido escrito.
+### 2. Reorganizar a barra de ações
 
-Para isso:
+Hoje o gerador pedagógico aparece em destaque. Vamos:
 
-- `useDashboardData` (e telas que usam `calculateLockedModules`) já carregam `userProgress` por módulo. Vamos passar também a contagem de exercícios publicados por módulo (`publishedExerciseCount`) e o conjunto de exercícios concluídos por módulo do usuário.
-- `isModuleUnlocked` recebe um `moduleCompletionMap: Map<moduleId, { publishedExercises: number; completedExercises: number }>` opcional e usa como fallback adicional.
+- Manter "Adicionar Vídeo Aula" como botão **primário**.
+- "Novo exercício" como botão **secundário** (para os demais tipos).
+- "Gerar exercícios pedagógicos" como botão **outline/menu** dentro de um menu "Mais opções", com tooltip explicando que ele gera múltiplos exercícios a partir de textos. Assim fica claro que é opcional.
 
-Isso cobre módulos cujo tracking de fases nunca rodou e módulos sem exercício "Fase 1" formalmente marcado.
+### 3. Pequenos ajustes de UX no diálogo
 
-### 3. Autocorreção em tempo real
-
-Em `useModulePhaseProgress.checkAndMarkPhaseComplete`, executar o cálculo também quando o `LessonView` é montado (não só ao terminar exercício). Assim, qualquer usuário que abrir uma lição de um módulo já 100% concluído terá a Fase 1 marcada automaticamente.
-
-Implementação: chamar `checkAndMarkPhaseComplete(moduleId)` num `useEffect` em `LessonView` quando `moduleId` muda.
+- Validação leve: se a URL parecer inválida, mostrar aviso (mas não bloquear, pois o usuário pode salvar como rascunho).
+- Pré-visualização do vídeo aparece se a URL for de YouTube/Vimeo/Drive/upload (reaproveita o trecho já existente em `ExerciseEditor`).
+- Mensagem de sucesso: "Vídeo aula publicada" ou "Salva como rascunho — adicione a URL para publicar".
 
 ### 4. Verificação
 
-- Abrir o dashboard como `ifatokun@ileaseifatokun.com.br` no tenant `awo-isefa` → `Isefa` deve aparecer desbloqueado.
-- Concluir o único exercício de um módulo novo (qualquer tenant) → próximo módulo desbloqueia imediatamente e `module_phase_progress` recebe `phase1_completed_at`.
-- Admin global e admins da organização continuam vendo tudo como antes.
+- Em `awo-isefa`, criar uma nova aula só com videoaula em 3 cliques.
+- Confirmar que o aluno enxerga e marca como concluída — destravando o próximo módulo (já corrigido na entrega anterior).
+- Confirmar que o gerador pedagógico continua funcionando para quem quiser usar.
 
 ## Arquivos afetados
 
-- `supabase/migrations/<novo>.sql` — backfill `module_phase_progress`.
-- `src/hooks/useSequentialProgress.ts` — fallback "todos exercícios feitos".
-- `src/hooks/useDashboardData.ts` — incluir `moduleCompletionMap` derivado de `exercises` + `user_progress`.
-- `src/pages/Dashboard.tsx` e `src/pages/ModuleView.tsx` — passar o novo mapa para `calculateLockedModules` / `hasAccess`.
-- `src/pages/LessonView.tsx` — chamar `checkAndMarkPhaseComplete` no mount.
+- `src/pages/admin/AdminExercises.tsx` — novo botão, novo diálogo, reorganização da barra de ações.
+- Reaproveita `MediaUploader` e a lógica de criação de exercício já existente. Sem migrations de banco.
