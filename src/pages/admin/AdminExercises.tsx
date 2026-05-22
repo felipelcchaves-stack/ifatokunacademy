@@ -246,6 +246,62 @@ const AdminExercises: React.FC = () => {
     }
   };
 
+  const openQuickVideo = () => {
+    setQuickVideoTitle(lesson?.title || '');
+    setQuickVideoUrl('');
+    setQuickVideoDescription('');
+    setIsQuickVideoOpen(true);
+  };
+
+  const handleCreateVideoLesson = async () => {
+    if (!quickVideoTitle.trim()) {
+      toast({ title: 'Informe um título', variant: 'destructive' });
+      return;
+    }
+    try {
+      setQuickVideoSaving(true);
+      const maxOrder = exercises.reduce((max, e) => Math.max(max, e.display_order), -1);
+      const hasUrl = quickVideoUrl.trim().length > 0;
+
+      const { data, error } = await supabase
+        .from('exercises')
+        .insert({
+          lesson_id: lessonId,
+          type: 'video',
+          title: quickVideoTitle.trim(),
+          content: {
+            videoUrl: quickVideoUrl.trim(),
+            description: quickVideoDescription.trim(),
+          },
+          display_order: maxOrder + 1,
+          is_published: hasUrl,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setExercises([...exercises, data as Exercise]);
+      setIsQuickVideoOpen(false);
+
+      toast({
+        title: hasUrl ? 'Vídeo aula publicada' : 'Salva como rascunho',
+        description: hasUrl
+          ? 'A aula em vídeo já está disponível para os alunos.'
+          : 'Adicione a URL do vídeo para publicar.',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao criar vídeo aula',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setQuickVideoSaving(false);
+    }
+  };
+
+
   const getDefaultContent = (type: Exercise['type']): Record<string, any> => {
     switch (type) {
       case 'reading':
