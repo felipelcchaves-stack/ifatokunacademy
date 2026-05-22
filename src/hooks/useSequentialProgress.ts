@@ -214,7 +214,14 @@ export const useSequentialProgress = () => {
     if (previousPhaseProgress?.phase1CompletedAt) return true;
 
     const previousCompletion = completions.find(c => c.moduleId === previousModule.id);
-    return previousCompletion !== undefined && previousCompletion.quizScore >= 90;
+    if (previousCompletion !== undefined && previousCompletion.quizScore >= 90) return true;
+
+    // Fallback: módulo anterior considerado concluído quando todos os exercícios
+    // publicados foram completados (progresso 100%). Cobre módulos onde o tracking
+    // de fases não rodou ou que não têm exercícios formalmente marcados como Fase 1.
+    if ((userProgress[previousModule.id] || 0) >= 100) return true;
+
+    return false;
   };
 
   /**
