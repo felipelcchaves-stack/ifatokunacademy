@@ -885,7 +885,7 @@ const AdminExercises: React.FC = () => {
 
       {/* Quick Video Lesson Dialog */}
       <Dialog open={isQuickVideoOpen} onOpenChange={setIsQuickVideoOpen}>
-        <DialogContent className="sm:max-w-xl">
+        <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle className="font-serif flex items-center gap-2">
               <Video className="w-5 h-5 text-primary" />
@@ -895,7 +895,7 @@ const AdminExercises: React.FC = () => {
               Publique uma aula em vídeo sem precisar criar outros exercícios.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-2">
+          <div className="space-y-4 py-2 overflow-y-auto flex-1 pr-1">
             <div className="space-y-2">
               <Label htmlFor="quick-video-title">Título</Label>
               <Input
@@ -939,7 +939,7 @@ const AdminExercises: React.FC = () => {
             </div>
 
             {quickVideoUrl && /youtube|vimeo|drive\.google\.com/.test(quickVideoUrl) && (
-              <div className="aspect-video bg-muted rounded-lg overflow-hidden flex items-center justify-center text-sm text-muted-foreground">
+              <div className="h-20 bg-muted rounded-lg flex items-center justify-center text-sm text-muted-foreground">
                 Pré-visualização disponível após salvar
               </div>
             )}
@@ -950,7 +950,7 @@ const AdminExercises: React.FC = () => {
               </p>
             )}
           </div>
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:gap-3 border-t pt-3">
             <Button variant="outline" onClick={() => setIsQuickVideoOpen(false)} disabled={quickVideoSaving}>
               Cancelar
             </Button>
@@ -958,12 +958,14 @@ const AdminExercises: React.FC = () => {
               className="gradient-gold text-secondary"
               onClick={handleCreateVideoLesson}
               disabled={quickVideoSaving || !quickVideoTitle.trim()}
+              aria-label="Salvar vídeo aula"
             >
               {quickVideoSaving ? 'Salvando...' : (quickVideoUrl.trim() ? 'Publicar Vídeo Aula' : 'Salvar Rascunho')}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
 
       {/* Pedagogical Exercise Generator */}
       <PedagogicalExerciseGenerator
