@@ -61,6 +61,8 @@ import { supabase } from '@/integrations/supabase/client';
 import ExerciseEditor from '@/components/admin/ExerciseEditor';
 import QuizExerciseEditor from '@/components/admin/QuizExerciseEditor';
 import PedagogicalExerciseGenerator from '@/components/admin/PedagogicalExerciseGenerator';
+import MediaUploader from '@/components/admin/MediaUploader';
+import { Textarea } from '@/components/ui/textarea';
 import AdminErrorBoundary from '@/components/errors/AdminErrorBoundary';
 import { useAdminOrganization } from '@/hooks/useAdminOrganization';
 
@@ -125,6 +127,14 @@ const AdminExercises: React.FC = () => {
   
   // Pedagogical generator state
   const [isPedagogicalGeneratorOpen, setIsPedagogicalGeneratorOpen] = useState(false);
+
+  // Quick video lesson state
+  const [isQuickVideoOpen, setIsQuickVideoOpen] = useState(false);
+  const [quickVideoTitle, setQuickVideoTitle] = useState('');
+  const [quickVideoUrl, setQuickVideoUrl] = useState('');
+  const [quickVideoDescription, setQuickVideoDescription] = useState('');
+  const [quickVideoSaving, setQuickVideoSaving] = useState(false);
+
 
   useEffect(() => {
     if (moduleId && lessonId && !orgLoading && activeOrg) {
@@ -235,6 +245,62 @@ const AdminExercises: React.FC = () => {
       });
     }
   };
+
+  const openQuickVideo = () => {
+    setQuickVideoTitle(lesson?.title || '');
+    setQuickVideoUrl('');
+    setQuickVideoDescription('');
+    setIsQuickVideoOpen(true);
+  };
+
+  const handleCreateVideoLesson = async () => {
+    if (!quickVideoTitle.trim()) {
+      toast({ title: 'Informe um título', variant: 'destructive' });
+      return;
+    }
+    try {
+      setQuickVideoSaving(true);
+      const maxOrder = exercises.reduce((max, e) => Math.max(max, e.display_order), -1);
+      const hasUrl = quickVideoUrl.trim().length > 0;
+
+      const { data, error } = await supabase
+        .from('exercises')
+        .insert({
+          lesson_id: lessonId,
+          type: 'video',
+          title: quickVideoTitle.trim(),
+          content: {
+            videoUrl: quickVideoUrl.trim(),
+            description: quickVideoDescription.trim(),
+          },
+          display_order: maxOrder + 1,
+          is_published: hasUrl,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setExercises([...exercises, data as Exercise]);
+      setIsQuickVideoOpen(false);
+
+      toast({
+        title: hasUrl ? 'Vídeo aula publicada' : 'Salva como rascunho',
+        description: hasUrl
+          ? 'A aula em vídeo já está disponível para os alunos.'
+          : 'Adicione a URL do vídeo para publicar.',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao criar vídeo aula',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setQuickVideoSaving(false);
+    }
+  };
+
 
   const getDefaultContent = (type: Exercise['type']): Record<string, any> => {
     switch (type) {
@@ -551,24 +617,33 @@ const AdminExercises: React.FC = () => {
               Crie e gerencie os exercícios desta lição
             </p>
           </div>
-          <div className="flex gap-2">
-            <Button 
-              variant="outline"
-              onClick={() => setIsPedagogicalGeneratorOpen(true)}
-              className="border-primary/50 text-primary hover:bg-primary/10"
-            >
-              <Sparkles className="w-4 h-4 mr-2" />
-              Gerar Método Pedagógico
-            </Button>
-            <Button 
+          <div className="flex flex-wrap gap-2">
+            <Button
               className="gradient-gold text-secondary shadow-gold"
+              onClick={openQuickVideo}
+            >
+              <Video className="w-4 h-4 mr-2" />
+              Adicionar Vídeo Aula
+            </Button>
+            <Button
+              variant="outline"
               onClick={() => setIsCreateDialogOpen(true)}
             >
               <Plus className="w-4 h-4 mr-2" />
               Novo Exercício
             </Button>
+            <Button
+              variant="outline"
+              onClick={() => setIsPedagogicalGeneratorOpen(true)}
+              className="border-primary/50 text-primary hover:bg-primary/10"
+              title="Gera múltiplos exercícios a partir de um texto base"
+            >
+              <Sparkles className="w-4 h-4 mr-2" />
+              Gerar Método Pedagógico
+            </Button>
           </div>
         </div>
+
 
         {/* Search */}
         <div className="relative mb-6 max-w-md">
@@ -808,6 +883,88 @@ const AdminExercises: React.FC = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Quick Video Lesson Dialog */}
+      <Dialog open={isQuickVideoOpen} onOpenChange={setIsQuickVideoOpen}>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle className="font-serif flex items-center gap-2">
+              <Video className="w-5 h-5 text-primary" />
+              Adicionar Vídeo Aula
+            </DialogTitle>
+            <DialogDescription>
+              Publique uma aula em vídeo sem precisar criar outros exercícios.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="quick-video-title">Título</Label>
+              <Input
+                id="quick-video-title"
+                placeholder="Ex: Aula ao Vivo - Introdução"
+                value={quickVideoTitle}
+                onChange={(e) => setQuickVideoTitle(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Upload de vídeo (opcional)</Label>
+              <MediaUploader
+                lessonId={lessonId}
+                acceptedTypes="video/*"
+                label="Selecione um arquivo de vídeo"
+                currentUrl={quickVideoUrl}
+                onUploadComplete={(url) => setQuickVideoUrl(url)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="quick-video-url">Ou cole a URL (YouTube, Vimeo, Drive...)</Label>
+              <Input
+                id="quick-video-url"
+                placeholder="https://..."
+                value={quickVideoUrl}
+                onChange={(e) => setQuickVideoUrl(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="quick-video-description">Descrição (opcional)</Label>
+              <Textarea
+                id="quick-video-description"
+                placeholder="Breve descrição da aula..."
+                value={quickVideoDescription}
+                onChange={(e) => setQuickVideoDescription(e.target.value)}
+                rows={3}
+              />
+            </div>
+
+            {quickVideoUrl && /youtube|vimeo|drive\.google\.com/.test(quickVideoUrl) && (
+              <div className="aspect-video bg-muted rounded-lg overflow-hidden flex items-center justify-center text-sm text-muted-foreground">
+                Pré-visualização disponível após salvar
+              </div>
+            )}
+
+            {!quickVideoUrl.trim() && (
+              <p className="text-xs text-muted-foreground">
+                Sem URL, a aula será salva como rascunho. Você pode publicar depois.
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsQuickVideoOpen(false)} disabled={quickVideoSaving}>
+              Cancelar
+            </Button>
+            <Button
+              className="gradient-gold text-secondary"
+              onClick={handleCreateVideoLesson}
+              disabled={quickVideoSaving || !quickVideoTitle.trim()}
+            >
+              {quickVideoSaving ? 'Salvando...' : (quickVideoUrl.trim() ? 'Publicar Vídeo Aula' : 'Salvar Rascunho')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Pedagogical Exercise Generator */}
       <PedagogicalExerciseGenerator
         lessonId={lessonId!}
@@ -818,6 +975,7 @@ const AdminExercises: React.FC = () => {
         onExercisesGenerated={fetchData}
       />
     </div>
+
   );
 };
 
