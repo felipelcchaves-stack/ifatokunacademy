@@ -120,7 +120,7 @@ const Dashboard: React.FC<DashboardProps> = ({ organizationId, orgName }) => {
   });
 
   // Filtrar módulos por permissão (admin vê todos) e por turma
-  let accessibleModules = modules.filter(m => hasAccess(m.id));
+  let accessibleModules = modules.filter(m => hasAccess(m.id, m.is_published, (m as any).organization_id ?? null));
   
   // Se o usuário pertence a uma turma com módulos atribuídos, filtrar por turma
   if (hasCohorts && allowedModuleIds.size > 0) {
