@@ -128,6 +128,14 @@ const AdminExercises: React.FC = () => {
   // Pedagogical generator state
   const [isPedagogicalGeneratorOpen, setIsPedagogicalGeneratorOpen] = useState(false);
 
+  // Quick video lesson state
+  const [isQuickVideoOpen, setIsQuickVideoOpen] = useState(false);
+  const [quickVideoTitle, setQuickVideoTitle] = useState('');
+  const [quickVideoUrl, setQuickVideoUrl] = useState('');
+  const [quickVideoDescription, setQuickVideoDescription] = useState('');
+  const [quickVideoSaving, setQuickVideoSaving] = useState(false);
+
+
   useEffect(() => {
     if (moduleId && lessonId && !orgLoading && activeOrg) {
       fetchData();
