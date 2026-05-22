@@ -120,6 +120,14 @@ const LessonView: React.FC = () => {
     }
   }, [lessonId]);
 
+  // Autocorreção: se o módulo já estiver 100% concluído, marca a Fase 1
+  // automaticamente para destravar o próximo módulo.
+  useEffect(() => {
+    if (moduleId && user) {
+      checkAndMarkPhaseComplete(moduleId).catch(() => {});
+    }
+  }, [moduleId, user, checkAndMarkPhaseComplete]);
+
   // Fetch next lesson in the module
   useEffect(() => {
     const fetchNextLesson = async () => {
