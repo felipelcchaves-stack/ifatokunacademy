@@ -1,66 +1,78 @@
+# Desbloqueio do próximo módulo após concluir o módulo anterior
+
 ## Diagnóstico
 
-Verifiquei a organização **"Ensimanento para Awos"** (`awo-isefa`):
+No tenant `awo-isefa` existem 2 módulos publicados em sequência:
 
-- 3 usuários cadastrados e vinculados via `profiles.organization_id` ✅
-- 2 módulos publicados (`Introdução e Ojubo Ifa`, `Isefa`) ✅
-- 0 turmas (cohorts) ✅ — então o filtro de turma não interfere
-- **Cada usuário só tem 1 entrada em `user_module_permissions`** (apenas para `Introdução e Ojubo Ifa`). Nenhum tem permissão para `Isefa`.
+1. `Introdução e Ojubo Ifa` (display_order 0)
+2. `Isefa` (display_order 1)
 
-### Causa raiz
+Ambos com `unlock_rule = sequential`.
 
-O hook `useModulePermissions.hasAccess()` exige uma linha em `user_module_permissions` para cada par (usuário × módulo). Em `Dashboard.tsx` esse filtro é aplicado antes de qualquer outra coisa:
+A regra atual em `useSequentialProgress.isModuleUnlocked` desbloqueia o módulo seguinte **apenas** quando o anterior tem:
 
-```ts
-let accessibleModules = modules.filter(m => hasAccess(m.id));
-```
+- `module_phase_progress.phase1_completed_at` preenchido, **ou**
+- `module_completions.quiz_score >= 90`.
 
-Como não há fluxo automático que crie essas linhas quando:
-- o usuário aceita um convite,
-- entra em uma organização,
-- ou um módulo é publicado,
+Verificação no banco:
 
-os membros ficam invisíveis a quase todos os módulos publicados da própria organização. Hoje só veem os módulos para os quais alguém deu permissão manual em `AdminUsers`.
+- `ifatokun@ileaseifatokun.com.br` já tem `user_progress` para o único exercício publicado do módulo 1 ("Aula ao VIVO").
+- Mas **não existe nenhuma linha** em `module_phase_progress` nem em `module_completions` para esse módulo.
 
-A intenção do modelo multi-tenant é: **um membro vê todos os módulos publicados da sua organização**. `user_module_permissions` deve servir apenas para liberar **módulos não publicados** (preview) a usuários específicos.
+Ou seja: o usuário concluiu todos os exercícios disponíveis, mas a Fase 1 nunca foi marcada como concluída — então o módulo 2 (`Isefa`) permanece travado.
+
+### Por que a Fase 1 não foi marcada
+
+`LessonView.handleExerciseComplete` chama `checkAndMarkPhaseComplete(moduleId)` depois de salvar o `user_progress`. Esse helper só marca Fase 1 quando `phase1Complete` é `true`, e ele depende de:
+
+- Todos os exercícios `is_published` do módulo cuja `getExercisePhase(title)` retorna 1 estarem em `user_progress` do usuário.
+
+Para o exercício "Aula ao VIVO" `getExercisePhase` retorna 1 (não bate em nenhum marcador de Fase 2), então deveria funcionar. Suspeitos de não ter rodado para o registro existente:
+
+- O `user_progress` atual foi criado antes do hook de fases existir, ou via outro caminho (admin/import) que não passa por `LessonView`.
+- Hoje, qualquer módulo cujo conteúdo foi todo concluído **antes** da introdução do tracking de fases fica permanentemente travado, porque o usuário não tem mais exercícios para "refazer" e disparar o marcador.
+
+Além disso, a lógica atual é frágil: se o admin criar um módulo só com vídeo/quiz (sem exercícios marcados como Fase 1) ou marcar tudo como Fase 2, o aluno nunca consegue destravar o próximo módulo.
 
 ## Plano
 
-### 1. Tornar acesso a módulos publicados implícito por organização
+### 1. Backfill de `module_phase_progress` (migration única)
 
-Atualizar `src/hooks/useModulePermissions.ts`:
+Inserir `phase1_completed_at = now()` para todo par `(user_id, module_id)` que satisfaça:
 
-- `hasAccess(moduleId, isPublished?, moduleOrgId?)` retorna `true` quando:
-  - usuário é admin global, **ou**
-  - usuário é admin da organização do módulo, **ou**
-  - o módulo está **publicado** e pertence à organização do usuário (ou é global, `organization_id = null`), **ou**
-  - existe entrada explícita em `user_module_permissions` (para previews de módulos despublicados).
-- Buscar `profile.organization_id` e flag de org-admin uma vez no hook.
+- O módulo tem ao menos 1 exercício publicado considerado Fase 1 (título não contendo "fase 2"/"proficiência").
+- O usuário tem `user_progress` para **todos** esses exercícios.
+- Ainda não existe linha em `module_phase_progress` ou `phase1_completed_at` é `NULL`.
 
-### 2. Ajustar consumidores do hook
+Isso desbloqueia imediatamente os alunos que já terminaram o conteúdo (caso do Ifatokun).
 
-- `src/pages/Dashboard.tsx`: passar `m.is_published` e `m.organization_id` para `hasAccess`.
-- `src/pages/ModuleView.tsx` (se usar `hasAccess`): mesma adaptação. Caso contrário, a RLS já cobre.
-- Garantir que `useDashboardData` continue retornando `is_published` e `organization_id` no `Module` (já retorna).
+### 2. Tornar a lógica de desbloqueio sequencial mais robusta (sem migration)
 
-### 3. Backfill seguro (uma vez)
+Em `src/hooks/useSequentialProgress.ts`, no ramo `unlock_rule === 'sequential'` para módulos `proficiency`, adicionar um terceiro caminho de desbloqueio: o módulo anterior está concluído quando **todos os seus exercícios publicados estão em `user_progress` do usuário** — mesmo que `module_phase_progress` ainda não tenha sido escrito.
 
-Sem alterações de schema. Apenas remover o gargalo no cliente — não há necessidade de criar linhas em massa em `user_module_permissions`. A RLS de `modules` (`SELECT`) já permite que membros vejam módulos publicados da sua organização.
+Para isso:
+
+- `useDashboardData` (e telas que usam `calculateLockedModules`) já carregam `userProgress` por módulo. Vamos passar também a contagem de exercícios publicados por módulo (`publishedExerciseCount`) e o conjunto de exercícios concluídos por módulo do usuário.
+- `isModuleUnlocked` recebe um `moduleCompletionMap: Map<moduleId, { publishedExercises: number; completedExercises: number }>` opcional e usa como fallback adicional.
+
+Isso cobre módulos cujo tracking de fases nunca rodou e módulos sem exercício "Fase 1" formalmente marcado.
+
+### 3. Autocorreção em tempo real
+
+Em `useModulePhaseProgress.checkAndMarkPhaseComplete`, executar o cálculo também quando o `LessonView` é montado (não só ao terminar exercício). Assim, qualquer usuário que abrir uma lição de um módulo já 100% concluído terá a Fase 1 marcada automaticamente.
+
+Implementação: chamar `checkAndMarkPhaseComplete(moduleId)` num `useEffect` em `LessonView` quando `moduleId` muda.
 
 ### 4. Verificação
 
-Após o deploy:
-- Logar como `mmuller.web@gmail.com` no `/org/awo-isefa/dashboard` e confirmar que os **dois módulos** aparecem.
-- Abrir cada módulo e confirmar que as lições publicadas carregam.
-- Logar como admin global → continua vendo tudo.
-- Confirmar que um módulo **não publicado** continua oculto para membros não-admin (a menos que tenham `user_module_permissions`).
+- Abrir o dashboard como `ifatokun@ileaseifatokun.com.br` no tenant `awo-isefa` → `Isefa` deve aparecer desbloqueado.
+- Concluir o único exercício de um módulo novo (qualquer tenant) → próximo módulo desbloqueia imediatamente e `module_phase_progress` recebe `phase1_completed_at`.
+- Admin global e admins da organização continuam vendo tudo como antes.
 
-## Detalhes técnicos
+## Arquivos afetados
 
-| Arquivo | Mudança |
-|---|---|
-| `src/hooks/useModulePermissions.ts` | Buscar `profile.organization_id` + lista de orgs onde o usuário é admin. `hasAccess` aceita `(moduleId, isPublished, moduleOrgId)` e retorna `true` quando publicado e da mesma org, ou via permissão explícita / admin. |
-| `src/pages/Dashboard.tsx` | Passar `m.is_published` e `m.organization_id` ao chamar `hasAccess`. |
-| `src/pages/ModuleView.tsx` | Se aplicável, idem (verificar uso de `hasAccess`). |
-
-Nenhuma migração de banco é necessária — RLS atual já está correta.
+- `supabase/migrations/<novo>.sql` — backfill `module_phase_progress`.
+- `src/hooks/useSequentialProgress.ts` — fallback "todos exercícios feitos".
+- `src/hooks/useDashboardData.ts` — incluir `moduleCompletionMap` derivado de `exercises` + `user_progress`.
+- `src/pages/Dashboard.tsx` e `src/pages/ModuleView.tsx` — passar o novo mapa para `calculateLockedModules` / `hasAccess`.
+- `src/pages/LessonView.tsx` — chamar `checkAndMarkPhaseComplete` no mount.
