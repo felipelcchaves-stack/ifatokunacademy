@@ -310,6 +310,11 @@ export const useSequentialProgress = () => {
     const previousPhaseProgress = phaseProgress.find(p => p.moduleId === previousModule.id);
     if (previousPhaseProgress?.phase1CompletedAt) return null;
 
+    const previousCompletion = completions.find(c => c.moduleId === previousModule.id);
+    if (previousCompletion !== undefined && previousCompletion.quizScore >= 90) return null;
+
+    if ((userProgress[previousModule.id] || 0) >= 100) return null;
+
     return `Complete a Fase 1 do módulo anterior para desbloquear`;
   };
 
