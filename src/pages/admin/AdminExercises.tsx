@@ -883,6 +883,88 @@ const AdminExercises: React.FC = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Quick Video Lesson Dialog */}
+      <Dialog open={isQuickVideoOpen} onOpenChange={setIsQuickVideoOpen}>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle className="font-serif flex items-center gap-2">
+              <Video className="w-5 h-5 text-primary" />
+              Adicionar Vídeo Aula
+            </DialogTitle>
+            <DialogDescription>
+              Publique uma aula em vídeo sem precisar criar outros exercícios.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="quick-video-title">Título</Label>
+              <Input
+                id="quick-video-title"
+                placeholder="Ex: Aula ao Vivo - Introdução"
+                value={quickVideoTitle}
+                onChange={(e) => setQuickVideoTitle(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Upload de vídeo (opcional)</Label>
+              <MediaUploader
+                lessonId={lessonId}
+                acceptedTypes="video/*"
+                label="Selecione um arquivo de vídeo"
+                currentUrl={quickVideoUrl}
+                onUploadComplete={(url) => setQuickVideoUrl(url)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="quick-video-url">Ou cole a URL (YouTube, Vimeo, Drive...)</Label>
+              <Input
+                id="quick-video-url"
+                placeholder="https://..."
+                value={quickVideoUrl}
+                onChange={(e) => setQuickVideoUrl(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="quick-video-description">Descrição (opcional)</Label>
+              <Textarea
+                id="quick-video-description"
+                placeholder="Breve descrição da aula..."
+                value={quickVideoDescription}
+                onChange={(e) => setQuickVideoDescription(e.target.value)}
+                rows={3}
+              />
+            </div>
+
+            {quickVideoUrl && /youtube|vimeo|drive\.google\.com/.test(quickVideoUrl) && (
+              <div className="aspect-video bg-muted rounded-lg overflow-hidden flex items-center justify-center text-sm text-muted-foreground">
+                Pré-visualização disponível após salvar
+              </div>
+            )}
+
+            {!quickVideoUrl.trim() && (
+              <p className="text-xs text-muted-foreground">
+                Sem URL, a aula será salva como rascunho. Você pode publicar depois.
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsQuickVideoOpen(false)} disabled={quickVideoSaving}>
+              Cancelar
+            </Button>
+            <Button
+              className="gradient-gold text-secondary"
+              onClick={handleCreateVideoLesson}
+              disabled={quickVideoSaving || !quickVideoTitle.trim()}
+            >
+              {quickVideoSaving ? 'Salvando...' : (quickVideoUrl.trim() ? 'Publicar Vídeo Aula' : 'Salvar Rascunho')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Pedagogical Exercise Generator */}
       <PedagogicalExerciseGenerator
         lessonId={lessonId!}
@@ -893,6 +975,7 @@ const AdminExercises: React.FC = () => {
         onExercisesGenerated={fetchData}
       />
     </div>
+
   );
 };
 
