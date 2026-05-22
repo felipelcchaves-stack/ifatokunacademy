@@ -617,24 +617,33 @@ const AdminExercises: React.FC = () => {
               Crie e gerencie os exercícios desta lição
             </p>
           </div>
-          <div className="flex gap-2">
-            <Button 
-              variant="outline"
-              onClick={() => setIsPedagogicalGeneratorOpen(true)}
-              className="border-primary/50 text-primary hover:bg-primary/10"
-            >
-              <Sparkles className="w-4 h-4 mr-2" />
-              Gerar Método Pedagógico
-            </Button>
-            <Button 
+          <div className="flex flex-wrap gap-2">
+            <Button
               className="gradient-gold text-secondary shadow-gold"
+              onClick={openQuickVideo}
+            >
+              <Video className="w-4 h-4 mr-2" />
+              Adicionar Vídeo Aula
+            </Button>
+            <Button
+              variant="outline"
               onClick={() => setIsCreateDialogOpen(true)}
             >
               <Plus className="w-4 h-4 mr-2" />
               Novo Exercício
             </Button>
+            <Button
+              variant="outline"
+              onClick={() => setIsPedagogicalGeneratorOpen(true)}
+              className="border-primary/50 text-primary hover:bg-primary/10"
+              title="Gera múltiplos exercícios a partir de um texto base"
+            >
+              <Sparkles className="w-4 h-4 mr-2" />
+              Gerar Método Pedagógico
+            </Button>
           </div>
         </div>
+
 
         {/* Search */}
         <div className="relative mb-6 max-w-md">
