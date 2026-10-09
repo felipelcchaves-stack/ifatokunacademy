@@ -1,0 +1,45 @@
+name: Deploy Frontend
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run build
+        env:
+          VITE_SUPABASE_PROJECT_ID: ${{ secrets.VITE_SUPABASE_PROJECT_ID }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+
+      - name: Deploy to VPS (atomic release)
+        env:
+          SSH_KEY: ${{ secrets.ACADEMY_DEPLOY_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+          RELEASE=$(date +%Y%m%d%H%M%S)
+          SSH="ssh -p 22022 -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no academy@143.95.164.62"
+          RSYNC_SSH="ssh -p 22022 -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no"
+
+          $SSH "mkdir -p /home/academy/releases/$RELEASE"
+          rsync -avz --delete -e "$RSYNC_SSH" dist/ "academy@143.95.164.62:/home/academy/releases/$RELEASE/"
+
+          # Deploy atômico: só troca o symlink depois do upload completo
+          $SSH "ln -sfn /home/academy/releases/$RELEASE /home/academy/current"
+
+          # Mantém só os 5 releases mais recentes
+          $SSH "ls -1dt /home/academy/releases/*/ | tail -n +6 | xargs -r rm -rf"

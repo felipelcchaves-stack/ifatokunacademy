@@ -71,50 +71,51 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     let currentUserId: string | null = null;
 
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        console.log('[AuthContext] onAuthStateChange:', { event, hasSession: !!session, userId: session?.user?.id });
-        
-        // Skip TOKEN_REFRESHED events if user hasn't changed - prevents unnecessary re-renders
-        if (event === 'TOKEN_REFRESHED' && session?.user?.id === currentUserId) {
-          console.log('[AuthContext] Skipping TOKEN_REFRESHED - same user');
-          return;
-        }
+    // Só recria `user`/perfil/admin quando o id do usuário realmente muda -
+    // um SIGNED_IN redundante (ex: ao voltar o foco na aba) sempre chega com
+    // uma sessão/objeto `user` novo, mesmo sendo o mesmo usuário. Sem essa
+    // checagem, os 13 efeitos [user] espalhados pelo app disparam de novo a
+    // cada refoco, causando o "refresh" visível (spinner piscando, scroll
+    // perdido) - mesmo bug já corrigido no Isesemind.
+    const applySession = (session: Session | null, isInitial = false) => {
+      const newUserId = session?.user?.id ?? null;
+      const userChanged = newUserId !== currentUserId;
+      currentUserId = newUserId;
 
-        currentUserId = session?.user?.id ?? null;
-        setSession(session);
+      // `session` sempre atualiza - é seguro (token novo) e nada fora deste
+      // contexto lê `session` diretamente.
+      setSession(session);
+
+      if (userChanged) {
         setUser(session?.user ?? null);
 
-        // Defer Supabase calls with setTimeout to avoid deadlock
         if (session?.user) {
-          console.log('[AuthContext] User detected, fetching profile and admin status');
+          // Defer Supabase calls with setTimeout to avoid deadlock
           setTimeout(() => {
             fetchProfile(session.user.id);
             checkAdminStatus(session.user.id);
           }, 0);
         } else {
-          console.log('[AuthContext] No user, clearing state');
           setProfile(null);
           setIsAdmin(false);
         }
       }
+
+      if (isInitial) {
+        setLoading(false);
+      }
+    };
+
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        applySession(session);
+      }
     );
 
     // THEN check for existing session
-    console.log('[AuthContext] Checking for existing session...');
     supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('[AuthContext] getSession result:', { hasSession: !!session, userId: session?.user?.id });
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        fetchProfile(session.user.id);
-        checkAdminStatus(session.user.id);
-      }
-      
-      setLoading(false);
-      console.log('[AuthContext] Loading complete');
+      applySession(session, true);
     });
 
     return () => subscription.unsubscribe();

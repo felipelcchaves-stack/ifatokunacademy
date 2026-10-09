@@ -23,10 +23,33 @@ serve(async (req) => {
   }
 
   try {
-    const { text, voiceId, skipCache } = await req.json();
-    const ELEVENLABS_API_KEY = Deno.env.get('ELEVENLABS_API_KEY');
+    // Verificar que o chamador está autenticado (função antes gerava áudio sem checar nada,
+    // o que permitia qualquer pessoa consumir créditos pagos do ElevenLabs)
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Authorization header required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+    // Initialize Supabase client with service role
+    const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user: callerUser }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !callerUser) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { text, voiceId, skipCache } = await req.json();
+    const ELEVENLABS_API_KEY = Deno.env.get('ELEVENLABS_API_KEY');
 
     if (!ELEVENLABS_API_KEY) {
       console.error('ELEVENLABS_API_KEY not configured');
@@ -39,9 +62,6 @@ serve(async (req) => {
 
     const selectedVoiceId = voiceId || 'CwhRBWXzGAHq8TQ4Fs17';
     const textHash = `${hashText(text)}_${selectedVoiceId}`;
-
-    // Initialize Supabase client with service role
-    const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
 
     // Check cache first (unless skipCache is true)
     if (!skipCache) {

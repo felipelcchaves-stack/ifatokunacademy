@@ -8,6 +8,7 @@ import InlineRecorder from '@/components/recording/InlineRecorder';
 import { useUserRecordings } from '@/hooks/useUserRecordings';
 import { AudioSource } from '@/components/exercises/AudioSourceSelector';
 import { isAudioUrlPlayable, getFormatCompatibilityMessage } from '@/lib/audioFormatUtils';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ReadingExerciseProps {
   text: string;
@@ -193,6 +194,12 @@ const ReadingExercise: React.FC<ReadingExerciseProps> = ({
   const generateAudio = useCallback(async () => {
     setIsGenerating(true);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        throw new Error('É necessário estar logado para gerar áudio.');
+      }
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`,
         {
@@ -200,7 +207,7 @@ const ReadingExercise: React.FC<ReadingExerciseProps> = ({
           headers: {
             'Content-Type': 'application/json',
             'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            'Authorization': `Bearer ${session.access_token}`,
           },
           body: JSON.stringify({ text }),
         }

@@ -22,3 +22,13 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Secrets / local-only credentials
+.secrets/
+.env
+
+# graphify (generated, machine-local)
+/graphify-out/
+
+# Supabase CLI local state
+supabase/.temp/
