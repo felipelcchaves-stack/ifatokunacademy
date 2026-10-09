@@ -20,3 +20,6 @@ verify_jwt = true
 
 [functions.validate-interpretation]
 verify_jwt = true
+[functions.hub-sso]
+# Called by the SPA before there is a session and by the hub (back-channel), never with a user JWT.
+verify_jwt = false
