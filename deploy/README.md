@@ -68,3 +68,8 @@ curl -I https://academy.ifatokun.com.br
 ```
 Deve retornar 200. Depois, disparar um push de teste na `main` e confirmar
 que o Actions troca o symlink `current` sem downtime perceptível.
+
+## Login único pelo Hub (área /admin)
+
+Ver `deploy/HUB-SSO.md`: Edge Function `hub-sso`, migrações `*_hub_sso*.sql`, segredos
+`HUB_*` da função e secrets `VITE_HUB_*` do GitHub. Sem esses secrets o app fica como antes.
