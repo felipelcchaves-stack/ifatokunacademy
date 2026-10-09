@@ -22,6 +22,10 @@ jobs:
           VITE_SUPABASE_PROJECT_ID: ${{ secrets.VITE_SUPABASE_PROJECT_ID }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          # Hub single sign-on for /admin (deploy/HUB-SSO.md). Unset = off, app as before.
+          VITE_HUB_SSO_ENABLED: ${{ secrets.VITE_HUB_SSO_ENABLED }}
+          VITE_HUB_ISSUER: ${{ secrets.VITE_HUB_ISSUER }}
+          VITE_HUB_SSO_LOCAL_LOGIN: ${{ secrets.VITE_HUB_SSO_LOCAL_LOGIN }}
 
       - name: Deploy to VPS (atomic release)
         env:

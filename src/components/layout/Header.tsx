@@ -23,6 +23,7 @@ import { useExperience } from '@/hooks/useExperience';
 import { useOrgNavigate } from '@/hooks/useOrgNavigate';
 import { cn } from '@/lib/utils';
 import OrganizationSwitcher from './OrganizationSwitcher';
+import { signOutWithHub } from '@/lib/hubSsoSession';
 
 // Links base para alunos (logados) — paths serão prefixados dinamicamente
 const baseStudentLinks = [
@@ -80,8 +81,8 @@ const Header = forwardRef<HTMLElement>((_, ref) => {
   };
 
   const handleLogout = async () => {
-    await signOut();
-    navigate('/login');
+    // A session opened through the hub also ends the hub SSO session (deploy/HUB-SSO.md).
+    if (!(await signOutWithHub(signOut))) navigate('/login');
   };
 
   const isActiveLink = (path: string) => location.pathname === path || location.pathname.endsWith(path.replace(/^\/org\/[^/]+/, ''));

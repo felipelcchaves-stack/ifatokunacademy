@@ -9,6 +9,9 @@ import { OrganizationProvider } from "@/contexts/OrganizationContext";
 import ContentProtection from "@/components/ContentProtection";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AdminLayout from "@/components/layout/AdminLayout";
+import HubAdminGuard from "@/components/hub-sso/HubAdminGuard";
+import HubSsoStart from "./pages/HubSsoStart";
+import HubSsoCallback from "./pages/HubSsoCallback";
 import { DomainRedirectProvider } from "@/hooks/useDomainRedirect";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -123,6 +126,9 @@ const App = () => (
               {/* Public Routes */}
               <Route path="/" element={<Navigate to="/login" replace />} />
               <Route path="/login" element={<Login />} />
+              {/* Hub single sign-on for the admin area (deploy/HUB-SSO.md) */}
+              <Route path="/auth/hub/iniciar" element={<HubSsoStart />} />
+              <Route path="/auth/hub/callback" element={<HubSsoCallback />} />
               <Route path="/register" element={<Navigate to="/login" replace />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
@@ -300,9 +306,11 @@ const App = () => (
               
               {/* Admin Routes - Protected & Admin Only with shared layout */}
               <Route path="/admin" element={
-                <ProtectedRoute requireAdmin allowOrgAdmin>
-                  <AdminLayout />
-                </ProtectedRoute>
+                <HubAdminGuard>
+                  <ProtectedRoute requireAdmin allowOrgAdmin>
+                    <AdminLayout />
+                  </ProtectedRoute>
+                </HubAdminGuard>
               }>
                 <Route index element={<AdminDashboard />} />
                 <Route path="org-dashboard" element={<AdminOrgDashboard />} />
