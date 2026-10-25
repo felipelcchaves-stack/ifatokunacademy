@@ -102,6 +102,21 @@ Variáveis de build da SPA (secrets do GitHub Actions, passadas no `npm run buil
 
 ## 5. Passo a passo de produção (Felipe)
 
+0. **Histórico de migrações do banco (antes de juntar na `main`).** O Academy saiu do Lovable com o
+   banco já montado; o `deploy-supabase.yml` roda `supabase db push` e, agora, antes dele uma trava
+   (`scripts/check-migration-history.mjs`) que **falha** se o histórico remoto não bate. Confira você
+   mesmo, no terminal do Mac:
+   ```bash
+   supabase link --project-ref xkbruecvfumxqjrjhupv      # pede a senha do banco (cofre)
+   supabase migration list > /tmp/m.txt && node scripts/check-migration-history.mjs /tmp/m.txt
+   ```
+   Só as migrações de `20261008230000` em diante podem aparecer sem a coluna Remote. Se as antigas
+   aparecerem sem Remote (histórico vazio) e o schema já existe, marque-as como aplicadas, uma vez:
+   ```bash
+   supabase migration repair --status applied $(ls supabase/migrations | grep -v '^20261008\|^20261009' | cut -d_ -f1)
+   ```
+   (Desfazer: `supabase migration repair --status reverted <versão>`.) Só depois junte na `main`.
+
 1. **E-mails (obrigatório antes de ligar).** O Hub só emite contas `@ifatokun.com.br`, e no Academy
    o admin global é decidido **pelo e-mail** (`admin_emails` ↔ `auth.users.email`). No export do
    Lovable de 19/09 os admins globais eram `ifatokun@offeorunmila.com` e
@@ -163,7 +178,7 @@ ao fluxo antigo sem rebuild (com a senha aleatória, use "Esqueci a senha"). Ou 
 
 ## 6. Testes
 
-- `npm test` (novo: `vitest run`) — `src/test/hub-sso/*.test.ts` (101 testes no `npm test`, incluindo `guard.test.ts`: o guarda das Edge Functions, §9.4): validação de `iss`/`target_link_uri`,
+- `npm test` (novo: `vitest run`) — `src/test/hub-sso/*.test.ts` (112 testes no `npm test`, incluindo `realProvider.test.ts`: o fluxo inteiro contra o `oidc-provider` de verdade, o mesmo do Hub, e `migrationHistory.test.ts`; incluindo `guard.test.ts`: o guarda das Edge Functions, §9.4): validação de `iss`/`target_link_uri`,
   PKCE (vetor do RFC 7636), estado de uso único e expiração, ID token e logout token **assinados
   de verdade** (RS256, chave de teste) e validados pelo `jose` num JWKS servido por HTTP local
   (nonce, aud, azp, iss, exp, iat, jti, evento, assinatura forjada, outro algoritmo), código usado
@@ -176,6 +191,7 @@ ao fluxo antigo sem rebuild (com a senha aleatória, use "Esqueci a senha"). Ou 
   O mesmo script aplica as migrações num PostgreSQL local descartável
   (socket, sem porta) com um esqueleto do `auth` e confere permissões, status, revogação e o
   `has_role` recusando o token revogado.
+- `node scripts/hub-sso-doctor.ts` — diagnóstico de fora, sem segredo: o Hub, a função `hub-sso`, se o Hub aceita o `client_id`/URL de retorno, e se o site publicado já traz o login pelo Hub. Rode antes e depois de cada passo do §5.
 - `scripts/hub-sso-dev.ts` — a função real em Deno + um Supabase falso em memória, para testar no
   navegador contra o Hub local (instruções no topo do arquivo; `DEV_USER_MFA=true` simula um admin com TOTP do Supabase).
 

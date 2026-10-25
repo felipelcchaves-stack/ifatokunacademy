@@ -1,6 +1,7 @@
 name: Deploy Supabase
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
     paths:
@@ -19,6 +20,14 @@ jobs:
           version: latest
 
       - run: supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_REF }} --password ${{ secrets.SUPABASE_DB_PASSWORD }}
+
+      # Trava: não deixa o db push rodar as migrações antigas de novo (histórico remoto fora do lugar).
+      # Se falhar, veja deploy/HUB-SSO.md §5.0 (migration repair) antes de tentar de novo.
+      - name: Check remote migration history
+        run: |
+          supabase migration list --password ${{ secrets.SUPABASE_DB_PASSWORD }} > migration-list.txt
+          cat migration-list.txt
+          node scripts/check-migration-history.mjs migration-list.txt
 
       - run: supabase db push --password ${{ secrets.SUPABASE_DB_PASSWORD }}
 
