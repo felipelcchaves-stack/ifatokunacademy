@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -12,14 +13,38 @@ serve(async (req) => {
   }
 
   try {
-    const { 
-      availability, 
-      totalPendingHours, 
+    // Verificar que o chamador está autenticado (função antes ficava aberta a qualquer chamada)
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Authorization header required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user: callerUser }, error: authError } = await supabaseAdmin.auth.getUser(token);
+    if (authError || !callerUser) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const {
+      availability,
+      totalPendingHours,
       firstExposureHours,
       reviewHours,
       pendingLessonsCount,
       pendingExercisesCount,
-      hoursPerWeek, 
+      hoursPerWeek,
       weeksToComplete,
       sessionDurationMinutes,
       exercisesByType,
@@ -27,9 +52,9 @@ serve(async (req) => {
       memorizationHours,
     } = await req.json();
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY is not configured');
+    const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
+    if (!GEMINI_API_KEY) {
+      throw new Error('GEMINI_API_KEY is not configured');
     }
 
     const daysPerWeek = availability?.length || 0;
@@ -77,36 +102,33 @@ INSTRUÇÕES:
 
 Responda em 3-4 frases curtas e diretas em português brasileiro.`;
 
-    console.log('Calling AI gateway with enhanced study plan data');
+    console.log('Calling Gemini API with enhanced study plan data');
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'user', content: prompt }
-        ],
-      }),
-    });
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        }),
+      }
+    );
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('AI gateway error:', response.status, errorText);
-      
+      console.error('Gemini API error:', response.status, errorText);
+
       // Fallback message mais detalhado
       const fallbackInsight = `Seu plano inclui ${totalPendingHours?.toFixed(0) || 0} horas de estudo: ${firstExposureHours?.toFixed(0) || 0}h de conteúdo novo e ${reviewHours?.toFixed(0) || 0}h de revisões para memorização. Com ${hoursPerWeek?.toFixed(1) || 0} horas/semana, você completará em ${weeksToComplete} semanas. A repetição é essencial para fixar o conhecimento sagrado!`;
-      
+
       return new Response(JSON.stringify({ insights: fallbackInsight }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
     const data = await response.json();
-    const insights = data.choices?.[0]?.message?.content || 
+    const insights = data.candidates?.[0]?.content?.parts?.[0]?.text ||
       `Seu plano de ${totalPendingHours?.toFixed(0)} horas inclui tempo para memorização e revisões. Continue firme!`;
 
     console.log('Study plan calculation completed successfully with detailed analysis');

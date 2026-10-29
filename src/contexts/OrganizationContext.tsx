@@ -84,6 +84,7 @@ export const detectTenantFromHostname = (): { slug: string | null; customDomain:
   const mainHosts = [
     'localhost',
     '127.0.0.1',
+    'academy.ifatokun.com.br',
     'ifatokunacademy.lovable.app',
   ];
   

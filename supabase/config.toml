@@ -1,4 +1,4 @@
-project_id = "radloafdvakhjlapgrbp"
+project_id = "xkbruecvfumxqjrjhupv"
 
 [functions.create-user]
 verify_jwt = false
@@ -13,10 +13,13 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.calculate-study-plan]
-verify_jwt = false
+verify_jwt = true
 
 [functions.elevenlabs-tts]
-verify_jwt = false
+verify_jwt = true
 
 [functions.validate-interpretation]
+verify_jwt = true
+[functions.hub-sso]
+# Called by the SPA before there is a session and by the hub (back-channel), never with a user JWT.
 verify_jwt = false

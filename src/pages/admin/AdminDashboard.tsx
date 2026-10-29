@@ -416,7 +416,7 @@ const AdminDashboard: React.FC = () => {
               <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
             </div>
             <div>
-              <p className="font-medium text-foreground">Lovable Cloud</p>
+              <p className="font-medium text-foreground">Supabase</p>
               <p className="text-sm text-green-600 dark:text-green-400">Conectado</p>
             </div>
           </div>

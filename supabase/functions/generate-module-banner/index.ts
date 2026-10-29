@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
+import { HUB_SESSION_BLOCKED_MESSAGE, hubSessionBlockedFromEnv } from "../_shared/hub-sso/guard.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -179,6 +180,15 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
+    // Hub single sign-on: the role check below runs with the service role, which skips the hub
+    // checks inside the role functions; ask them as the caller (_shared/hub-sso/guard.ts).
+    if (await hubSessionBlockedFromEnv((name) => Deno.env.get(name), authHeader)) {
+      return new Response(JSON.stringify({ error: HUB_SESSION_BLOCKED_MESSAGE }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { data: isAdmin, error: adminError } = await supabase.rpc("is_admin", { user_id: userId });
     
     if (adminError) {
@@ -208,9 +218,9 @@ serve(async (req) => {
       );
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY) {
+      throw new Error("GEMINI_API_KEY is not configured");
     }
 
     console.log("generate-module-banner: Generating banner for module:", title);
@@ -247,30 +257,24 @@ serve(async (req) => {
         : buildPrompt(title, description || "", isRetry);
 
       try {
-        console.log("generate-module-banner: Calling AI Gateway");
+        console.log("generate-module-banner: Calling Gemini API");
 
-        const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${LOVABLE_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: "google/gemini-2.5-flash-image-preview",
-            messages: [
-              {
-                role: "user",
-                content: prompt,
-              },
-            ],
-            modalities: ["image", "text"],
-          }),
-        });
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent?key=${GEMINI_API_KEY}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ role: "user", parts: [{ text: prompt }] }],
+              generationConfig: { responseModalities: ["IMAGE", "TEXT"] },
+            }),
+          }
+        );
 
         if (!response.ok) {
           const errorText = await response.text();
-          console.error(`generate-module-banner: AI Gateway error (attempt ${attempt}):`, response.status, errorText);
-          
+          console.error(`generate-module-banner: Gemini API error (attempt ${attempt}):`, response.status, errorText);
+
           if (response.status === 429) {
             lastError = "Rate limit exceeded. Please try again later.";
             if (attempt < MAX_RETRIES) {
@@ -278,18 +282,15 @@ serve(async (req) => {
               await sleep(RETRY_DELAY_MS * 2);
               continue;
             }
-          } else if (response.status === 402) {
-            lastError = "Payment required. Please add credits to continue.";
-            break;
           } else {
-            lastError = `AI Gateway error: ${response.status}`;
+            lastError = `Gemini API error: ${response.status}`;
           }
-          
+
           if (attempt < MAX_RETRIES) {
             await sleep(RETRY_DELAY_MS);
             continue;
           }
-          
+
           return new Response(
             JSON.stringify({ error: lastError }),
             { status: response.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -299,9 +300,12 @@ serve(async (req) => {
         const aiData = await response.json();
         console.log("generate-module-banner: AI response received");
 
-        // Extract image from response
-        const generatedImage = aiData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-        
+        // Extract image from response (Gemini returns base64 inline data, not a data URL)
+        const imagePart = aiData.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData);
+        const generatedImage = imagePart
+          ? `data:${imagePart.inlineData.mimeType || "image/png"};base64,${imagePart.inlineData.data}`
+          : null;
+
         if (!generatedImage) {
           console.error(`generate-module-banner: No image in AI response (attempt ${attempt}):`, JSON.stringify(aiData).substring(0, 500));
           lastError = "AI did not generate an image";

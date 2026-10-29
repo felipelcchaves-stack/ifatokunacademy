@@ -1753,6 +1753,7 @@ export type Database = {
         Returns: string
       }
       get_user_organization_id: { Args: { p_user_id: string }; Returns: string }
+      hub_sso_session_status: { Args: never; Returns: Json }
       is_admin: { Args: { user_id: string }; Returns: boolean }
       is_cohort_member: {
         Args: { p_cohort_id: string; p_user_id: string }

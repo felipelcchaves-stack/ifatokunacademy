@@ -58,8 +58,8 @@ const AdminOrganizationDomain: React.FC = () => {
     lastChecked: null,
   });
 
-  // O domínio de destino para CNAME (Lovable)
-  const targetDomain = 'ifatokunacademy.lovable.app';
+  // O domínio de destino para CNAME
+  const targetDomain = 'academy.ifatokun.com.br';
 
   const organizationId = paramOrgId || contextOrg?.id;
 

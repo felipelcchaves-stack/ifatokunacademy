@@ -37,6 +37,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useOrganization } from '@/contexts/OrganizationContext';
 import { usePlatformSettings } from '@/hooks/usePlatformSettings';
 import { useAdminOrganization } from '@/hooks/useAdminOrganization';
+import { signOutWithHub } from '@/lib/hubSsoSession';
 
 const AdminLayout: React.FC = () => {
   const { platformName } = usePlatformSettings();
@@ -111,8 +112,8 @@ const AdminLayout: React.FC = () => {
       : [...orgAdminItems, ...contextualOrgItems, ...cohortItems, ...institutionalItems];
 
   const handleLogout = async () => {
-    await signOut();
-    navigate('/');
+    // A session opened through the hub also ends the hub SSO session (deploy/HUB-SSO.md).
+    if (!(await signOutWithHub(signOut))) navigate('/');
   };
 
   const isActive = (path: string) => {

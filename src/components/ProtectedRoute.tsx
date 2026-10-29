@@ -4,6 +4,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useOrganization } from '@/contexts/OrganizationContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
+import { hubSso } from '@/lib/hubSsoProject';
+import { currentSessionStatus } from '@/lib/hubSsoSession';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -52,6 +54,15 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   const checkMFALevel = async () => {
     try {
+      // A session opened through the hub already passed the hub's second factor (TOTP):
+      // asking for the Supabase MFA code again would be a second 2FA (deploy/HUB-SSO.md).
+      if (hubSso.enabled) {
+        const hub = await currentSessionStatus();
+        if (hub !== 'unknown' && hub.status === 'active') {
+          setMfaRequired(false);
+          return;
+        }
+      }
       const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
       console.log('[ProtectedRoute] MFA level check:', { data, error: error?.message });
       if (error) throw error;
